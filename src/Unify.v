@@ -948,16 +948,6 @@ Defined.
 
 Check (fun t1 t2 x => (unify (existT _ (x) ((t1, t2)::nil)))).
 
-Definition lol : forall t1 t2 : ty, exists x, wf_ty x t1 /\ wf_ty x t2.
-  intros.
-  intros.
-  pose proof ids_ty_dep2 as dep.
-  specialize dep with (tau:=t1) (tau':=t2).
-  destruct dep.
-  exists x.
-  auto.
-Qed.
-  
 
 Definition unify_simple_dep : forall t1 t2 : ty, 
 {x & {s : substitution | unifier (get_list_constr (existT (fun _ : list id => list (ty * ty)) x
