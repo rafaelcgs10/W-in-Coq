@@ -9,5 +9,7 @@
    src/Rename.v
    src/Gen.v
    src/Typing.v
+   src/NewTypeVariable.v
    src/Infer.v
+   src/Completeness.v
 
