@@ -205,3 +205,45 @@ Definition infer_dep : forall (e : term) (G : ctx),
     apply p.
   - econstructor. 
 Defined.
+
+Definition runInfer_id e g i := infer_dep e g (mkState i).
+Definition runInfer e g := infer_dep e g (mkState 0).
+
+Compute runInfer (var_t 0) nil.
+
+Definition getState (A : Type) (rs : option (tc_state * A)) : option id :=
+  match rs with
+  | None => None
+  | Some (mkState x, _) => Some x
+  end.
+
+Definition projS A (P : A -> Prop) (x : sig P) : A :=
+  match x with
+    | exist _ v _ => v
+  end.
+
+Definition projT A (P : A -> Prop) (x : sigT P) : A :=
+  match x with
+    | existT _ v _ => v
+  end.
+
+
+Definition getResult P (rs : option (tc_state * (({ti : ty & {s : substitution | P}}))))
+  : option (ty * substitution) :=
+  match rs with
+  | None => None
+  | Some (mkState _, (existT _ t (exist _ s _))) => Some (t ,s)
+  end.
+
+Check getResult.
+(** getResult
+     : forall P : Prop, option (tc_state * {_ : ty & {_ : substitution | P}}) -> option (ty * substitution) **)
+
+Check runInfer_id.
+(** runInfer_id
+     : forall (e : term) (g : ctx), id -> option (tc_state * {tau : ty & {s : substitution | has_type (apply_subst_ctx s g) e tau}}) **)
+
+Check getResult (runInfer_id (var_t 0) nil 0).
+(** Error:
+The term "runInfer_id (var_t 0) nil 0" has type "option (tc_state * {tau : ty & {s : substitution | has_type (apply_subst_ctx s nil) (var_t 0) tau}})"
+while it is expected to have type "option (tc_state * {_ : ty & {_ : substitution | ?P}})" (cannot instantiate "?P" because "s" is not in its scope). *)
