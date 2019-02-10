@@ -228,22 +228,9 @@ Definition projT A (P : A -> Prop) (x : sigT P) : A :=
   end.
 
 
-Definition getResult P (rs : option (tc_state * (({ti : ty & {s : substitution | P}}))))
+Definition getResult {P} (rs : option (tc_state * (({ti : ty & {s : substitution | P ti s}}))))
   : option (ty * substitution) :=
   match rs with
   | None => None
-  | Some (mkState _, (existT _ t (exist _ s _))) => Some (t ,s)
+  | Some (mkState i, (existT _ t (exist _ s P))) => Some (t ,s)
   end.
-
-Check getResult.
-(** getResult
-     : forall P : Prop, option (tc_state * {_ : ty & {_ : substitution | P}}) -> option (ty * substitution) **)
-
-Check runInfer_id.
-(** runInfer_id
-     : forall (e : term) (g : ctx), id -> option (tc_state * {tau : ty & {s : substitution | has_type (apply_subst_ctx s g) e tau}}) **)
-
-Check getResult (runInfer_id (var_t 0) nil 0).
-(** Error:
-The term "runInfer_id (var_t 0) nil 0" has type "option (tc_state * {tau : ty & {s : substitution | has_type (apply_subst_ctx s nil) (var_t 0) tau}})"
-while it is expected to have type "option (tc_state * {_ : ty & {_ : substitution | ?P}})" (cannot instantiate "?P" because "s" is not in its scope). *)
