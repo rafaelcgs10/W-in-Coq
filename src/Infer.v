@@ -211,9 +211,16 @@ Definition runInfer e g := infer_dep e g (mkState 0).
 
 Compute runInfer (var_t 0) nil.
 
-Definition getResult {P} (rs : option (tc_state * (({ti : ty & {s : substitution | P ti s}}))))
-  : option (id * ty * substitution) :=
+Definition getResult (A B : Type) {P} (rs : option (tc_state * (({ti : A & {s : B | P ti s}}))))
+  : option (id * A * B) :=
   match rs with
   | None => None
   | Some (mkState i, (existT _ t (exist _ s P))) => Some (i, t ,s)
+  end.
+
+Definition getInst (A : Type) {P} (rs : option (tc_state * {x : A | P x}))
+  : option A :=
+  match rs with
+  | None => None
+  | Some (mkState i, exist _ s _) => Some s
   end.

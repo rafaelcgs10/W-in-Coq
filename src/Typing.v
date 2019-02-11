@@ -19,12 +19,13 @@ Inductive term : Set :=
 | app_t   : term -> term -> term
 | let_t   : id -> term -> term -> term
 | lam_t   : id -> term -> term
-| const_t : term.
+| const_t : id -> term.
 
 (** * Syntax-directed rule system of Damas-Milner *)
 
 Inductive has_type : ctx -> term -> ty -> Prop :=
-| const_ht : forall i G, has_type G const_t (con i)
+| const_ht : forall x i sigma G, in_ctx x G = Some sigma -> is_schm_instance (con i) sigma ->
+                      has_type G (const_t x) (con i)
 | var_ht : forall x G sigma tau, in_ctx x G = Some sigma -> is_schm_instance tau sigma ->
                             has_type G (var_t x) tau
 | lam_ht : forall x G tau tau' e, has_type ((x, ty_to_schm tau) :: G) e tau' ->
@@ -100,4 +101,26 @@ Proof.
     assumption.
   - intros. inversion H. subst. rewrite apply_subst_con.
     econstructor.
+    + induction G; simpl in *; mysimp.
+      destruct a.
+      mysimp.
+      apply IHG.
+      econstructor.
+      apply H1.
+      assumption.
+      assumption.
+    + unfold is_schm_instance in *.
+      destruct H3.
+      exists x.
+      erewrite apply_inst_subst_con_inversion.
+      reflexivity.
+      rewrite apply_inst_subst_con.
+      exists s.
+      destruct H3.
+      eapply subst_inst_subst_type in H0.
+      exists (map_apply_subst_ty nil x).
+      apply H0.
+    + simpl in *. inversion H1.
+    + simpl in *.
+      destruct a.
 Qed.
