@@ -18,7 +18,6 @@ Definition id := nat.
 (** Decidable equality of identifiers *)
 
 Definition eq_id_dec : forall (v v' : id), {v = v'} + {v <> v'} := eq_nat_dec.
-(** General simplification tactic. In html, we will omit such Ltac defs. *)
 
 (** Type definition is direct *)
 
@@ -41,7 +40,6 @@ Definition eq_ty_dec : forall (t t' : ty), {t = t'} + {t <> t'}.
   pose eq_id_dec.
   decide equality.
 Defined.
-
 
 Ltac s :=
   match goal with

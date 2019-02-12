@@ -24,6 +24,11 @@ Lemma new_tv_W: forall (e : term) (G : ctx) (i i': id) (t : ty) (s : substitutio
     new_tv_ty t i' /\ new_tv_subst s i'.
 Admitted.
 
+Ltac destructMatch :=
+  match goal with
+    | [ |- context[match ?a with  | _ => _ end] ] => destruct a
+  end.
+
 Lemma completeness : forall (e : term) (G : ctx) (tau' : ty) (phi : substitution) (i : id),
     has_type (apply_subst_ctx phi G) e tau' -> new_tv_ctx G i ->
     exists s tau i' s', getResult (runInfer_id e G i) = Some (i', tau, s) /\
@@ -36,10 +41,36 @@ Proof.
   admit.
   admit.
   admit.
-  - inversion H.
+  - unfold runInfer_id, getResult.
+    inversion H.
+    subst.
+    eapply has_type_is_stable_under_substitution_inversion_con in H.
+    induction G.
+    admit.
+    simpl in *.
+    destructMatch.
+    destructMatch.
+    destructMatch.
+    destruct s.
+    destruct s.
+    destruct a.
+    inversion h.
+    inversion H.
+    subst.
+    exists x0 (con i1) next_tvar (nil : substitution).
+    splits.
+    reflexivity.
     simpl.
-    (** rever a parte do algoritmo que infere constantes *)
-    exists (nil : substitution) (con 0) i (nil : substitution).
-    simpl. split; try reflexivity.
+    reflexivity.
+
+    
+    destruct (look_const_dep i0 G).
+    admit.
+    auto.
+    simpl.
+    mysimp.
+    destruct const_dep.
+
+    split; try reflexivity.
 
 Admitted.
