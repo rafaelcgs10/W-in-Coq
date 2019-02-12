@@ -102,12 +102,35 @@ Definition  look_dep : forall (x : id) (G : ctx), Infer {sigma | in_ctx x G = So
   auto.
 Qed.
 
+Definition  look_const_dep : forall (x : id) (G : ctx), Infer {sigma & {i | in_ctx x G = Some sigma /\ sigma = sc_con i}}.
+  refine (fix look' (x : id) (G : ctx) : Infer {sigma & {i | in_ctx x G = Some sigma /\ sigma = sc_con i}} :=
+            match G with
+            | nil => failT _
+            | (y, sigma) :: G' => if eq_id_dec x y then
+                                   match sigma as y return sigma = y -> _ with
+                                   | sc_con i => fun _ => ret (existT _ sigma (exist _ i _))
+                                   | _ => fun _ => failT _
+                                   end _
+                                 else re <- look' x G' ;
+                                 match re with
+                                 | existT _ sig (exist _ i P) => ret (existT _ sig (exist _ i _))
+                                 end
+            end);
+  subst; simpl;
+  mysimp.
+Qed.
+
 Definition infer_dep : forall (e : term) (G : ctx),
     Infer ({tau : ty & {s : substitution | has_type (apply_subst_ctx s G) e tau}}).
   refine (fix infer_dep (e : term) (G : ctx) :
             Infer ({tau : ty & {s : substitution | has_type (apply_subst_ctx s G) e tau}}) :=
             match e with
-            | const_t => ret (existT _ (con 0) (exist _ nil _))
+            | const_t x =>
+              const_dep <- look_const_dep x G ;
+              match const_dep as y with 
+              | existT _ (sc_con i) (exist _ j P) => ret (existT _ (con i) (exist _ nil _))
+              | existT _ _ E => failT _
+              end
             | var_t x =>
               sigma_dep <- look_dep x G ;
               match sigma_dep with 
@@ -203,7 +226,11 @@ Definition infer_dep : forall (e : term) (G : ctx),
     rewrite ty_to_subst_schm in p.
     eapply lam_ht.
     apply p.
-  - econstructor. 
+  - clear infer_dep.
+    rewrite apply_subst_ctx_nil.
+    econstructor. 
+    destruct P.
+    assumption.
 Defined.
 
 Definition runInfer_id e g i := infer_dep e g (mkState i).
