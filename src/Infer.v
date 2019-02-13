@@ -126,10 +126,13 @@ Definition infer_dep : forall (e : term) (G : ctx),
             Infer ({tau : ty & {s : substitution | has_type (apply_subst_ctx s G) e tau}}) :=
             match e with
             | const_t x =>
-              const_dep <- look_const_dep x G ;
-              match const_dep as y with 
-              | existT _ (sc_con i) (exist _ j P) => ret (existT _ (con i) (exist _ nil _))
-              | existT _ _ E => failT _
+              sigma_dep <- look_dep x G ;
+              match sigma_dep with 
+              | exist _ sigma pS => 
+                etau <- schm_inst_dep sigma ;
+                match etau  with
+                | exist _ tau A =>  ret (existT _ tau (exist _ nil _))
+                end 
               end
             | var_t x =>
               sigma_dep <- look_dep x G ;
@@ -227,10 +230,10 @@ Definition infer_dep : forall (e : term) (G : ctx),
     eapply lam_ht.
     apply p.
   - clear infer_dep.
+    econstructor.
     rewrite apply_subst_ctx_nil.
-    econstructor. 
-    destruct P.
-    assumption.
+    apply pS.
+    apply A.
 Defined.
 
 Definition runInfer_id e g i := infer_dep e g (mkState i).
