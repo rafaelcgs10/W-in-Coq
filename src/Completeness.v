@@ -80,11 +80,16 @@ Proof.
     subst.
     destruct (assoc_subst_exists G i0 phi H2).
     destructs a.
-    pose proof in_ctx_look_def i0 G H1 as IN1. 
     simpl.
+    pose proof in_ctx_look_def i0 G H1 as IN1. 
+    rewrite IN1.
+    sort.
     destruct (list_ty_and_id_inv (compute_gen_subst i (max_gen_vars x))).
+    destruct x0.
+
     assert ((max_gen_vars x) <= i). admit.
     destruct (apply_compute_gen_subst i x H5).
+    simpl in e0.
 
     destruct s.
     destruct s.
