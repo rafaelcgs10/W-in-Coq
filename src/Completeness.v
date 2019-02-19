@@ -26,7 +26,7 @@ Admitted.
 
 Ltac destructMatch :=
   match goal with
-    | [ |- context[match ?a with  | _ => _ end] ] => destruct a
+    | [ |- context[match ?a with  | _ => _ end] ] => cases a
   end.
 
 Lemma assoc_subst_exists : forall (G : ctx) (i : id) (s : substitution) (sigma : schm),
@@ -35,10 +35,18 @@ Lemma assoc_subst_exists : forall (G : ctx) (i : id) (s : substitution) (sigma :
 Proof.
 Admitted.
 
-Lemma in_ctx_look_def : forall i G sigma (ev : in_ctx i G = Some sigma),
+Lemma in_ctx_to_look_dep : forall i G sigma (ev : in_ctx i G = Some sigma),
     look_dep i G = ret (exist _ sigma ev).
 Proof.
-  Admitted.
+  intros.
+  unfold look_dep.
+  destruct (in_ctx i G).
+  inversion ev.
+  subst.
+  fequals.
+  fequals.
+  inversion ev.
+Qed.
 
 Lemma list_ty_and_id_inv : forall lt_st : list ty * id,
     {lt_st1 : list ty * id | lt_st1 = lt_st}.
@@ -62,9 +70,8 @@ Fixpoint max_gen_vars (sigma : schm) : nat :=
   | sc_arrow s1 s2 => max (max_gen_vars s1) (max_gen_vars s2)
   end.
 
-Lemma apply_compute_gen_subst : forall (i : id) (sigma : schm) (p : nat),
-    max_gen_vars sigma <= p ->
-    {tau : ty | apply_inst_subst (fst (compute_gen_subst i p)) sigma = Some_schm tau}.
+Lemma apply_compute_gen_subst : forall (i : id) (sigma : schm) (p : nat) is,
+    {tau : ty | apply_inst_subst is sigma = Some_schm tau}.
 Admitted.
 
 Lemma completeness : forall (e : term) (G : ctx) (tau' : ty) (phi : substitution) (i : id),
@@ -75,23 +82,109 @@ Lemma completeness : forall (e : term) (G : ctx) (tau' : ty) (phi : substitution
 Proof.
   intros.
   induction e.
-  - unfold runInfer_id, getResult.
+  - unfold runInfer_id.
     inversion H.
-    subst.
+    (** ver o tipo de i0 em S(G) e quem ele é sem S*)
     destruct (assoc_subst_exists G i0 phi H2).
+    destruct a.
+    (** usar na computação a informação de quem é o tipo de i0 *)
+    pose proof (in_ctx_to_look_dep i0 G H6).
+    unfold infer_dep.
+    rewrite H8.
+    cbn.
+
+    unfold schm_inst_dep.
+    assert (exists s, mapM (fun _ : id => fresh) (list_bounds_ids x0) = ret s).
+    skip.
+    destruct H9.
+    cases x0.
+    + remember H9 as H9'.
+      simpl in H9.
+      assert (forall (x y : list ty), ret x = ret y -> x = y).  
+      skip.
+      clear HeqH9'.
+      eapply H10 in H9.
+      subst.
+      rewrite H9'.
+      simpl.
+      exists (nil:substitution) (var i1) i.
+      exists ((i1, tau')::nil : substitution).
+      splits; mysimp.
+      intros.
+      mysimp.
+      destruct H4.
+      simpl in H3.
+      subst.
+      skip.
+      
+      unfold ret in H9, H10.
+      
+      Unset Printing Notations.
+      
+      f_equal
+
+      inversion H9.
+
+    simpl.
+   
+    comp
+    lazy.
+    rewrite H9.
+    pose proof
+    
+    pose proof (schm_inst_dep x0 (mkState i)).
+    destruct H9.
+    destruct p.
+    destruct s.
+    simpl.
+    sort.
+    (** descobrir qual é a substituição que calcula a instância de x0 *)
+    subst.
+    destruct M.
+    destruct p.
+    pose proof (schm_inst_dep x0 (mkState i)).
+    destruct H1.
+    destruct p.
+    destruct s.
+    unfold is_schm_instance in i1.
+    destruct i1.
+    substs.
+    assert ((max_gen_vars x0) <= i). admit.
+    destruct (apply_compute_gen_subst i x H5).
+
+    compu
+    
+    simpl.
+
+    
+    subst.
+    cases (infer_dep (var_t i0) G {| next_tvar := i |}).
+    destruct p.
+    destruct t.
+    destruct s.
+    destruct s.
+    exists x0 x next_tvar.
+
     destructs a.
     simpl.
     pose proof in_ctx_look_def i0 G H1 as IN1. 
     rewrite IN1.
     sort.
-    destruct (list_ty_and_id_inv (compute_gen_subst i (max_gen_vars x))).
-    destruct x0.
+    destruct (list_ty_and_id_inv (compute_gen_subst i (max_gen_vars x))) as [GEN GENC].
+    destructMatch.
+    destruct p.
+    destruct t.
+    destruct s.
+    destruct s.
+    clear Eq.
 
-    assert ((max_gen_vars x) <= i). admit.
-    destruct (apply_compute_gen_subst i x H5).
+    exists x1 x0 next_tvar.
+    subst.
+    destruct H4.
+    
+
     simpl in e0.
 
-    destruct s.
     destruct s.
     inversion h.
     subst.

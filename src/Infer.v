@@ -82,25 +82,13 @@ Definition schm_inst_dep : forall (sigma : schm), Infer ({tau : ty | is_schm_ins
 Defined.
 
 Definition  look_dep : forall (x : id) (G : ctx), Infer {sigma | in_ctx x G = Some sigma}.
-  refine (fix look' (x : id) (G : ctx) : Infer {sigma | in_ctx x G = Some sigma} :=
-            match G with
-            | nil => failT _
-            | (y, sigma) :: G' => if eq_id_dec x y then ret (exist _ sigma _)
-                                 else re <- look' x G' ;
-                                 match re with
-                                 | exist _ sig _ => ret (exist _ sig _)
-                                 end
+  intros.
+  refine (match in_ctx x G with
+            | None => failT _
+            | Some sig => ret (exist _ sig _)
             end).
-  subst. simpl.
-  destruct (eq_id_dec y y).
-  auto.
-  intuition.
-  simpl.
-  destruct (eq_id_dec y x).
-  symmetry in e0.
-  intuition.
-  auto.
-Qed.
+  reflexivity.
+Defined.
 
 Definition  look_const_dep : forall (x : id) (G : ctx), Infer {sigma & {i | in_ctx x G = Some sigma /\ sigma = sc_con i}}.
   refine (fix look' (x : id) (G : ctx) : Infer {sigma & {i | in_ctx x G = Some sigma /\ sigma = sc_con i}} :=
