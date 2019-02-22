@@ -102,6 +102,8 @@ Qed.
 
 Definition inst_subst := list ty.
 
+Definition ids_inst_subst (s : inst_subst) : list id := List.concat (List.map ids_ty s).
+
 Inductive schm_check : Type :=
   | Some_schm : ty -> schm_check
   | Error_schm : schm_check.
@@ -167,10 +169,10 @@ Proof.
       apply ty_to_sub.
 Qed.
 
-Definition is_schm_instance (tau: ty) (sigma: schm) :=
+Definition is_schm_instance (tau : ty) (sigma : schm) :=
     exists is: inst_subst, (apply_inst_subst is sigma) = (Some_schm tau).
 
-Definition most_general_schm_instance (tau: ty) (sigma: schm) :=
+Definition most_general_schm_instance (tau : ty) (sigma : schm) :=
   is_schm_instance tau sigma -> forall tau', is_schm_instance tau' sigma ->
                                     exists (s : substitution), tau' = apply_subst s tau.
 

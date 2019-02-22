@@ -29,11 +29,6 @@ Ltac destructMatch :=
     | [ |- context[match ?a with  | _ => _ end] ] => cases a
   end.
 
-Lemma assoc_subst_exists : forall (G : ctx) (i : id) (s : substitution) (sigma : schm),
-    in_ctx i (apply_subst_ctx s G) = Some sigma ->
-    {sigma' : schm | in_ctx i G = Some sigma' /\ sigma = apply_subst_schm s sigma'}.
-Proof.
-Admitted.
 
 Lemma in_ctx_to_look_dep : forall i G sigma (ev : in_ctx i G = Some sigma),
     look_dep i G = ret (exist _ sigma ev).
@@ -70,19 +65,46 @@ Fixpoint max_gen_vars (sigma : schm) : nat :=
   | sc_arrow s1 s2 => max (max_gen_vars s1) (max_gen_vars s2)
   end.
 
-Lemma apply_compute_gen_subst : forall (i : id) (sigma : schm) (p : nat) is,
-    {tau : ty | apply_inst_subst is sigma = Some_schm tau}.
+Lemma apply_compute_gen_subst : forall (i : id) (sigma : schm) (p : nat) i_s,
+    {tau : ty | apply_inst_subst i_s sigma = Some_schm tau}.
 Admitted.
 
-Lemma completeness : forall (e : term) (G : ctx) (tau' : ty) (phi : substitution) (i : id),
-    has_type (apply_subst_ctx phi G) e tau' -> new_tv_ctx G i ->
-    exists s tau i' s', getResult (runInfer_id e G i) = Some (i', tau, s) /\
+
+Lemma completeness' : forall (e : term) (G : ctx) (tau' : ty) (phi : substitution) (i : id) rs,
+    has_type (apply_subst_ctx phi G) e tau' -> new_tv_ctx G i -> rs = (runInfer_id e G i) ->
+    exists i' s tau s', getResult rs  = Some (i', tau, s) /\
     tau' = apply_subst s' tau /\
     (forall x : id, x < i -> apply_subst phi (var x) = apply_subst (s ++ s') (var x)).
 Proof.
   intros.
-  induction e.
-  - unfold runInfer_id.
+  destruct rs.
+  - destruct p.
+    destruct s.
+    destruct s.
+    destruct a.
+    unfold completeness in c.
+    simpl.
+    clear H1.
+    specialize c with (tau':=tau') (phi:=phi) (i:=i).
+    destruct t.
+    exists next_tvar x0 x.
+    destruct c; auto.
+    exists x1.
+    splits.
+    reflexivity.
+    destruct H1.
+    auto.
+    eapply H1.
+  - simpl in H1.
+    simpl.
+    exists i (nil:substitution) (tau') (nil:substitution).
+    splits.
+  
+  eq_refl.
+  eapply c.
+  assert (tau = x). (s = x0). 
+  au   induction e.
+  - unfold runInfer_id, getResult.
     inversion H.
     (** ver o tipo de i0 em S(G) e quem ele é sem S*)
     destruct (assoc_subst_exists G i0 phi H2).
@@ -97,6 +119,13 @@ Proof.
     assert (exists s, mapM (fun _ : id => fresh) (list_bounds_ids x0) = ret s).
     skip.
     destruct H9.
+    rewrite H9.
+    rewrite mon_left_id.
+    destruct (apply_inst_subst x1 x0).
+
+    assert (forall x y f, (x <- ret y; ) = y).
+    simpl.
+
     cases x0.
     + remember H9 as H9'.
       simpl in H9.
