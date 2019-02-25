@@ -2,6 +2,7 @@ Set Implicit Arguments.
 
 Require Import Unify.
 Require Import Schemes.
+Require Import Omega.
 Require Import List.
 Require Import ListIds.
 Require Import Context.
@@ -14,6 +15,7 @@ Require Import MoreGeneral.
 
 Require Import LibTactics.
 
+(*
 Lemma id_increases_in_w : forall (e : term) (i i' : id) (G : ctx) (tau : ty)
     (s : substitution),
     getResult (runInfer_id e G i) = Some (i', tau, s) -> i <= i'.
@@ -23,6 +25,7 @@ Lemma new_tv_W: forall (e : term) (G : ctx) (i i': id) (t : ty) (s : substitutio
     (new_tv_ctx G i) -> getResult (runInfer_id e G i) = Some (i, t, s) ->
     new_tv_ty t i' /\ new_tv_subst s i'.
 Admitted.
+*)
 
 Ltac destructMatch :=
   match goal with
@@ -30,205 +33,86 @@ Ltac destructMatch :=
   end.
 
 
-Lemma in_ctx_to_look_dep : forall i G sigma (ev : in_ctx i G = Some sigma),
-    look_dep i G = ret (exist _ sigma ev).
-Proof.
-  intros.
-  unfold look_dep.
-  destruct (in_ctx i G).
-  inversion ev.
-  subst.
-  fequals.
-  fequals.
-  inversion ev.
-Qed.
-
 Lemma list_ty_and_id_inv : forall lt_st : list ty * id,
     {lt_st1 : list ty * id | lt_st1 = lt_st}.
 Proof.
 intros lt_st; exists lt_st; auto.
 Qed.
 
-Fixpoint compute_gen_subst (i : id) (n : nat) : (list ty) * id :=
-  match n with
-  | O => (nil, i)
-  | S p => match compute_gen_subst (S i) p with
-      | (l, i') => (var i :: l, i')
-      end
-  end.
 
-Fixpoint max_gen_vars (sigma : schm) : nat :=
-  match sigma with
-  | sc_con _ => 0
-  | sc_var _ => 0
-  | sc_gen i => S i
-  | sc_arrow s1 s2 => max (max_gen_vars s1) (max_gen_vars s2)
-  end.
-
-Lemma apply_compute_gen_subst : forall (i : id) (sigma : schm) (p : nat) i_s,
-    {tau : ty | apply_inst_subst i_s sigma = Some_schm tau}.
+Lemma apply_compute_gen_subst : forall (st : id) (sigma : schm) (p : nat),
+    max_gen_vars sigma <= p ->
+    {tau : ty | apply_inst_subst (fst (compute_generic_subst st p)) sigma = Some_schm tau}.
 Admitted.
 
+Fixpoint id_in_subst (i : id) (s : substitution) : option ty :=
+  match s with
+    | nil => None
+    | (i', tau)::s' => if eq_id_dec i i' then Some tau else id_in_subst i s'
+  end.
 
-Lemma completeness' : forall (e : term) (G : ctx) (tau' : ty) (phi : substitution) (i : id) rs,
-    has_type (apply_subst_ctx phi G) e tau' -> new_tv_ctx G i -> rs = (runInfer_id e G i) ->
-    exists i' s tau s', getResult rs  = Some (i', tau, s) /\
-    tau' = apply_subst s' tau /\
-    (forall x : id, x < i -> apply_subst phi (var x) = apply_subst (s ++ s') (var x)).
+Lemma apply_subst_app : forall (s1 s2 : substitution) (st : id),
+ id_in_subst st s1 = None -> apply_subst (s1 ++ s2) (var st) = apply_subst s2 (var st).
+Admitted.
+
+Lemma not_in_domain_compute : forall (sg : list ty) (x st : id), x < st ->
+ id_in_subst x (compute_subst st sg) = None.
+Admitted.
+
+Lemma apply_app_compute_subst :
+ forall (s0 : substitution) (st i : id) (sg : list ty),
+ i < st -> apply_subst (compute_subst st sg ++ s0) (var i) = apply_subst s0 (var i).
+Proof.
+intros; apply apply_subst_app.
+apply not_in_domain_compute; auto.
+Qed.
+
+Lemma completeness' : forall (e : term) (G : ctx) (tau' : ty) (phi : substitution) (st : id),
+    has_type (apply_subst_ctx phi G) e tau' -> new_tv_ctx G st ->
+    exists s tau st', W st e G  = Some (tau, s, st')  /\
+    exists s', tau' = apply_subst s' tau /\
+    (forall x : id, x < st -> apply_subst phi (var x) = apply_subst (s ++ s') (var x)).
 Proof.
   intros.
-  destruct rs.
-  - destruct p.
-    destruct s.
-    destruct s.
-    destruct a.
-    unfold completeness in c.
+  induction e.
+  - inversion H.
+    subst.
     simpl.
-    clear H1.
-    specialize c with (tau':=tau') (phi:=phi) (i:=i).
-    destruct t.
-    exists next_tvar x0 x.
-    destruct c; auto.
-    exists x1.
-    splits.
-    reflexivity.
-    destruct H1.
-    auto.
-    eapply H1.
-  - simpl in H1.
+    destruct (assoc_subst_exists G i phi H2) as [sigma' H2'].
+    destruct H2' as [H21  H22].
+    rewrite H21.
+    destruct (list_ty_and_id_inv (compute_generic_subst st (max_gen_vars sigma'))) as [s_id H3].
+    destruct s_id as [s id].
+    rewrite <- H3.
     simpl.
-    exists i (nil:substitution) (tau') (nil:substitution).
-    splits.
-  
-  eq_refl.
-  eapply c.
-  assert (tau = x). (s = x0). 
-  au   induction e.
-  - unfold runInfer_id, getResult.
-    inversion H.
-    (** ver o tipo de i0 em S(G) e quem ele é sem S*)
-    destruct (assoc_subst_exists G i0 phi H2).
-    destruct a.
-    (** usar na computação a informação de quem é o tipo de i0 *)
-    pose proof (in_ctx_to_look_dep i0 G H6).
-    unfold infer_dep.
-    rewrite H8.
-    cbn.
-
-    unfold schm_inst_dep.
-    assert (exists s, mapM (fun _ : id => fresh) (list_bounds_ids x0) = ret s).
-    skip.
-    destruct H9.
-    rewrite H9.
-    rewrite mon_left_id.
-    destruct (apply_inst_subst x1 x0).
-
-    assert (forall x y f, (x <- ret y; ) = y).
-    simpl.
-
-    cases x0.
-    + remember H9 as H9'.
-      simpl in H9.
-      assert (forall (x y : list ty), ret x = ret y -> x = y).  
-      skip.
-      clear HeqH9'.
-      eapply H10 in H9.
-      subst.
-      rewrite H9'.
+    edestruct (apply_compute_gen_subst st sigma') with (p := max_gen_vars sigma') as [tau H5].
+    omega.
+    sort.
+    assert (s = fst (compute_generic_subst st (max_gen_vars sigma'))) as H6.
+    { rewrite surjective_pairing in H3. inversion H3. reflexivity. }
+    rewrite H6.
+    rewrite H5.
+    exists (nil:substitution) tau id.
+    splits; auto.
+    inversion H4.
+    exists (compute_subst st x ++ phi).
+    split.
+    + eapply t_is_app_T_aux with (p := max_gen_vars sigma').
+      eapply new_tv_ctx_implies_new_tv_schm.
+      apply H21.
+      auto.
+      auto.
+      auto.
+      rewrite H22 in H1.
+      auto.
+    + intros.
       simpl.
-      exists (nil:substitution) (var i1) i.
-      exists ((i1, tau')::nil : substitution).
-      splits; mysimp.
-      intros.
-      mysimp.
-      destruct H4.
-      simpl in H3.
-      subst.
-      skip.
-      
-      unfold ret in H9, H10.
-      
-      Unset Printing Notations.
-      
-      f_equal
+      symmetry.
+      eapply apply_app_compute_subst;
+      auto.
+  -
 
-      inversion H9.
 
-    simpl.
-   
-    comp
-    lazy.
-    rewrite H9.
-    pose proof
-    
-    pose proof (schm_inst_dep x0 (mkState i)).
-    destruct H9.
-    destruct p.
-    destruct s.
-    simpl.
-    sort.
-    (** descobrir qual é a substituição que calcula a instância de x0 *)
-    subst.
-    destruct M.
-    destruct p.
-    pose proof (schm_inst_dep x0 (mkState i)).
-    destruct H1.
-    destruct p.
-    destruct s.
-    unfold is_schm_instance in i1.
-    destruct i1.
-    substs.
-    assert ((max_gen_vars x0) <= i). admit.
-    destruct (apply_compute_gen_subst i x H5).
 
-    compu
-    
-    simpl.
 
-    
-    subst.
-    cases (infer_dep (var_t i0) G {| next_tvar := i |}).
-    destruct p.
-    destruct t.
-    destruct s.
-    destruct s.
-    exists x0 x next_tvar.
-
-    destructs a.
-    simpl.
-    pose proof in_ctx_look_def i0 G H1 as IN1. 
-    rewrite IN1.
-    sort.
-    destruct (list_ty_and_id_inv (compute_gen_subst i (max_gen_vars x))) as [GEN GENC].
-    destructMatch.
-    destruct p.
-    destruct t.
-    destruct s.
-    destruct s.
-    clear Eq.
-
-    exists x1 x0 next_tvar.
-    subst.
-    destruct H4.
-    
-
-    simpl in e0.
-
-    destruct s.
-    inversion h.
-    subst.
-    destruct (assoc_subst_exists G i0 x1 H6).
-    destructs a.
-    pose proof in_ctx_look_def i0 G H3 as IN2. 
-    exists x1 x0 next_tvar x1.
-    splits.
-    reflexivity.
-
-    simpl.
-    destruct sigma_dep.
-    
-  admit.
-  admit.
-  admit.
-  admit.
-  - admit.
+  

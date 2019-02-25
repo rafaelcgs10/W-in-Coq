@@ -107,9 +107,9 @@ Lemma comute_inst_subst_subst : forall i_s s sigma tau tau', are_disjoints (ids_
     apply_subst s tau' = tau.
 Proof.
   intros.
-  pose proof (subst_schm_when_dom_s_disjoint_with_FV_schm s sigma H) as K.
 Admitted.
 
+(*
 Definition compute_gen_subst2 (sigma : schm) :
   Infer ({i_s : list ty & {s : list id | forall sigma i_s' tau phi, (
                                                        are_disjoints s (FV_schm sigma) ->
@@ -134,19 +134,8 @@ Definition compute_gen_subst2 (sigma : schm) :
   - cases s.
     simpl in H.
     symmetry in H.
-    rewrite length_zero_iff_nil in H.
-    subst.
-    simpl.
-    auto.
-    symmetry in H.
-    rewrite length_zero_iff_nil in H.
-    subst.
-    simpl.
-    auto.
-  - apply IHi_s; auto.
-  destruct i_s.
-  skip.
-Defined.
+    Abort.
+
 
 (** Gives a type that is a (new) instance of a scheme *)
 Definition schm_inst_dep : forall (sigma : schm),
@@ -181,6 +170,7 @@ Definition schm_inst_dep : forall (sigma : schm),
   - reflexivity.
   - reflexivity.
 Defined.
+*)
 
 Definition  look_dep : forall (x : id) (G : ctx), Infer {sigma | in_ctx x G = Some sigma}.
   intros.
@@ -267,6 +257,23 @@ Lemma apply_compute_gen_subst : forall (i : id) (sigma : schm) (p : nat) i_s,
     {tau : ty | apply_inst_subst i_s sigma = Some_schm tau}.
 Admitted.
 
+Fixpoint W (st : id) (e : term) (G : ctx) {struct e} : option (ty * substitution * id) :=
+  match e with
+  | var_t x => match in_ctx x G with
+              | None => None
+              | Some sigma =>
+                 match compute_generic_subst st (max_gen_vars sigma) with
+                 | (l, st') =>
+                     match apply_inst_subst l sigma with
+                     | Error_schm => None 
+                     | Some_schm tau => Some (tau, nil, st')
+                     end
+                 end
+              end
+  | _ => Some (var 0, nil, 0)
+  end. 
+
+(*
 Definition infer_dep : forall (e : term) (G : ctx),
     Infer ({tau : ty & {s : substitution | has_type (apply_subst_ctx s G) e tau /\ completeness e G tau s}}).
   refine (fix infer_dep (e : term) (G : ctx) :
@@ -533,3 +540,4 @@ Definition runInfer e g := infer_dep e g (mkState 0).
 
 Compute runInfer (var_t 0) nil.
 
+*)
