@@ -48,6 +48,32 @@ Next Obligation.
   - simpl in y. contradiction.
 Defined.
 Next Obligation.
+  assert (P2 x s2) as HP2.
+  skip.
+  unfold HoareState in c2.
+  apply exist in HP2.
+  pose proof (c2 x HP2) as K.
+  destruct K.
+  destruct x0.
+  destruct p1.
+  cbv in y.
+  destruct HP2.
+
+  Unset Printing Notations.
+
+  pose proof (proj1_sig (c2 x (exist (fun t : st => P2 x t) s2 (bind_obligation_2 Heq_y))) : (forall _ : eq anonymous' (proj1_sig (c2 x (exist (fun t : st => P2 x t) s2 (bind_obligation_2 Heq_y)))), Prop)).
+
+  pose proof (` (c2 x (exist (fun t : st => P2 x t) s2 (bind_obligation_2 Heq_y)))).
+
+  edestruct c2.
+  destruct ((c1 (exist (fun t : st => P1 t) s1 p))).
+  destruct x0.
+  destruct p1.
+  inversion Heq_y.
+  subst.
+  simpl in y.
+  destruct Heq_y.
+
 Admitted.
 
 Program Definition get : @HoareState top st (fun i x f => i = f /\ x = i) := fun s => exist _ (Some (s, s)) _.
