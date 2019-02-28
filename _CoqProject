@@ -1,10 +1,10 @@
 -R src FormalDamas 
+   src/LibTactics.v
    src/Sublist.v
    src/Unify.v
    src/ListIds.v
    src/Context.v
    src/Disjoints.v
-   src/LibTactics.v
    src/Schemes.v
    src/Rename.v
    src/Gen.v
@@ -12,5 +12,3 @@
    src/NewTypeVariable.v
    src/Infer.v
    src/MoreGeneral.v
-   src/Completeness.v
-
