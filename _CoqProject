@@ -1,5 +1,6 @@
 -R src FormalDamas 
    src/LibTactics.v
+   src/HoareMonad.v
    src/Sublist.v
    src/Unify.v
    src/ListIds.v

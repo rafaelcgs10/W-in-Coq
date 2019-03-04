@@ -6,59 +6,29 @@ Require Import LibTactics.
 
 Require Import Program.
 Require Import List.
+Require Import Omega.
 
 Section hoare_state_monad.
 
-Variable st : Set.
+Variable st : Type.
 
-Definition State (a : Set) : Type := st -> a * st.
+Definition State (a : Type) : Type := st -> a * st.
 
 Definition Pre : Type := st -> Prop.
 
 Definition Post (a : Type) : Type := st -> a -> st -> Prop.
 
-Program Definition HoareState' (pre : Pre) (a : Set) (post : Post a) : Type :=
-forall i : {t : st | pre t}, {(x, f) : a * st | post i x f}.
- 
-Program Definition HoareState (pre : Pre) (a : Set) (post : Post a) : Type :=
+Program Definition HoareState (pre : Pre) (a : Type) (post : Post a) : Type :=
 forall i : sig (fun t : st => pre t), sig (fun anonymous : option (prod a st) => match anonymous with
                                                                     | Some (x, f) => post (proj1_sig i) x f
-                                                                    | None => False
+                                                                    | None => True
                                                                     end).
            
 Definition top : Pre := fun st => True.
 
-Program Definition ret (a : Set) : forall x,
+Program Definition ret (a : Type) : forall x,
     @HoareState top a (fun i y f => i = f /\ y = x) := fun x s => exist _ (Some (x, s)) _.
 
-Program Definition bind' : forall a b P1 P2 Q1 Q2,
-  (@HoareState' P1 a Q1) -> (forall (x : a), @HoareState' (P2 x) b (Q2 x)) ->
-  @HoareState' (fun s1 => P1 s1 /\ forall x s2, Q1 s1 x s2 -> P2 x s2) b (fun s1 y s3 => exists x, exists s2, Q1 s1 x s2 /\ Q2 x s2 y s3) :=
-  fun a b P1 P2 Q1 Q2 c1 c2 s1 => match c1 s1 with (x, s2) => c2 x s2 end.
-Next Obligation.
-  cbv in Heq_anonymous.
-  destruct c1.
-  destruct x0.
-  inversion Heq_anonymous.
-  subst.
-  simpl in y.
-  auto.
-Defined.
-Next Obligation.
-  destruct (c2 x).
-  destruct x0.
-  cbv in Heq_anonymous.
-  destruct c1.
-  simpl in y.
-  simpl.
-  exists x s2.
-  split; auto.
-  destruct x0.
-  inversion Heq_anonymous.
-  subst.
-  simpl in y0.
-  auto.
-Defined.
 
 Program Definition bind : forall a b P1 P2 Q1 Q2,
   (@HoareState P1 a Q1) -> (forall (x : a), @HoareState (P2 x) b (Q2 x)) ->
@@ -77,7 +47,7 @@ Next Obligation.
     inversion Heq_y.
     subst.
     auto.
-  - simpl in y. contradiction.
+  - simpl in y. inversion Heq_y.
 Defined.
 Next Obligation.
   destruct (c2 x).
@@ -99,15 +69,8 @@ Next Obligation.
   simpl in *.
   auto.
 Defined.
-Next Obligation.
-  cbv in Heq_y.
-  destruct c1.
-  simpl in y.
-  destruct x.
-  destruct p1.
-  inversion Heq_y.
-  auto.
-Defined.
+
+Program Definition failT (A : Type) : @HoareState top A (fun _ _ _ => True) := fun s => exist _ None _.
 
 Program Definition get : @HoareState top st (fun i x f => i = f /\ x = i) := fun s => exist _ (Some (s, s)) _.
 
@@ -141,7 +104,7 @@ Program Definition getN :=
   OD.
 
 
-Program Definition applyMH (A B : Set) pre1 pos1
+Program Definition applyMH (A B : Type) pre1 pos1
         (fn : forall x : A, (@HoareState B pre1 B pos1)) (x : A) : @HoareState B pre1 B pos1 := 
   DO
     x' <- fn x ;
@@ -171,6 +134,7 @@ Lemma toListPost : forall A B, forall (post : Post A B), A -> (@HoareState A pre
 Qed.
 *)
 
+(*
 Program Fixpoint mapMH (A B : Set) pre1 pos1 pre2 pos2
         (fn : forall x : A, (@HoareState A (pre1 x) B (pos1 x))) (l : list A) : @HoareState A pre2 (list B) pos2 := 
   match l with
@@ -190,3 +154,6 @@ Next Obligation.
   auto.
   unfold HoareState in fn.
   apply exist in H.
+Abort.
+ *)
+
