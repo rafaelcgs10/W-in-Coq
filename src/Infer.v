@@ -84,16 +84,6 @@ Fixpoint compute_inst_subst (st : id) (n : nat) : list ty :=
     end
   end.
 
-Program Fixpoint compute_inst_subst_dep (st : id) (n : nat) : {is_s : list ty | compute_inst_subst st n = is_s} :=
-  match n with
-  | 0 => nil
-  | S n' =>
-    match compute_inst_subst (S st) n' with
-    | l' => (var st :: l')
-    end
-  end.
-
-
 Program Definition schm_inst_dep (sigma : schm) :
   @HoareState id (@top id) {tau_iss| apply_inst_subst (snd tau_iss) sigma = Some_schm (fst tau_iss)}
               (fun i x f => f = i + (max_gen_vars sigma) /\ Some_schm (fst (proj1_sig x)) = apply_inst_subst (snd (proj1_sig x)) sigma /\
@@ -204,7 +194,7 @@ Definition completeness (e : term) (G : ctx) (tau : ty) (s : substitution) (st :
 
 Program Definition W_hoare (e : term) (G : ctx) :
   @HoareState id (fun st => new_tv_ctx G st)
-              {tau : ty & {s : substitution | has_type (apply_subst_ctx s G) e tau}} (fun i x f => exists tau0 s0, completeness e G tau0 s0 i) :=
+              {tau : ty & {s : substitution | has_type (apply_subst_ctx s G) e tau}} (fun i x f => completeness e G (projT1 x) _ i) :=
   match e with
   | var_t x =>
              sigma <- @look_dep x G ;
@@ -213,7 +203,7 @@ Program Definition W_hoare (e : term) (G : ctx) :
   | _ => failT _
   end. 
 Next Obligation.
-  eapply var_ht. rewrite apply_subst_ctx_nil. apply H0. simpl in *. unfold is_schm_instance. exists i. auto.
+  simpl in *. eapply var_ht. rewrite apply_subst_ctx_nil. apply H0. unfold is_schm_instance. exists i. assumption.
 Defined.
 Next Obligation.
   intros; unfold top; auto.
@@ -226,49 +216,48 @@ Next Obligation.
     simpl.
     destruct s as [tau].
     destruct s as [s].
-    mysimp.
+    destruct y.
+    destruct H0.
+    destructs H0.
+    destructs H0.
+    destruct H1.
+    destruct H1.
+    destructs H1.
+    destructs H1.
+    destruct x3.
+    destruct x3.
     destruct x1.
     simpl in *.
     inversion H4.
-    clear H8 H4.
     subst.
-    destruct x3 as [tau2].
-    destruct tau2 as [tau2 is_s].
-    + exists tau2 (nil:substitution).
-      unfold completeness.
-      intros.
-      inversion H0.
-      subst.
-      destruct (assoc_subst_exists G x phi H3) as [sigma' H3'].
-      destruct H3' as [H31  H32].
-      destruct H7.
-      exists (compute_subst x2 is_s ++ phi).
-      split.
-      * eapply t_is_app_T_aux with (p := max_gen_vars sigma').
-        eapply new_tv_ctx_implies_new_tv_schm.
-        apply H31.
-        auto.
-        auto.
-        simpl in *.
-        rewrite H2 in H31.
-        inversion H31.
-        subst.
-        auto.
-        simpl in *.
-        rewrite H2 in H31.
-        inversion H31.
-        subst.
-        symmetry in H5.
-        trivial.
-        rewrite <- H1.
-        subst.
-        assumption.
-      * intros.
-        simpl.
-        symmetry.
-        eapply apply_app_compute_subst;
-        auto.
-     + simpl; auto.
+    clear H4 e.
+    unfold completeness.
+    intros.
+    inversion H0.
+    subst.
+    destruct (assoc_subst_exists G x phi H3) as [sigma' H3'].
+    destruct H3' as [H31  H32].
+    destruct H6.
+    exists (compute_subst x2 x0 ++ phi).
+    split.
+    * eapply t_is_app_T_aux with (p := max_gen_vars sigma').
+      {eapply new_tv_ctx_implies_new_tv_schm. 
+       apply H31. auto. }
+      {reflexivity. }
+      {rewrite H2 in H31.
+       inversion H31. subst.
+       symmetry. assumption. }
+      {sort.
+       rewrite H2 in H31.
+       inversion H31.
+       subst.
+       assumption. }
+    * intros.
+      simpl.
+      symmetry.
+      eapply apply_app_compute_subst;
+      auto.
+    * simpl. trivial.
 Defined.
 Next Obligation.
 Admitted.        
