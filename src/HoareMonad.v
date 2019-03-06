@@ -10,7 +10,7 @@ Require Import Omega.
 
 Section hoare_state_monad.
 
-Variable st : Type.
+Variable st : Set.
 
 Definition State (a : Type) : Type := st -> a * st.
 
@@ -70,6 +70,8 @@ Next Obligation.
   auto.
 Defined.
 
+Check bind.
+
 Program Definition failT (A : Type) : @HoareState top A (fun _ _ _ => True) := fun s => exist _ None _.
 
 Program Definition get : @HoareState top st (fun i x f => i = f /\ x = i) := fun s => exist _ (Some (s, s)) _.
@@ -83,33 +85,20 @@ Program Definition fresh : @HoareState nat (@top nat) nat (fun i x f => S i = f 
 
 Infix ">>=" := bind (right associativity, at level 71).
 
-Delimit Scope monad_scope with monad.
-Open Scope monad_scope.
-
-Notation "x <- m ; p" := (m >>= fun x => p)%monad
+Notation "x <- m ; p" := (m >>= fun x => p)
     (at level 68, right associativity,
-     format "'[' x  <-  '[' m ']' ; '//' '[' p ']' ']'") : monad_scope.
-(*
-Notation "m ; p" := (m >>> p)%monad
-    (at level 68, right associativity,
-     format "'[' '[' m ']' ; '//' '[' p ']' ']'") : monad_scope.
-*)
-Close Scope monad_scope.
-Notation "'DO' m 'OD'" := (m)%monad (at level 69, format "DO  '[' m ']'  OD").
+     format "'[' x  <-  '[' m ']' ; '//' '[' p ']' ']'").
 
 Program Definition getN := 
-  DO
     n <- @get nat ;
-    ret n
-  OD.
+    ret n.
 
 
-Program Definition applyMH (A B : Type) pre1 pos1
+Program Definition applyMH (A B : Set) pre1 pos1
         (fn : forall x : A, (@HoareState B pre1 B pos1)) (x : A) : @HoareState B pre1 B pos1 := 
-  DO
     x' <- fn x ;
     ret x'
-  OD.
+  .
 Next Obligation.
   unfold top.
   split; auto.
