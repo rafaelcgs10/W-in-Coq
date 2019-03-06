@@ -18,6 +18,29 @@ Require Import HoareMonad.
 Require Import Program.
 Require Import ssreflect.
 
+Ltac inversionExist :=
+  match goal with
+    | [ H : exist _ _ _ = exist _ _ _ |- _] => inversion H; clear H
+    | [ H : existT _ _ _ = existT _ _ _ |- _] => inversion H; clear H
+  end.                                                        
+
+Ltac crush :=
+  match goal with
+    | [ H : _ /\ _ |- _] => destruct H
+    | [ H : _ \/ _ |- _] => destruct H
+    | [ x : (_ * _)%type |- _ ] => let t := fresh "t" in destruct x as [x t]
+    | [ H : (_,_) = (_,_) |- _] => inverts* H
+    | [ H : option _ |- _] => destruct H
+    | [ H : Some _ = Some _ |- _] => inverts* H
+    | [ H : Some _ = None |- _] => congruence
+    | [ H : None = Some _ |- _] => congruence
+    | [ H : ex _ |- _] => destruct H
+    | [ H : sig _ |- _] => destruct H
+    | [ H : sigT _ |- _] => destruct H
+  end.
+
+Ltac crushAssumptions := (repeat (simpl in *; crush)) ; simpl in *; try inversionExist; auto; sort; try omega.
+
 (** Gives a list of bound ids *)
 Fixpoint list_bounds_ids_aux (sigma : schm) (g : list id) : list id :=
   match sigma with
@@ -86,7 +109,7 @@ Fixpoint compute_inst_subst (st : id) (n : nat) : list ty :=
 
 Program Definition schm_inst_dep (sigma : schm) :
   @HoareState id (@top id) {tau_iss| apply_inst_subst (snd tau_iss) sigma = Some_schm (fst tau_iss)}
-              (fun i x f => f = i + (max_gen_vars sigma) /\ Some_schm (fst (proj1_sig x)) = apply_inst_subst (snd (proj1_sig x)) sigma /\
+              (fun i x f => f = i + (max_gen_vars sigma) /\ apply_inst_subst (snd (proj1_sig x)) sigma = Some_schm (fst (proj1_sig x)) /\
               compute_inst_subst i (max_gen_vars sigma) = (snd (proj1_sig x))) :=
     match max_gen_vars sigma as y with
     | nmax => 
@@ -98,31 +121,15 @@ Program Definition schm_inst_dep (sigma : schm) :
 Next Obligation.
   simpl in *.
   destruct (apply_inst_subst_hoare (compute_inst_subst x (max_gen_vars sigma)) sigma >>= _).
-  simpl in *.
-  destruct x0.
-  destruct p.
-  destruct y.
-  destruct H0.
-  destruct H0.
-  destruct H1.
+  crushAssumptions.
   splits.
   rewrite <- H1.
   omega.
-  destruct s.
   simpl in *.
-  destruct x2.
-  simpl in *.
-  symmetry.
-  auto.
-  destruct s.
-  simpl in *.
-  destruct x2.
-  simpl in *.
-  destruct x0.
-  simpl in *.
-  inversion H2.
-  auto.
-  auto.
+  rewrite <- H4.
+  subst.
+  assumption.
+  reflexivity.
 Defined.
 
 (*
@@ -191,7 +198,6 @@ Definition completeness (e : term) (G : ctx) (tau : ty) (s : substitution) (st :
     exists s', tau' = apply_subst s' tau /\
     (forall x : id, x < st -> apply_subst phi (var x) = apply_subst (s ++ s') (var x)).
 
-
 Program Definition W_hoare (e : term) (G : ctx) :
   @HoareState id (fun st => new_tv_ctx G st)
               {tau : ty & {s : substitution | has_type (apply_subst_ctx s G) e tau}} (fun i x f => completeness e G (projT1 x) _ i) :=
@@ -210,27 +216,8 @@ Next Obligation.
 Defined.
 Next Obligation.
   - edestruct (look_dep x G >>= _).
-    simpl in y.
-    destruct x1.
-    destruct p.
-    simpl.
-    destruct s as [tau].
-    destruct s as [s].
-    destruct y.
-    destruct H0.
-    destructs H0.
-    destructs H0.
-    destruct H1.
-    destruct H1.
-    destructs H1.
-    destructs H1.
-    destruct x3.
-    destruct x3.
-    destruct x1.
-    simpl in *.
-    inversion H4.
+    crushAssumptions.
     subst.
-    clear H4 e.
     unfold completeness.
     intros.
     inversion H0.
@@ -246,7 +233,7 @@ Next Obligation.
       {reflexivity. }
       {rewrite H2 in H31.
        inversion H31. subst.
-       symmetry. assumption. }
+       assumption. }
       {sort.
        rewrite H2 in H31.
        inversion H31.
@@ -255,9 +242,8 @@ Next Obligation.
     * intros.
       simpl.
       symmetry.
-      eapply apply_app_compute_subst;
-      auto.
-    * simpl. trivial.
+      eapply apply_app_compute_subst.
+      assumption.
 Defined.
 Next Obligation.
 Admitted.        
