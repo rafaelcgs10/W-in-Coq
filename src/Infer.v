@@ -34,15 +34,6 @@ Fixpoint max_gen_vars (sigma : schm) : nat :=
   | sc_arrow s1 s2 => max (max_gen_vars s1) (max_gen_vars s2)
   end.
 
-Fixpoint compute_inst_subst (st : id) (n : nat) : list ty :=
-  match n with
-  | 0 => nil
-  | S n' =>
-    match compute_inst_subst (S st) n' with
-    | l' => (var st :: l')
-    end
-  end.
-
 Fixpoint compute_generic_subst (st : id) (n : nat) : list ty  * id:=
   match n with
   | 0 => (nil, st)
@@ -59,8 +50,6 @@ Fixpoint compute_subst (i : id) (l : list ty) : substitution :=
   | nil => nil
   | t :: l' => (i, t) :: compute_subst (S i) l'
   end.
-
-Check compute_inst_subst 0.
 
 Lemma list_ty_and_id_inv : forall lt_st : list ty,
     {lt_st1 : (list ty) | lt_st1 = lt_st}.
@@ -80,15 +69,29 @@ Ltac tryChange :=
 
 (** Gives a type that is a (new) instance of a scheme *)
 Program Definition apply_inst_subst_hoare (is_s : inst_subst) (sigma : schm):
-  @HoareState id (@top id) {tau : ty & {is_s | apply_inst_subst is_s sigma = Some_schm tau}} (fun i x f => i = f) :=
+  @HoareState id (@top id) {tau : ty | apply_inst_subst is_s sigma = Some_schm tau} (fun i x f => i = f) :=
   match apply_inst_subst is_s sigma with
   | Error_schm => failT _
-  | Some_schm tau => ret (existT _ _ _) 
+  | Some_schm tau => ret (exist _ _ _) 
   end .
-Next Obligation.
-  exists is_s.
-  auto.
-Defined.
+
+Fixpoint compute_inst_subst (st : id) (n : nat) : list ty :=
+  match n with
+  | 0 => nil
+  | S n' =>
+    match compute_inst_subst (S st) n' with
+    | l' => (var st :: l')
+    end
+  end.
+
+Program Fixpoint compute_inst_subst_dep (st : id) (n : nat) : {is_s : list ty | compute_inst_subst st n = is_s} :=
+  match n with
+  | 0 => nil
+  | S n' =>
+    match compute_inst_subst (S st) n' with
+    | l' => (var st :: l')
+    end
+  end.
 
 
 Program Definition schm_inst_dep (sigma : schm) :
@@ -99,15 +102,9 @@ Program Definition schm_inst_dep (sigma : schm) :
     | nmax => 
        st <- @get id ;
        _ <- @put id (st + nmax) ;
-       match compute_inst_subst st nmax as y with
-       | is_s => 
-                tau <- apply_inst_subst_hoare is_s sigma ;
-                ret (exist _ _ _)
-       end 
-    end  .
-Next Obligation.
-  split; auto.
-Defined.
+       tau <- apply_inst_subst_hoare (compute_inst_subst st nmax) sigma ;
+       ret (exist _ (_, (compute_inst_subst st nmax)) _)
+    end.
 Next Obligation.
   simpl in *.
   destruct (apply_inst_subst_hoare (compute_inst_subst x (max_gen_vars sigma)) sigma >>= _).
@@ -130,11 +127,11 @@ Next Obligation.
   destruct s.
   simpl in *.
   destruct x2.
+  simpl in *.
   destruct x0.
-  destruct s.
   simpl in *.
   inversion H2.
-  subst.
+  auto.
   auto.
 Defined.
 
@@ -233,7 +230,7 @@ Next Obligation.
     destruct x1.
     simpl in *.
     inversion H4.
-    clear H7 H4.
+    clear H8 H4.
     subst.
     destruct x3 as [tau2].
     destruct tau2 as [tau2 is_s].
@@ -244,7 +241,7 @@ Next Obligation.
       subst.
       destruct (assoc_subst_exists G x phi H3) as [sigma' H3'].
       destruct H3' as [H31  H32].
-      destruct H6.
+      destruct H7.
       exists (compute_subst x2 is_s ++ phi).
       split.
       * eapply t_is_app_T_aux with (p := max_gen_vars sigma').
@@ -257,8 +254,15 @@ Next Obligation.
         inversion H31.
         subst.
         auto.
+        simpl in *.
+        rewrite H2 in H31.
+        inversion H31.
         subst.
-        auto.
+        symmetry in H5.
+        trivial.
+        rewrite <- H1.
+        subst.
+        assumption.
       * intros.
         simpl.
         symmetry.
