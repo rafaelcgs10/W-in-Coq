@@ -969,3 +969,16 @@ Qed.
 Check unify_simple_dep.
 
 Definition FV_subst (s: substitution) := ((dom s) ++ (img_ids s)).
+
+
+Fixpoint id_in_subst (i : id) (s : substitution) : option ty :=
+  match s with
+    | nil => None
+    | (i', tau)::s' => if eq_id_dec i i' then Some tau else id_in_subst i s'
+  end.
+
+Lemma apply_subst_app : forall (s1 s2 : substitution) (st : id),
+ id_in_subst st s1 = None -> apply_subst (s1 ++ s2) (var st) = apply_subst s2 (var st).
+Admitted.
+
+
