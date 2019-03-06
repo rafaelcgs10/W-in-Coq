@@ -16,7 +16,6 @@ Require Import List.
 Require Import NewTypeVariable.
 Require Import HoareMonad.
 Require Import Program.
-Require Import ssreflect.
 
 Ltac inversionExist :=
   match goal with
@@ -208,42 +207,42 @@ Program Definition W_hoare (e : term) (G : ctx) :
              ret (existT _ _ (exist _ nil _))
   | _ => failT _
   end. 
-Next Obligation.
+Next Obligation. (* Case: var soundness  *)
   simpl in *. eapply var_ht. rewrite apply_subst_ctx_nil. apply H0. unfold is_schm_instance. exists i. assumption.
 Defined.
-Next Obligation.
+Next Obligation. (* Case: properties used in var completeness  *)
   intros; unfold top; auto.
 Defined.
-Next Obligation.
-  - edestruct (look_dep x G >>= _).
-    crushAssumptions.
-    subst.
-    unfold completeness.
-    intros.
-    inversion H0.
-    subst.
-    destruct (assoc_subst_exists G x phi H3) as [sigma' H3'].
-    destruct H3' as [H31  H32].
-    destruct H6.
-    exists (compute_subst x2 x0 ++ phi).
-    split.
-    * eapply t_is_app_T_aux with (p := max_gen_vars sigma').
-      {eapply new_tv_ctx_implies_new_tv_schm. 
-       apply H31. auto. }
-      {reflexivity. }
-      {rewrite H2 in H31.
-       inversion H31. subst.
-       assumption. }
-      {sort.
-       rewrite H2 in H31.
-       inversion H31.
-       subst.
-       assumption. }
-    * intros.
-      simpl.
-      symmetry.
-      eapply apply_app_compute_subst.
-      assumption.
+Next Obligation. (* Case: var completeness *)
+  edestruct (look_dep x G >>= _).
+  crushAssumptions.
+  subst.
+  unfold completeness.
+  intros.
+  inversion H0.
+  subst.
+  destruct (assoc_subst_exists G x phi H3) as [sigma' H3'].
+  destruct H3' as [H31  H32].
+  destruct H6.
+  exists (compute_subst x2 x0 ++ phi).
+  split.
+  - eapply t_is_app_T_aux with (p := max_gen_vars sigma').
+      + eapply new_tv_ctx_implies_new_tv_schm. 
+       apply H31. auto.
+      + reflexivity.
+      + rewrite H2 in H31.
+        inversion H31. subst.
+        assumption.
+      + sort.
+        rewrite H2 in H31.
+        inversion H31.
+        subst.
+        assumption.
+  - intros.
+    simpl.
+    symmetry.
+    eapply apply_app_compute_subst.
+    assumption.
 Defined.
 Next Obligation.
 Admitted.        
