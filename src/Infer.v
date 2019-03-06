@@ -1,7 +1,7 @@
 Set Implicit Arguments.
 
 Require Import LibTactics.
-Require Import ssreflect.
+Require Import Unify.
 Require Import Sublist.
 Require Import Context.
 Require Import ListIds.
@@ -9,15 +9,14 @@ Require Import Schemes.
 Require Import Rename.
 Require Import Disjoints.
 Require Import Program.
-Require Import Unify.
 Require Import Gen.
 Require Import Omega.
-Require Import Arith.Arith_base.
 Require Import Typing.
 Require Import List.
 Require Import NewTypeVariable.
 Require Import HoareMonad.
 Require Import Program.
+Require Import ssreflect.
 
 (** Gives a list of bound ids *)
 Fixpoint list_bounds_ids_aux (sigma : schm) (g : list id) : list id :=
@@ -44,6 +43,15 @@ Fixpoint compute_inst_subst (st : id) (n : nat) : list ty :=
     end
   end.
 
+Fixpoint compute_generic_subst (st : id) (n : nat) : list ty  * id:=
+  match n with
+  | 0 => (nil, st)
+  | S n' =>
+    match compute_generic_subst (S st) n' with
+    | (l', st') => (var st :: l', st')
+    end
+  end.
+
 Definition list_bounds_ids (sigma :schm) := list_bounds_ids_aux sigma nil.
 
 Fixpoint compute_subst (i : id) (l : list ty) : substitution :=
@@ -54,8 +62,8 @@ Fixpoint compute_subst (i : id) (l : list ty) : substitution :=
 
 Check compute_inst_subst 0.
 
-Lemma list_ty_and_id_inv : forall lt_st : list ty * id,
-    {lt_st1 : (list ty) * id | lt_st1 = lt_st}.
+Lemma list_ty_and_id_inv : forall lt_st : list ty,
+    {lt_st1 : (list ty) | lt_st1 = lt_st}.
 Proof.
 intros lt_st; exists lt_st; auto.
 Qed.
@@ -72,27 +80,65 @@ Ltac tryChange :=
 
 (** Gives a type that is a (new) instance of a scheme *)
 Program Definition apply_inst_subst_hoare (is_s : inst_subst) (sigma : schm):
-  @HoareState id (@top id) {tau : ty | is_schm_instance tau sigma} (fun i x f => i <= f) :=
+  @HoareState id (@top id) {tau : ty & {is_s | apply_inst_subst is_s sigma = Some_schm tau}} (fun i x f => i = f) :=
   match apply_inst_subst is_s sigma with
-  | Error_schm => failT {tau : ty | is_schm_instance tau sigma}
-  | Some_schm tau => ret (exist _ tau _) 
+  | Error_schm => failT _
+  | Some_schm tau => ret (existT _ _ _) 
   end .
 Next Obligation.
-  unfold is_schm_instance.
   exists is_s.
   auto.
 Defined.
 
+
 Program Definition schm_inst_dep (sigma : schm) :
-  @HoareState id (@top id) {tau : ty | is_schm_instance tau sigma} (fun i x f => i <= f) :=
-  let nmax := max_gen_vars sigma in
-  DO
-    st <- @get id ;
-    _ <- put (st + nmax) ;
-    match compute_inst_subst st nmax with
-    | is_s => apply_inst_subst_hoare is_s sigma 
-    end
-  OD.
+  @HoareState id (@top id) {tau_iss| apply_inst_subst (snd tau_iss) sigma = Some_schm (fst tau_iss)}
+              (fun i x f => f = i + (max_gen_vars sigma) /\ Some_schm (fst (proj1_sig x)) = apply_inst_subst (snd (proj1_sig x)) sigma /\
+              compute_inst_subst i (max_gen_vars sigma) = (snd (proj1_sig x))) :=
+    match max_gen_vars sigma as y with
+    | nmax => 
+       st <- @get id ;
+       _ <- @put id (st + nmax) ;
+       match compute_inst_subst st nmax as y with
+       | is_s => 
+                tau <- apply_inst_subst_hoare is_s sigma ;
+                ret (exist _ _ _)
+       end 
+    end  .
+Next Obligation.
+  split; auto.
+Defined.
+Next Obligation.
+  simpl in *.
+  destruct (apply_inst_subst_hoare (compute_inst_subst x (max_gen_vars sigma)) sigma >>= _).
+  simpl in *.
+  destruct x0.
+  destruct p.
+  destruct y.
+  destruct H0.
+  destruct H0.
+  destruct H1.
+  splits.
+  rewrite <- H1.
+  omega.
+  destruct s.
+  simpl in *.
+  destruct x2.
+  simpl in *.
+  symmetry.
+  auto.
+  destruct s.
+  simpl in *.
+  destruct x2.
+  destruct x0.
+  destruct s.
+  simpl in *.
+  inversion H2.
+  subst.
+  auto.
+Defined.
+
+(*
 Next Obligation.
   cases ((apply_inst_subst_hoare (compute_inst_subst x (max_gen_vars sigma)) sigma (exist (fun t : nat => top t) (x + max_gen_vars sigma) H))).
   - simpl in y.
@@ -101,53 +147,20 @@ Next Obligation.
       simpl.
       rewrite Eq.
       simpl.
-      omega.
+      split;
+      try omega.
     + rewrite Eq.
       simpl.
       auto.
 Defined.
+*)
 
 Program Definition look_dep (x : id) (G : ctx) :
-  @HoareState id (@top id) {sigma : schm | in_ctx x G = Some sigma} (fun i x f => i <= f) :=
+  @HoareState id (@top id) {sigma : schm | in_ctx x G = Some sigma} (fun i k f => i = f /\ in_ctx x G = Some (proj1_sig k)) :=
   match in_ctx x G with
   | Some sig => ret (exist _ sig _)
-  | None => fun s => exist _ None _ 
+  | None => failT _
   end.
-
-(*
-Definition  look_const_dep : forall (x : id) (G : ctx), Infer {sigma & {i | in_ctx x G = Some sigma /\ sigma = sc_con i}}.
-  refine (fix look' (x : id) (G : ctx) : Infer {sigma & {i | in_ctx x G = Some sigma /\ sigma = sc_con i}} :=
-            match G with
-            | nil => failT _
-            | (y, sigma) :: G' => if eq_id_dec x y then
-                                   match sigma as y return sigma = y -> _ with
-                                   | sc_con i => fun _ => ret (existT _ sigma (exist _ i _))
-                                   | _ => fun _ => failT _
-                                   end _
-                                 else re <- look' x G' ;
-                                 match re with
-                                 | existT _ sig (exist _ i P) => ret (existT _ sig (exist _ i _))
-                                 end
-            end);
-  subst; simpl;
-  mysimp.
-Qed.
-
-
-Definition getResult (A B : Type) {P} (rs : option (tc_state * (({ti : A & {s : B | P ti s}}))))
-  : option (id * A * B) :=
-  match rs with
-  | None => None
-  | Some (mkState i, (existT _ t (exist _ s P))) => Some (i, t ,s)
-  end.
-
-Definition getInst (A : Type) {P} (rs : option (tc_state * {x : A | P x}))
-  : option A :=
-  match rs with
-  | None => None
-  | Some (mkState i, exist _ s _) => Some s
-  end.
-*)
 
 Lemma assoc_subst_exists : forall (G : ctx) (i : id) (s : substitution) (sigma : schm),
     in_ctx i (apply_subst_ctx s G) = Some sigma ->
@@ -155,29 +168,26 @@ Lemma assoc_subst_exists : forall (G : ctx) (i : id) (s : substitution) (sigma :
 Proof.
 Admitted.
 
-Definition completeness (e : term) (G : ctx) (tau : ty) (s : substitution) :=
-  forall (tau' : ty) (phi : substitution) (st : id),
-    has_type (apply_subst_ctx phi G) e tau' -> new_tv_ctx G st ->
-    exists s', tau' = apply_subst s' tau /\
-    (forall x : id, x < st -> apply_subst phi (var x) = apply_subst (s ++ s') (var x)).
-
-(*
 Lemma t_is_app_T_aux : forall (sigma : schm) (tau tau' : ty) (s : substitution) (p : nat) (st : id) (x : list ty),
     new_tv_schm sigma st -> max_gen_vars sigma <= p ->
-    apply_inst_subst (fst (compute_generic_subst st p)) sigma = Some_schm tau ->
+    apply_inst_subst (compute_inst_subst st p) sigma = Some_schm tau ->
     apply_inst_subst x (apply_subst_schm s sigma) = Some_schm tau' ->
     tau' = apply_subst ((compute_subst st x) ++ s) tau.
 Proof.
   Admitted.
 
-Lemma t_is_app_T_aux' : forall (sigma : schm) (tau tau' : ty) (phi : substitution) (p : nat) (st : id) (i_s i_s' : list ty),
-    new_tv_schm sigma st -> max_gen_vars sigma <= p ->
-    apply_inst_subst i_s sigma = Some_schm tau ->
-    apply_inst_subst i_s' (apply_subst_schm phi sigma) = Some_schm tau' ->
-    tau' = apply_subst ((compute_subst st i_s') ++ phi) tau.
+
+Lemma not_in_domain_compute : forall (sg : list ty) (x st : id), x < st ->
+ id_in_subst x (compute_subst st sg) = None.
+Admitted.
+
+Lemma apply_app_compute_subst :
+ forall (s0 : substitution) (st i : id) (sg : list ty),
+ i < st -> apply_subst (compute_subst st sg ++ s0) (var i) = apply_subst s0 (var i).
 Proof.
-  Admitted.
-*)
+intros; apply apply_subst_app.
+apply not_in_domain_compute; auto.
+Qed.
 
 Lemma new_tv_ctx_implies_new_tv_schm : forall (G : ctx) (sigma : schm) (st x : id),
     in_ctx x G = Some sigma -> new_tv_ctx G st -> new_tv_schm sigma st.
@@ -188,12 +198,76 @@ Lemma apply_compute_gen_subst : forall (i : id) (sigma : schm) (p : nat) i_s,
     {tau : ty | apply_inst_subst i_s sigma = Some_schm tau}.
 Admitted.
 
+Definition completeness (e : term) (G : ctx) (tau : ty) (s : substitution) (st : id) :=
+  forall (tau' : ty) (phi : substitution),
+    has_type (apply_subst_ctx phi G) e tau' -> 
+    exists s', tau' = apply_subst s' tau /\
+    (forall x : id, x < st -> apply_subst phi (var x) = apply_subst (s ++ s') (var x)).
+
+
 Program Definition W_hoare (e : term) (G : ctx) :
-  @HoareState id (@top id) {tau : ty & {s : substitution | has_type (apply_subst_ctx s G) e tau}} (fun i x f => i <= f) :=
+  @HoareState id (fun st => new_tv_ctx G st)
+              {tau : ty & {s : substitution | has_type (apply_subst_ctx s G) e tau}} (fun i x f => exists tau0 s0, completeness e G tau0 s0 i) :=
   match e with
-  | _ => ret (existT _ (var 0) (exist _ nil _))
+  | var_t x =>
+             sigma <- @look_dep x G ;
+             etau <- schm_inst_dep sigma ;
+             ret (existT _ _ (exist _ nil _))
+  | _ => failT _
   end. 
 Next Obligation.
+  eapply var_ht. rewrite apply_subst_ctx_nil. apply H0. simpl in *. unfold is_schm_instance. exists i. auto.
+Defined.
+Next Obligation.
+  intros; unfold top; auto.
+Defined.
+Next Obligation.
+  - edestruct (look_dep x G >>= _).
+    simpl in y.
+    destruct x1.
+    destruct p.
+    simpl.
+    destruct s as [tau].
+    destruct s as [s].
+    mysimp.
+    destruct x1.
+    simpl in *.
+    inversion H4.
+    clear H7 H4.
+    subst.
+    destruct x3 as [tau2].
+    destruct tau2 as [tau2 is_s].
+    + exists tau2 (nil:substitution).
+      unfold completeness.
+      intros.
+      inversion H0.
+      subst.
+      destruct (assoc_subst_exists G x phi H3) as [sigma' H3'].
+      destruct H3' as [H31  H32].
+      destruct H6.
+      exists (compute_subst x2 is_s ++ phi).
+      split.
+      * eapply t_is_app_T_aux with (p := max_gen_vars sigma').
+        eapply new_tv_ctx_implies_new_tv_schm.
+        apply H31.
+        auto.
+        auto.
+        simpl in *.
+        rewrite H2 in H31.
+        inversion H31.
+        subst.
+        auto.
+        subst.
+        auto.
+      * intros.
+        simpl.
+        symmetry.
+        eapply apply_app_compute_subst;
+        auto.
+     + simpl; auto.
+Defined.
+Next Obligation.
+Admitted.        
 
 Fixpoint W (st : id) (e : term) (G : ctx) {struct e} : option (ty * substitution * id) :=
   match e with
