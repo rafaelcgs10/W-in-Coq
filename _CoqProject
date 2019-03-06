@@ -11,5 +11,5 @@
    src/Gen.v
    src/Typing.v
    src/NewTypeVariable.v
-   src/Infer.v
    src/MoreGeneral.v
+   src/Infer.v
