@@ -38,7 +38,7 @@ Ltac crush :=
     | [ H : sigT _ |- _] => destruct H
   end.
 
-Ltac crushAssumptions := (repeat (simpl in *; crush)) ; simpl in *; try inversionExist; auto; sort; try omega.
+Ltac crushAssumptions := (repeat (simpl in *; crush)) ; simpl in *; try inversionExist; auto; try omega; sort.
 
 (** Gives a list of bound ids *)
 Fixpoint list_bounds_ids_aux (sigma : schm) (g : list id) : list id :=
@@ -131,23 +131,6 @@ Next Obligation.
   reflexivity.
 Defined.
 
-(*
-Next Obligation.
-  cases ((apply_inst_subst_hoare (compute_inst_subst x (max_gen_vars sigma)) sigma (exist (fun t : nat => top t) (x + max_gen_vars sigma) H))).
-  - simpl in y.
-    destruct x0.
-    + destruct p.
-      simpl.
-      rewrite Eq.
-      simpl.
-      split;
-      try omega.
-    + rewrite Eq.
-      simpl.
-      auto.
-Defined.
-*)
-
 Program Definition look_dep (x : id) (G : ctx) :
   @HoareState id (@top id) {sigma : schm | in_ctx x G = Some sigma} (fun i k f => i = f /\ in_ctx x G = Some (proj1_sig k)) :=
   match in_ctx x G with
@@ -197,14 +180,25 @@ Definition completeness (e : term) (G : ctx) (tau : ty) (s : substitution) (st :
     exists s', tau' = apply_subst s' tau /\
     (forall x : id, x < st -> apply_subst phi (var x) = apply_subst (s ++ s') (var x)).
 
-Program Definition W_hoare (e : term) (G : ctx) :
+Definition projT2b {A B} P (h : {t : A & {s : B | P t s}}) : B :=
+  match h with
+  | existT _ _ (exist _ s _) => s
+  end.
+
+Program Fixpoint W_hoare (e : term) (G : ctx) :
   @HoareState id (fun st => new_tv_ctx G st)
               {tau : ty & {s : substitution | has_type (apply_subst_ctx s G) e tau}} (fun i x f => completeness e G (projT1 x) _ i) :=
   match e with
   | var_t x =>
-             sigma <- @look_dep x G ;
-             etau <- schm_inst_dep sigma ;
-             ret (existT _ _ (exist _ nil _))
+            sigma <- @look_dep x G ;
+            tau <- schm_inst_dep sigma ;
+            ret (existT _ (fst (proj1_sig tau)) (exist _ nil _))
+
+  | lam_t x e =>
+              alpha <- fresh ;
+              tau <- @W_hoare e (_ ((x, ty_to_schm (var alpha)) :: G)) ;
+              ret (existT _ (projT1 tau) (exist _ (projT2b tau) _))
+
   | _ => failT _
   end. 
 Next Obligation. (* Case: var soundness  *)
@@ -244,8 +238,21 @@ Next Obligation. (* Case: var completeness *)
     eapply apply_app_compute_subst.
     assumption.
 Defined.
-Next Obligation.
+Next Obligation. (* Case: lam soundness  *)
+  simpl in *.
+  unfold W_hoare_obligation_6 in H.
 Admitted.        
+Next Obligation. (* Case: properties used in lam completeness  *)
+  repeat (intros; splits; intros; unfold top; auto).
+  unfold W_hoare_obligation_6.
+  crushAssumptions.
+  subst.
+Admitted.
+Next Obligation.
+ simpl.
+ destruct (W_hoare e (W_hoare_obligation_6 G) >>= _).
+ crushAssumptions.
+
 
 Fixpoint W (st : id) (e : term) (G : ctx) {struct e} : option (ty * substitution * id) :=
   match e with
