@@ -67,6 +67,22 @@ intros; apply apply_subst_app.
 apply not_in_domain_compute; auto.
 Qed.
 
+Fixpoint W (st : id) (e : term) (G : ctx) {struct e} : option (ty * substitution * id) :=
+  match e with
+  | var_t x => match in_ctx x G with
+              | None => None
+              | Some sigma =>
+                 match compute_generic_subst st (max_gen_vars sigma) with
+                 | (l, st') =>
+                     match apply_inst_subst l sigma with
+                     | Error_schm => None 
+                     | Some_schm tau => Some (tau, nil, st')
+                     end
+                 end
+              end
+  | _ => Some (var 0, nil, 0)
+  end. 
+
 Lemma completeness' : forall (e : term) (G : ctx) (tau' : ty) (phi : substitution) (st : id),
     has_type (apply_subst_ctx phi G) e tau' -> new_tv_ctx G st ->
     exists s tau st', W st e G  = Some (tau, s, st')  /\
