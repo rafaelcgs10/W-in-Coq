@@ -209,11 +209,9 @@ Proof.
     auto.
 Qed.
 
-Program Fixpoint W_hoare (e : term) (G : ctx) :
-  @HoareState id (fun st => new_tv_ctx G st) (ty * substitution)
-              (fun i x f => match (fst x),(snd x) with
-                         | tau,s => has_type (apply_subst_ctx s G) e tau /\
-                                   completeness e G tau s i end) :=
+Program Fixpoint W_hoare (e : term) (G : ctx) {struct e} :
+  @HoareState id (fun i => new_tv_ctx G i) (ty * substitution)
+              (fun i x f =>  has_type (apply_subst_ctx (snd x) G) e (fst x) /\ completeness e G (fst x) (snd x) i) :=
   match e with
   | var_t x =>
             sigma <- @look_dep x G ;
@@ -274,15 +272,18 @@ Next Obligation. (* Case: properties used in lam *)
   econstructor.
   apply new_tv_ctx_Succ.
   auto.
-  econstructor. auto.
-  intros. auto.
+  econstructor.
+  auto.
+  intros.
+  auto.
 Defined.
 Next Obligation. (* Case: lam soundness  *)
   destruct (W_hoare e (((x, sc_var x0)) :: G) >>= _).
   simpl.
   crushAssumptions.
-  split.
-  - subst.
+  assert (has_type (apply_subst_ctx t1 G) (lam_t x e) (Unify.arrow (apply_subst t1 (var x0)) x1)) as Hsound.
+  {
+    subst.
     simpl in H0.
     rename t1 into s'.
     rename x1 into tau.
@@ -291,37 +292,34 @@ Next Obligation. (* Case: lam soundness  *)
     rewrite H1 in H0.
     rewrite ty_to_subst_schm in H0.
     econstructor.
-    assumption.
-   -
-    
-Admitted.        
+    assumption. }
+  split.
+  - apply Hsound.
+  - subst.
+    unfold completeness in *.
+    clear W_hoare.
+    intros.
+    inversion H1.
+    sort.
+    destruct tau'; inversion H5.
+    subst. 
+    edestruct H3.
+    apply H0.
+    exists x2.
+    rewrite apply_subst_arrow.
+    rewrite <- apply_subst_append.
+    destruct H2.
+    split.
+    Admitted.
 Next Obligation. (* Case: properties used in lam completeness  *)
-  repeat (intros; splits; intros; unfold top; auto).
-  unfold W_hoare_obligation_6.
-  crushAssumptions.
-  subst.
-Admitted.
+  unfold top. auto.
+Defined.
+Obligation 8.
+  Admitted.
 Next Obligation.
- simpl.
- destruct (W_hoare e (W_hoare_obligation_6 G) >>= _).
- crushAssumptions.
-
-
-Fixpoint W (st : id) (e : term) (G : ctx) {struct e} : option (ty * substitution * id) :=
-  match e with
-  | var_t x => match in_ctx x G with
-              | None => None
-              | Some sigma =>
-                 match compute_generic_subst st (max_gen_vars sigma) with
-                 | (l, st') =>
-                     match apply_inst_subst l sigma with
-                     | Error_schm => None 
-                     | Some_schm tau => Some (tau, nil, st')
-                     end
-                 end
-              end
-  | _ => Some (var 0, nil, 0)
-  end. 
+    Admitted.
+Next Obligation.
+    Admitted.
 
 (*
 Definition infer_dep : forall (e : term) (G : ctx),
