@@ -80,8 +80,6 @@ Program Definition put (x : st) : @HoareState top unit (fun _ _ f => f = x) := f
 
 End hoare_state_monad.
 
-(** Gives you a fresh variable *)
-Program Definition fresh : @HoareState nat (@top nat) nat (fun i x f => S i = f /\ i = x) := fun n => exist _ (Some (n, S n)) _.
 
 Infix ">>=" := bind (right associativity, at level 71).
 

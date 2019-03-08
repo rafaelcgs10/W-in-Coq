@@ -91,10 +91,10 @@ Ltac tryChange :=
 
 (** Gives a type that is a (new) instance of a scheme *)
 Program Definition apply_inst_subst_hoare (is_s : inst_subst) (sigma : schm):
-  @HoareState id (@top id) {tau : ty | apply_inst_subst is_s sigma = Some_schm tau} (fun i x f => i = f) :=
+  @HoareState id (@top id) ty (fun i r f => i = f /\ apply_inst_subst is_s sigma = Some_schm r) :=
   match apply_inst_subst is_s sigma with
   | Error_schm => failT _
-  | Some_schm tau => ret (exist _ _ _) 
+  | Some_schm tau => ret tau 
   end .
 
 Fixpoint compute_inst_subst (st : id) (n : nat) : list ty :=
@@ -107,15 +107,15 @@ Fixpoint compute_inst_subst (st : id) (n : nat) : list ty :=
   end.
 
 Program Definition schm_inst_dep (sigma : schm) :
-  @HoareState id (@top id) {tau_iss| apply_inst_subst (snd tau_iss) sigma = Some_schm (fst tau_iss)}
-              (fun i x f => f = i + (max_gen_vars sigma) /\ apply_inst_subst (snd (proj1_sig x)) sigma = Some_schm (fst (proj1_sig x)) /\
-              compute_inst_subst i (max_gen_vars sigma) = (snd (proj1_sig x))) :=
+  @HoareState id (@top id) (ty * inst_subst)
+              (fun i r f => f = i + (max_gen_vars sigma) /\ apply_inst_subst (snd r) sigma = Some_schm (fst r) /\
+              compute_inst_subst i (max_gen_vars sigma) = (snd r)) :=
     match max_gen_vars sigma as y with
     | nmax => 
        st <- @get id ;
        _ <- @put id (st + nmax) ;
        tau <- apply_inst_subst_hoare (compute_inst_subst st nmax) sigma ;
-       ret (exist _ (_, (compute_inst_subst st nmax)) _)
+       ret (tau, (compute_inst_subst st nmax))
     end.
 Next Obligation.
   simpl in *.
@@ -125,16 +125,14 @@ Next Obligation.
   rewrite <- H1.
   omega.
   simpl in *.
-  rewrite <- H4.
-  subst.
   assumption.
   reflexivity.
 Defined.
 
 Program Definition look_dep (x : id) (G : ctx) :
-  @HoareState id (@top id) {sigma : schm | in_ctx x G = Some sigma} (fun i k f => i = f /\ in_ctx x G = Some (proj1_sig k)) :=
+  @HoareState id (@top id) schm (fun i k f => i = f /\ in_ctx x G = Some k) :=
   match in_ctx x G with
-  | Some sig => ret (exist _ sig _)
+  | Some sig => ret sig
   | None => failT _
   end.
 
@@ -180,67 +178,122 @@ Definition completeness (e : term) (G : ctx) (tau : ty) (s : substitution) (st :
     exists s', tau' = apply_subst s' tau /\
     (forall x : id, x < st -> apply_subst phi (var x) = apply_subst (s ++ s') (var x)).
 
-Definition projT2b {A B} P (h : {t : A & {s : B | P t s}}) : B :=
+Definition getSub {e G} (h : {t : ty & {s : substitution | has_type (apply_subst_ctx s G) e t}}) : substitution :=
   match h with
   | existT _ _ (exist _ s _) => s
   end.
 
+Definition getTy{e G} (h : {t : ty & {s : substitution | has_type (apply_subst_ctx s G) e t}}) : ty :=
+  match h with
+  | existT _ t (exist _ _ _) => t
+  end.
+
+(** Gives you a fresh variable *)
+Program Definition fresh : @HoareState id (@top id) id (fun i x f => S i = f /\ i = x) := fun n => exist _ (Some (n, S n)) _.
+
+Lemma new_tv_schm_Succ : forall sigma i, new_tv_schm sigma i -> new_tv_schm sigma (S i).
+Proof.
+  intros.
+  induction sigma;
+  inversion H; econstructor; auto; try omega.
+Qed.
+
+Lemma new_tv_ctx_Succ : forall G i, new_tv_ctx G i -> new_tv_ctx G (S i).
+Proof.
+  intros.
+  induction H.
+  - econstructor.
+  - econstructor.
+    auto.
+    apply new_tv_schm_Succ.
+    auto.
+Qed.
+
 Program Fixpoint W_hoare (e : term) (G : ctx) :
-  @HoareState id (fun st => new_tv_ctx G st)
-              {tau : ty & {s : substitution | has_type (apply_subst_ctx s G) e tau}} (fun i x f => completeness e G (projT1 x) _ i) :=
+  @HoareState id (fun st => new_tv_ctx G st) (ty * substitution)
+              (fun i x f => match (fst x),(snd x) with
+                         | tau,s => has_type (apply_subst_ctx s G) e tau /\
+                                   completeness e G tau s i end) :=
   match e with
   | var_t x =>
             sigma <- @look_dep x G ;
-            tau <- schm_inst_dep sigma ;
-            ret (existT _ (fst (proj1_sig tau)) (exist _ nil _))
+            tau_iss <- schm_inst_dep sigma ;
+            ret ((fst tau_iss), nil)
 
   | lam_t x e =>
-              alpha <- fresh ;
-              tau <- @W_hoare e (_ ((x, ty_to_schm (var alpha)) :: G)) ;
-              ret (existT _ (projT1 tau) (exist _ (projT2b tau) _))
+              alpha <- fresh  ;
+              tau_s <- @W_hoare e ((x, ty_to_schm (var alpha)) :: G) ;
+              ret ((Unify.arrow (apply_subst (snd tau_s) (var alpha)) (fst tau_s)), snd tau_s)
 
   | _ => failT _
   end. 
-Next Obligation. (* Case: var soundness  *)
-  simpl in *. eapply var_ht. rewrite apply_subst_ctx_nil. apply H0. unfold is_schm_instance. exists i. assumption.
-Defined.
-Next Obligation. (* Case: properties used in var completeness  *)
+Next Obligation. (* Case: properties used in var *)
   intros; unfold top; auto.
 Defined.
-Next Obligation. (* Case: var completeness *)
+Next Obligation. 
   edestruct (look_dep x G >>= _).
   crushAssumptions.
-  subst.
-  unfold completeness.
-  intros.
-  inversion H0.
-  subst.
-  destruct (assoc_subst_exists G x phi H3) as [sigma' H3'].
-  destruct H3' as [H31  H32].
-  destruct H6.
-  exists (compute_subst x2 x0 ++ phi).
   split.
-  - eapply t_is_app_T_aux with (p := max_gen_vars sigma').
-      + eapply new_tv_ctx_implies_new_tv_schm. 
+  (* Case: var soundness  *)
+  - eapply var_ht. rewrite apply_subst_ctx_nil. subst. apply H2. unfold is_schm_instance. exists t1. assumption.
+  (* Case: var completeness *)
+  - subst.
+    unfold completeness.
+    intros.
+    inversion H0.
+    subst.
+    destruct (assoc_subst_exists G x phi H3) as [sigma' H3'].
+    destruct H3' as [H31  H32].
+    destruct H6.
+    exists (compute_subst x2 x0 ++ phi).
+    split.
+    + eapply t_is_app_T_aux with (p := max_gen_vars sigma').
+      * eapply new_tv_ctx_implies_new_tv_schm. 
        apply H31. auto.
-      + reflexivity.
-      + rewrite H2 in H31.
+      * reflexivity.
+      * rewrite H2 in H31.
         inversion H31. subst.
         assumption.
-      + sort.
+      * sort.
         rewrite H2 in H31.
         inversion H31.
         subst.
         assumption.
-  - intros.
-    simpl.
-    symmetry.
-    eapply apply_app_compute_subst.
-    assumption.
+    + intros.
+      simpl.
+      symmetry.
+      eapply apply_app_compute_subst.
+      assumption.
+Defined.
+Next Obligation. (* Case: properties used in lam *)
+  splits;
+  intros; unfold top; auto.
+  splits.
+  crushAssumptions.
+  subst.
+  econstructor.
+  apply new_tv_ctx_Succ.
+  auto.
+  econstructor. auto.
+  intros. auto.
 Defined.
 Next Obligation. (* Case: lam soundness  *)
-  simpl in *.
-  unfold W_hoare_obligation_6 in H.
+  destruct (W_hoare e (((x, sc_var x0)) :: G) >>= _).
+  simpl.
+  crushAssumptions.
+  split.
+  - subst.
+    simpl in H0.
+    rename t1 into s'.
+    rename x1 into tau.
+    assert (sc_var x0 = ty_to_schm (var x0)).
+    { reflexivity. }
+    rewrite H1 in H0.
+    rewrite ty_to_subst_schm in H0.
+    econstructor.
+    assumption.
+   -
+    
 Admitted.        
 Next Obligation. (* Case: properties used in lam completeness  *)
   repeat (intros; splits; intros; unfold top; auto).
