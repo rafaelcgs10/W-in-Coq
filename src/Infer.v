@@ -1,5 +1,3 @@
-Set Implicit Arguments.
-
 Require Import LibTactics.
 Require Import Unify.
 Require Import Sublist.
@@ -209,22 +207,105 @@ Proof.
     auto.
 Qed.
 
-Program Fixpoint W_hoare (e : term) (G : ctx) {struct e} :
+Program Definition addFreshCtx (G : ctx) (x : id) : @HoareState id (fun i => new_tv_ctx G i) (id * ctx) (fun i r f => new_tv_ctx (snd r) f) :=
+  alpha <- fresh ;
+    ret (alpha, ((x, ty_to_schm (var alpha)) :: G)).
+Next Obligation.
+  split; intros;
+  unfold top; auto.
+Defined.
+Next Obligation.
+  econstructor.
+  apply new_tv_ctx_Succ; auto.
+  econstructor. auto.
+Defined.
+
+Program Definition unify (tau1 tau2 : ty) : @HoareState id (@top id) substitution (fun i r f => i = f) :=
+  match unify_simple_dep tau1 tau2 with
+  | existT _ c (inleft _ (exist _ x HS)) => ret x
+  | existT _ c _ => failT _
+  end.
+    
+Program Definition getProof (G : ctx) : {tau : id | new_tv_ctx G tau}.
+Admitted.
+
+Fixpoint sizeTerm e : nat :=
+  match e with
+  | lam_t _ e => sizeTerm e + 1
+  | app_t l r => (max (sizeTerm l) (sizeTerm r)) + 1
+  | let_t _ e1 e2 => (max (sizeTerm e1) (sizeTerm e2)) + 1
+  | _ => 0
+  end.
+
+Program Fixpoint W_hoare (e : term) (G : ctx) {measure (sizeTerm e)} :
   @HoareState id (fun i => new_tv_ctx G i) (ty * substitution)
               (fun i x f =>  has_type (apply_subst_ctx (snd x) G) e (fst x) /\ completeness e G (fst x) (snd x) i) :=
   match e with
-  | var_t x =>
-            sigma <- @look_dep x G ;
+  | const_t x =>
+            sigma <- look_dep x G ;
             tau_iss <- schm_inst_dep sigma ;
             ret ((fst tau_iss), nil)
 
-  | lam_t x e =>
-              alpha <- fresh  ;
-              tau_s <- @W_hoare e ((x, ty_to_schm (var alpha)) :: G) ;
-              ret ((Unify.arrow (apply_subst (snd tau_s) (var alpha)) (fst tau_s)), snd tau_s)
+  | var_t x =>
+            sigma <- look_dep x G ;
+            tau_iss <- schm_inst_dep sigma ;
+            ret ((fst tau_iss), nil)
 
-  | _ => failT _
+  | lam_t x e' =>
+              alpha_G' <- @addFreshCtx G x ;
+              tau_s <- @W_hoare e' (snd alpha_G') _ ;
+              ret ((Unify.arrow (apply_subst (snd tau_s) (var (fst alpha_G'))) (fst tau_s)), snd tau_s)
+
+  | app_t l r =>
+              tau1_s1 <- @W_hoare l G _ ;
+              tau2_s2 <- @W_hoare r (apply_subst_ctx (snd tau1_s1) G) _ ;
+              alpha <- fresh ;
+              s <- unify (apply_subst (snd tau2_s2) (fst tau1_s1)) (Unify.arrow (fst tau2_s2) (var alpha)) ;
+              ret (apply_subst s (var alpha), (snd tau1_s1) ++ (snd tau2_s2) ++ s)
+
+  | let_t x e1 e2  =>
+                 tau1_s1 <- @W_hoare e1 G _ ;
+                 tau2_s2 <- @W_hoare e2 ((x,gen_ty (fst tau1_s1) (apply_subst_ctx (snd tau1_s1) G) )::(apply_subst_ctx (snd tau1_s1) G)) _ ;
+                 ret (fst tau2_s2, (snd tau2_s2) ++ (snd tau1_s1))
   end. 
+Next Obligation. (* Case: properties used in const *)
+  intros; unfold top; auto.
+Defined.
+Next Obligation. 
+  edestruct (look_dep x G >>= _).
+  crushAssumptions.
+  split.
+  (* Case: var soundness  *)
+  - econstructor. rewrite apply_subst_ctx_nil. subst. apply H2. unfold is_schm_instance. exists t1. assumption.
+  (* Case: var completeness *)
+  - subst.
+    unfold completeness.
+    intros.
+    inversion H0.
+    subst.
+    destruct (assoc_subst_exists G x phi sigma H3) as [sigma' H3'].
+    destruct H3' as [H31  H32].
+    destruct H6.
+    exists (compute_subst x2 x0 ++ phi).
+    split.
+    + eapply t_is_app_T_aux with (p := max_gen_vars sigma').
+      * eapply new_tv_ctx_implies_new_tv_schm. 
+       apply H31. auto.
+      * reflexivity.
+      * rewrite H2 in H31.
+        inversion H31. subst.
+        assumption.
+      * sort.
+        rewrite H2 in H31.
+        inversion H31.
+        subst.
+        assumption.
+    + intros.
+      simpl.
+      symmetry.
+      eapply apply_app_compute_subst.
+      assumption.
+Defined.
 Next Obligation. (* Case: properties used in var *)
   intros; unfold top; auto.
 Defined.
@@ -240,7 +321,7 @@ Next Obligation.
     intros.
     inversion H0.
     subst.
-    destruct (assoc_subst_exists G x phi H3) as [sigma' H3'].
+    destruct (assoc_subst_exists G x phi sigma H3) as [sigma' H3'].
     destruct H3' as [H31  H32].
     destruct H6.
     exists (compute_subst x2 x0 ++ phi).
@@ -264,24 +345,19 @@ Next Obligation.
       assumption.
 Defined.
 Next Obligation. (* Case: properties used in lam *)
-  splits;
-  intros; unfold top; auto.
-  splits.
-  crushAssumptions.
-  subst.
-  econstructor.
-  apply new_tv_ctx_Succ.
-  auto.
-  econstructor.
-  auto.
-  intros.
-  auto.
+  Admitted.
+Next Obligation. (* Case: properties used in lam *)
+  splits; auto.
+  intros; splits; auto.
+  intros; auto.
+  unfold top; auto.
 Defined.
 Next Obligation. (* Case: lam soundness  *)
-  destruct (W_hoare e (((x, sc_var x0)) :: G) >>= _).
+  simpl.
+  destruct (W_hoare e' (((x, sc_var x0)) :: G) _ >>= _).
   simpl.
   crushAssumptions.
-  assert (has_type (apply_subst_ctx t1 G) (lam_t x e) (Unify.arrow (apply_subst t1 (var x0)) x1)) as Hsound.
+  assert (has_type (apply_subst_ctx t1 G) (lam_t x e') (Unify.arrow (apply_subst t1 (var x0)) x1)) as Hsound.
   {
     subst.
     simpl in H0.
@@ -310,16 +386,27 @@ Next Obligation. (* Case: lam soundness  *)
     rewrite <- apply_subst_append.
     destruct H2.
     split.
-    Admitted.
+    rewrite <- H4; auto.
+    inversion Hsound.
+    subst.
 Next Obligation. (* Case: properties used in lam completeness  *)
-  unfold top. auto.
-Defined.
-Obligation 8.
+  simpl.
+  Admitted.
+Next Obligation.
   Admitted.
 Next Obligation.
     Admitted.
 Next Obligation.
     Admitted.
+Next Obligation.
+    Admitted.
+Next Obligation.
+    Admitted.
+Next Obligation.
+    Admitted.
+Next Obligation.
+    Admitted.
+
 
 (*
 Definition infer_dep : forall (e : term) (G : ctx),
