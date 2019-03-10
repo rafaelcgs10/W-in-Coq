@@ -237,6 +237,14 @@ Fixpoint sizeTerm e : nat :=
   | _ => 0
   end.
 
+
+Lemma add_subst_rewrite_for_modified_stamp : forall (s : substitution) (i : id) (tau : ty), apply_subst ((i, tau)::s) (var i) = tau.
+Proof.
+  intros.
+  simpl.
+  mysimp.
+Admitted.
+
 Program Fixpoint W_hoare (e : term) (G : ctx) {measure (sizeTerm e)} :
   @HoareState id (fun i => new_tv_ctx G i) (ty * substitution)
               (fun i x f =>  has_type (apply_subst_ctx (snd x) G) e (fst x) /\ completeness e G (fst x) (snd x) i) :=
@@ -344,7 +352,7 @@ Next Obligation.
       eapply apply_app_compute_subst.
       assumption.
 Defined.
-Next Obligation. (* Case: properties used in lam *)
+Next Obligation. 
   Admitted.
 Next Obligation. (* Case: properties used in lam *)
   splits; auto.
@@ -372,20 +380,81 @@ Next Obligation. (* Case: lam soundness  *)
   split.
   - apply Hsound.
   - subst.
-    unfold completeness in *.
+    clear W_hoare H3.
+    unfold completeness. 
+    intros.
+    inversion_clear H1.
+    cut (exists s' : substitution,
+            tau'0 = apply_subst s' x1 /\ (forall x : id, x < S x0 -> apply_subst (((x0, tau) :: phi)) (var x) = apply_subst s' (apply_subst t1 (var x)))).
+    intros.
+    destruct H1; auto.
+    destruct H1; auto.
+    exists x2.
+    splits.
+    rewrite apply_subst_arrow.
+    fequals.
+    erewrite <- H3.
+    (* aqui *)
+    rewrite add_subst_rewrite_for_modified_stamp; auto.
+    auto.
+
+    intros.
+    rewrite apply_subst_append.
+    erewrite <- H3; auto.
+
+
+    fequals.
+    specialize H3 with (x:=x0).
+    simpl in H3.
+    intros.
+    unfold completeness in H1.
+    edestruct H1.
+    simpl.
+    rewrite ty_to_subst_schm .
+    apply H2.
+    apply H1 in H2.
+    simpl.
+    apply H0.
+    destruct H4.
+    exists x2.
+    split.
+    rewrite apply_subst_arrow.
+    fequals.
+    specialize H5 with (x:=x0).
+    simpl in H5.
+    destruct (eq_id_dec x0 x0); intuition.
+    erewrite H5.
+    inversion_clear H1.
+    
+    cut 
+    cut
     clear W_hoare.
     intros.
-    inversion H1.
+    edestruct H3.
+    apply H0.
+    inversion_clear H1 .
+    exists x2.
+    destruct H2.
+    splits.
+    + rewrite apply_subst_arrow.
+      rewrite <- apply_subst_append.
+      rewrite <- H2; auto.
+
+    destruct H2.
+    destruct H2.
+
+    exists ((x1, tau)::nil).
     sort.
     destruct tau'; inversion H5.
     subst. 
     edestruct H3.
     apply H0.
-    exists x2.
+    split.
+    + destruct H2.
+    simpl.
     rewrite apply_subst_arrow.
     rewrite <- apply_subst_append.
-    destruct H2.
-    split.
+      rewrite <- H2.
     rewrite <- H4; auto.
     inversion Hsound.
     subst.
