@@ -380,7 +380,7 @@ Next Obligation. (* Case: lam soundness  *)
   split.
   - apply Hsound.
   - subst.
-    clear W_hoare H3.
+    clear W_hoare.
     unfold completeness. 
     intros.
     inversion_clear H1.
@@ -393,14 +393,32 @@ Next Obligation. (* Case: lam soundness  *)
     splits.
     rewrite apply_subst_arrow.
     fequals.
-    erewrite <- H3.
+    erewrite <- H4.
     (* aqui *)
     rewrite add_subst_rewrite_for_modified_stamp; auto.
     auto.
 
     intros.
     rewrite apply_subst_append.
-    erewrite <- H3; auto.
+    erewrite <- H4; auto.
+    skip.
+
+    unfold completeness in H3.
+    specialize H3 with (tau':=tau'0) (phi:=(x0, tau)::phi).
+    destruct H3.
+    simpl.
+    destruct (eq_id_dec x0 x0); intuition.
+    erewrite add_subst_rewrite_for_modified_stamp.
+
+    erewrite apply_subst_append in H3.
+    eapply H3.
+    destruct (eq_id_dec x0 x); intuition.
+    subst.
+    
+    edestruct H3.
+    apply H0.
+    exists x2.
+    destruct H1.
 
 
     fequals.
