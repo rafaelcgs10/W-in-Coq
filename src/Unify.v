@@ -977,8 +977,11 @@ Fixpoint id_in_subst (i : id) (s : substitution) : option ty :=
     | (i', tau)::s' => if eq_id_dec i i' then Some tau else id_in_subst i s'
   end.
 
-Lemma apply_subst_app : forall (s1 s2 : substitution) (st : id),
+Lemma apply_subst_app1 : forall (s1 s2 : substitution) (st : id),
  id_in_subst st s1 = None -> apply_subst (s1 ++ s2) (var st) = apply_subst s2 (var st).
 Admitted.
 
+Lemma apply_subst_app2 : forall (s1 s2 : substitution) (st : id),
+ id_in_subst st s2 = None -> apply_subst (s1 ++ s2) (var st) = apply_subst s1 (var st).
+Admitted.
 
