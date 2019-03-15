@@ -134,32 +134,10 @@ Program Definition look_dep (x : id) (G : ctx) :
   | None => failT _
   end.
 
-Lemma assoc_subst_exists : forall (G : ctx) (i : id) (s : substitution) (sigma : schm),
-    in_ctx i (apply_subst_ctx s G) = Some sigma ->
-    {sigma' : schm | in_ctx i G = Some sigma' /\ sigma = apply_subst_schm s sigma'}.
-Proof.
-Admitted.
-
-Lemma t_is_app_T_aux : forall (sigma : schm) (tau tau' : ty) (s : substitution) (p : nat) (st : id) (x : list ty),
-    new_tv_schm sigma st -> max_gen_vars sigma <= p ->
-    apply_inst_subst (compute_inst_subst st p) sigma = Some_schm tau ->
-    apply_inst_subst x (apply_subst_schm s sigma) = Some_schm tau' ->
-    tau' = apply_subst ((compute_subst st x) ++ s) tau.
-Proof.
-  Admitted.
-
 
 Lemma not_in_domain_compute : forall (sg : list ty) (x st : id), x < st ->
  id_in_subst x (compute_subst st sg) = None.
 Admitted.
-
-Lemma apply_app_compute_subst :
- forall (s0 : substitution) (st i : id) (sg : list ty),
- i < st -> apply_subst (compute_subst st sg ++ s0) (var i) = apply_subst s0 (var i).
-Proof.
-intros; apply apply_subst_app1.
-apply not_in_domain_compute; auto.
-Qed.
 
 Lemma new_tv_ctx_implies_new_tv_schm : forall (G : ctx) (sigma : schm) (st x : id),
     in_ctx x G = Some sigma -> new_tv_ctx G st -> new_tv_schm sigma st.
@@ -170,11 +148,140 @@ Lemma apply_compute_gen_subst : forall (i : id) (sigma : schm) (p : nat) i_s,
     {tau : ty | apply_inst_subst i_s sigma = Some_schm tau}.
 Admitted.
 
+Fixpoint find_subst (s : substitution) (i : id) : option ty :=
+  match s with
+    | nil => None
+    | (v,t') :: s' => if (eq_id_dec v i) then Some t' else find_subst s' i
+  end.
+
+Fixpoint apply_subst2 (s : substitution) (t : ty) : ty :=
+  match t with
+  | Unify.arrow l r => Unify.arrow (apply_subst2 s l) (apply_subst2 s r)
+  | var i => match find_subst s i with
+            | None => var i
+            | Some t' => t'
+            end
+  | con i => con i
+  end.
+
+Fixpoint apply_subst_schm2 (s : substitution) (t : schm) : schm :=
+  match t with
+    | sc_arrow l r => sc_arrow (apply_subst_schm2 s l) (apply_subst_schm2 s r)
+    | sc_var i => match find_subst s i with
+                 | None => sc_var i
+                 | Some t' => ty_to_schm t'
+                 end
+    | sc_con i => sc_con i
+    | sc_gen i => sc_gen i
+  end.
+
+Fixpoint apply_subst_ctx2 (s : substitution) (G : ctx) : ctx :=
+  match G with
+  | nil => nil
+  | (x, t)::G' => (x, (apply_subst_schm2 s t))::apply_subst_ctx2 s G'
+  end.
+
+Lemma apply_subst_nil2 : forall tau, apply_subst2 [] tau = tau.
+Proof.
+  intros; induction tau; mysimp.
+  rewrite IHtau1, IHtau2.
+  reflexivity.
+Qed.
+
+Lemma apply_subst_schm_nil2 : forall sigma, apply_subst_schm2 [] sigma = sigma.
+Proof.
+  intros; induction sigma; mysimp.
+  rewrite IHsigma1, IHsigma2.
+  reflexivity.
+Qed.
+
+Lemma apply_subst_ctx_nil2 : forall G, apply_subst_ctx2 nil G = G.
+Proof.
+  induction G; mysimp.
+  destruct a. rewrite IHG. rewrite apply_subst_schm_nil2. reflexivity.
+Qed.
+
+Lemma assoc_subst_exists : forall (G : ctx) (i : id) (s : substitution) (sigma : schm),
+    in_ctx i (apply_subst_ctx2 s G) = Some sigma ->
+    {sigma' : schm | in_ctx i G = Some sigma' /\ sigma = apply_subst_schm s sigma'}.
+Proof.
+Admitted.
+
+Lemma t_is_app_T_aux : forall (sigma : schm) (tau tau' : ty) (s : substitution) (p : nat) (st : id) (x : list ty),
+    new_tv_schm sigma st -> max_gen_vars sigma <= p ->
+    apply_inst_subst (compute_inst_subst st p) sigma = Some_schm tau ->
+    apply_inst_subst x (apply_subst_schm s sigma) = Some_schm tau' ->
+    tau' = apply_subst2 ((compute_subst st x) ++ s) tau.
+Proof.
+  Admitted.
+
+Fixpoint in_subst_b (i : id) (s : substitution) : bool :=
+  match s with
+  | nil => false
+  | (j, _)::s' => if eq_id_dec i j then true else in_subst_b i s'
+  end.
+
+Fixpoint subst_diff (s2 s1 : substitution) : substitution :=
+  match s2 with
+  | nil => nil
+  | (i, t)::s2' => if in_subst_b i s1 then subst_diff s2' s1 else
+                    (i, t)::subst_diff s2' s1
+  end.
+
+Fixpoint apply_subst_list (s1 s2 : substitution) : substitution :=
+  match s1 with
+  | nil => nil
+  | (i, t)::s1' => (i, apply_subst2 s2 t)::apply_subst_list s1' s2
+  end.
+
+Definition compose_subst (s1 s2 : substitution) :=
+    subst_diff s2 s1 ++ apply_subst_list s1 s2.
+
+Lemma subst_diff_nil : forall s, subst_diff s [] = s.
+Proof.
+  intros; induction s; mysimp.
+  rewrite IHs.
+  reflexivity.
+Qed.
+
+Lemma compose_subst_nil : forall s, compose_subst nil s = s.
+Proof.
+  intros.
+  induction s; mysimp.
+  unfold compose_subst.
+  simpl.
+  rewrite subst_diff_nil.
+  rewrite app_nil_r.
+  reflexivity.
+Qed.
+
 Definition completeness (e : term) (G : ctx) (tau : ty) (s : substitution) (st : id) :=
   forall (tau' : ty) (phi : substitution),
-    has_type (apply_subst_ctx phi G) e tau' -> 
-    exists s', tau' = apply_subst s' tau /\
-    (forall x : id, x < st -> apply_subst phi (var x) = apply_subst (s ++ s') (var x)).
+    has_type (apply_subst_ctx2 phi G) e tau' -> 
+    exists s', tau' = apply_subst2 s' tau /\
+    (forall x : id, x < st -> apply_subst2 phi (var x) = apply_subst2 s' (apply_subst2 s (var x))).
+
+Lemma apply_subst_app1 : forall (s1 s2 : substitution) (st : id),
+ id_in_subst st s1 = None -> apply_subst2 (s1 ++ s2) (var st) = apply_subst2 s2 (var st).
+Proof.
+  intros.
+  induction s1.
+  - mysimp.
+  - simpl in *.
+    destruct a.
+    mysimp.
+    destruct (eq_id_dec st st); intuition.
+    inversion H.
+    destruct (eq_id_dec st i); intuition.
+Qed.
+
+Lemma apply_app_compute_subst :
+ forall (s0 : substitution) (st i : id) (sg : list ty),
+    i < st -> apply_subst2 (compute_subst st sg ++ s0) (var i) = apply_subst2 s0 (var i).
+Proof.
+intros; apply apply_subst_app1.
+apply not_in_domain_compute; auto.
+Qed.
 
 Definition getSub {e G} (h : {t : ty & {s : substitution | has_type (apply_subst_ctx s G) e t}}) : substitution :=
   match h with
@@ -238,13 +345,6 @@ Fixpoint sizeTerm e : nat :=
   end.
 
 
-Lemma add_subst_rewrite_for_modified_stamp : forall (s : substitution) (i : id) (tau : ty), apply_subst ((i, tau)::s) (var i) = tau.
-Proof.
-  intros.
-  simpl.
-  mysimp.
-Admitted.
-
 Definition remove_subst_by_id' : forall  (i : id) (s : substitution), {s' : substitution | forall u, i <> u -> apply_subst s' (var u) = apply_subst s (var u)}.
   refine (fix remove_subst_by_id' (i : id) (s : substitution) : {s' : substitution |  forall u, i <> u -> apply_subst s' (var u) = apply_subst s (var u)} :=
   match s with
@@ -266,33 +366,90 @@ Fixpoint remove_subst_by_id (i : id) (s : substitution) : substitution :=
   | (j, t)::s' => if (eq_id_dec i j) then remove_subst_by_id i s' else (j, t)::remove_subst_by_id i s'
   end.                                                                           
 
+Fixpoint fold_s (s : substitution) :=
+  match s with
+  | nil => nil
+  | (i, t)::s' =>  (i, apply_subst s' t)::(remove_subst_by_id i (fold_s s'))
+end.
+
+Lemma apply_subst2_nil : forall tau, apply_subst2 nil tau = tau.
+Proof.
+  intros.
+  induction tau; mysimp.
+  rewrite IHtau1, IHtau2.
+  reflexivity.
+Qed.
+
 Lemma remove_subst_by_id_not_in_subst : forall i s, id_in_subst i (remove_subst_by_id i s) = None.
 Proof.
   intros;
   induction s; mysimp.
 Qed.
 
-Definition add_subst (i : id) (tau : ty) (s : substitution) (j : id) : substitution :=
-  if eq_id_dec i j then (remove_subst_by_id i s) ++ [(i, tau)] else s.
+
+Lemma remove_subst_diff : forall i j s, i <> j -> find_subst (remove_subst_by_id i s) j = find_subst s j. 
+Proof.
+  intros.
+  induction s; mysimp.
+Qed.
+  
+
+Lemma apply_subst2_arrow_inversion1 : forall s tau1 tau2, apply_subst s (Unify.arrow tau1 tau2) = apply_subst2 (fold_s s) (Unify.arrow tau1 tau2) ->
+                                        apply_subst s tau1 = apply_subst2 (fold_s s) tau1.
+Proof.
+  intros.
+  inversion H.
+  rewrite apply_subst_arrow in H1.
+  inversion H1.
+  auto.
+Qed.
+
+Lemma apply_subst2_arrow_inversion2 : forall s tau1 tau2, apply_subst s (Unify.arrow tau1 tau2) = apply_subst2 (fold_s s) (Unify.arrow tau1 tau2) ->
+                                        apply_subst s tau2 = apply_subst2 (fold_s s) tau2.
+Proof.
+  intros.
+  inversion H.
+  rewrite apply_subst_arrow in H1.
+  inversion H1.
+  auto.
+Qed.
+  
+Lemma apply_subst2_subst : forall s tau, apply_subst s tau = apply_subst2 (fold_s s) tau.
+Proof.
+  intros.
+  induction s. mysimp.
+  symmetry.
+  apply apply_subst2_nil.
+  destruct a.
+  simpl.
+  induction tau. mysimp.
+  rewrite IHs.
+  simpl.
+  erewrite remove_subst_diff; auto.
+  simpl.
+  rewrite apply_subst_con.
+  reflexivity.
+  mysimp.
+  rewrite apply_subst_arrow.
+  fequals.
+  apply IHtau1.
+  apply apply_subst2_arrow_inversion1 in IHs.
+  auto.
+  apply apply_subst2_arrow_inversion2 in IHs.
+  auto.
+Qed.                                                                               
 
 Lemma add_subst_rewrite_for_modified_stamp' : forall (s : substitution) (i : id) (tau : ty),
-    apply_subst (add_subst i tau s i) (var i) = apply_subst [(i, tau)] (var i).
+    (apply_subst2 ((i, tau)::s) (var i)) = tau.
   intros.
-  pose proof (remove_subst_by_id_not_in_subst i s).
-  eapply apply_subst_app1 in H. 
-  unfold add_subst.
-  mysimp.
-  rewrite H.
   mysimp.
 Qed.
 
-Lemma add_subst_rewrite_for_unmodified_stamp' : forall (s : substitution) (i : id) (tau : ty) j,
-    i <> j ->
-    apply_subst (add_subst i tau s j) (var j) = apply_subst s (var j).
-  intros.
-  unfold add_subst.
-  mysimp.
+Lemma add_subst_rewrite_for_unmodified_stamp' : forall (s : substitution) (i j : id) (tau : ty),
+    i <> j -> (apply_subst2 ((i, tau):: s)) (var j) = apply_subst2 s (var j).
+  intros; induction s; mysimp.
 Qed.
+
 
 (*
 Lemma remove_subst_same : forall i s, (proj1_sig (remove_subst_by_id' i s)) = remove_subst_by_id i s.
@@ -328,14 +485,33 @@ Proof.
   Admitted.
 
 *)
+Lemma apply_subst_arrow2 : forall s l r, apply_subst2 s (Unify.arrow l r) = Unify.arrow (apply_subst2 s l) (apply_subst2 s r).
+Proof.
+  induction s ; mysimp.
+Qed.
+
+Lemma new_tv_schm_apply_subst2 : forall i tau s sigma, new_tv_schm sigma i ->
+                                                  apply_subst_schm2 ((i, tau) :: s) sigma = apply_subst_schm2 s sigma.
+Proof.
+  intros.
+  induction s;
+  mysimp.
+  Admitted.
+
+Lemma new_tv_ctx_apply_subst_ctx2 : forall st tau s G, new_tv_ctx G st -> apply_subst_ctx2 ((st, tau) :: s) G = apply_subst_ctx2 s G.
+Proof.
+  Admitted.
 
 Lemma add_subst_add_ctx : forall (G : ctx) (s : substitution) (x : id) (st : id) (tau : ty),
-       new_tv_ctx G st -> apply_subst_ctx  (add_subst st tau s st) ((x, sc_var st)::G) =  (x, (ty_to_schm tau)) :: (apply_subst_ctx s G).
+    new_tv_ctx G st -> apply_subst_ctx2 ((st, tau)::s) ((x, sc_var st)::G) =  (x, (ty_to_schm tau)) :: (apply_subst_ctx2 s G).
+Proof.
+  intros.
+  mysimp.
 Admitted.
 
 Program Fixpoint W_hoare (e : term) (G : ctx) {measure (sizeTerm e)} :
   @HoareState id (fun i => new_tv_ctx G i) (ty * substitution)
-              (fun i x f =>  has_type (apply_subst_ctx (snd x) G) e (fst x) /\ completeness e G (fst x) (snd x) i) :=
+              (fun i x f =>  has_type (apply_subst_ctx2 ((snd x)) G) e (fst x) /\ completeness e G (fst x) ((snd x)) i) :=
   match e with
   | const_t x =>
             sigma <- look_dep x G ;
@@ -350,7 +526,7 @@ Program Fixpoint W_hoare (e : term) (G : ctx) {measure (sizeTerm e)} :
   | lam_t x e' =>
               alpha_G' <- @addFreshCtx G x ;
               tau_s <- @W_hoare e' (snd alpha_G') _ ;
-              ret ((Unify.arrow (apply_subst (snd tau_s) (var (fst alpha_G'))) (fst tau_s)), snd tau_s)
+              ret ((Unify.arrow (apply_subst2 ((snd tau_s)) (var (fst alpha_G'))) (fst tau_s)), (snd tau_s))
 
   | app_t l r =>
               tau1_s1 <- @W_hoare l G _ ;
@@ -372,7 +548,7 @@ Next Obligation.
   crushAssumptions.
   split.
   (* Case: var soundness  *)
-  - econstructor. rewrite apply_subst_ctx_nil. subst. apply H2. unfold is_schm_instance. exists t1. assumption.
+  - econstructor. rewrite apply_subst_ctx_nil2. apply H2. subst. unfold is_schm_instance. exists (compute_inst_subst x2 (max_gen_vars x1)). assumption.
   (* Case: var completeness *)
   - subst.
     unfold completeness.
@@ -397,9 +573,9 @@ Next Obligation.
         subst.
         assumption.
     + intros.
-      simpl.
-      symmetry.
-      eapply apply_app_compute_subst.
+      rewrite apply_subst_nil2.
+      rewrite apply_app_compute_subst.
+      reflexivity.
       assumption.
 Defined.
 Next Obligation. (* Case: properties used in var *)
@@ -410,7 +586,7 @@ Next Obligation.
   crushAssumptions.
   split.
   (* Case: var soundness  *)
-  - eapply var_ht. rewrite apply_subst_ctx_nil. subst. apply H2. unfold is_schm_instance. exists t1. assumption.
+  - econstructor. rewrite apply_subst_ctx_nil2. apply H2. subst. unfold is_schm_instance. exists (compute_inst_subst x2 (max_gen_vars x1)). assumption.
   (* Case: var completeness *)
   - subst.
     unfold completeness.
@@ -435,9 +611,9 @@ Next Obligation.
         subst.
         assumption.
     + intros.
-      simpl.
-      symmetry.
-      eapply apply_app_compute_subst.
+      rewrite apply_subst_nil2.
+      rewrite apply_app_compute_subst.
+      reflexivity.
       assumption.
 Defined.
 Next Obligation. 
@@ -453,93 +629,70 @@ Next Obligation. (* Case: lam soundness  *)
   destruct (W_hoare e' (((x, sc_var x0)) :: G) _ >>= _).
   simpl.
   crushAssumptions.
-  assert (has_type (apply_subst_ctx t1 G) (lam_t x e') (Unify.arrow (apply_subst t1 (var x0)) x1)) as Hsound.
-  {
+  split.
+  - 
     subst.
+    clear W_hoare.
+    econstructor.
     simpl in H0.
     rename t1 into s'.
     rename x1 into tau.
     assert (sc_var x0 = ty_to_schm (var x0)).
     { reflexivity. }
-    rewrite H1 in H0.
-    rewrite ty_to_subst_schm in H0.
-    econstructor.
-    assumption. }
-  split.
-  - apply Hsound.
-  - subst.
-    clear W_hoare.
-    unfold completeness. 
-    intros.
-    inversion_clear H1.
-    cut (exists s' : substitution,
-            tau'0 = apply_subst s' x1 /\
-            (forall x' : id, x' < S x0 -> apply_subst (add_subst x0 tau phi x') (var x') = apply_subst s' (apply_subst t1 (var x')))).
-    intros.
-    destruct H1; auto.
-    destruct H1; auto.
-    exists x2.
-    splits.
-    rewrite apply_subst_arrow.
-    fequals.
-    
-    erewrite <- H4.
-    (* aqui *)
-    symmetry.
-    assert (apply_subst [(x0, tau)] (var x0) = tau). { mysimp. }
-    rewrite <- H5 at 2.
-    rewrite add_subst_rewrite_for_modified_stamp'.
-    reflexivity.
-    auto.
-
-    intros.
-    rewrite apply_subst_append.
-    erewrite <- H4; auto.
-    symmetry.
-    erewrite add_subst_rewrite_for_unmodified_stamp'; auto.
-    omega.
-
-    unfold completeness in H3.
-    edestruct H3.
-    erewrite add_subst_add_ctx. 
-    apply H2. assumption.
-
-    (* aqui *)
-
-    exists x2.
-    destruct H1.
-    split. intros; eauto.
-    intros.
-    apply H4 in H5 as H4'.
-    erewrite <- apply_subst_append.
-    apply lt_n_Sm_le in H5.
-    apply le_lt_eq_dec in H5.
-    destruct H5.
-    erewrite <- H4'.
-    erewrite add_subst_rewrite_for_unmodified_stamp'; auto.
-    unfold add_subst.
-    mysimp.
-    erewrite add_subst_rewrite_for_unmodified_stamp'; auto.
-    
-    rewrite <- H4'; eauto.
-    fequals.
-    fequals.
-    
-    reflexivity.
-    rewrite add_subst_rewrite_for_unmodified_stamp'.
-    erewrite <- H3.
-    rewrite add_subst_rewrite_for_unmodified_stamp'.
-    apply H3 in H4.
+    cases (find_subst s' x0);
     assumption.
+  - subst.
+      unfold completeness. 
+      intros.
+      inversion_clear H1.
+      cut (exists s' : substitution,
+              tau'0 = apply_subst2 s' x1 /\
+              (forall x' : id, x' < S x0 ->  apply_subst2 (((x0, tau):: phi)) (var x') = apply_subst2 s' (apply_subst2 t1 (var x'))) ) .
+      intros.
+      destruct H1; auto.
+      destruct H1; auto.
+      exists x2.
+      split.
+      * rewrite apply_subst_arrow2.
+        rewrite H1 at 1.
+        specialize H4 with (x' := x0).
+        simpl in H4.
+        destruct (eq_id_dec x0 x0); intuition.
+        destruct (find_subst t1 x0).
+        rewrite H4; auto.
+        fequals; eauto.
+      * intros.
+        rewrite <- H4.
+        (* aqui *)
+        erewrite add_subst_rewrite_for_unmodified_stamp'; eauto.
+        omega.
+        omega.
+      * unfold completeness in H3.
+        specialize H3 with (phi := (x0, tau)::phi).
+        edestruct H3.
+        assert (sc_var x0 = ty_to_schm (var x0)). auto.
+        erewrite <- add_subst_add_ctx in H2. 
+        apply H2.
+        assumption.
+        exists x2.
+        assumption.
 Defined.
-Next Obligation. (* Case: properties used in lam completeness  *)
+Next Obligation. 
   simpl.
   Admitted.
 Next Obligation.
   Admitted.
 Next Obligation.
+  intros; splits; auto.
+  intros; splits; auto.
+  mysimp.
     Admitted.
 Next Obligation.
+  intros.
+  destruct (W_hoare l G _ >>= _).
+  crushAssumptions.
+  subst.
+  intros; splits; auto.
     Admitted.
 Next Obligation.
     Admitted.
