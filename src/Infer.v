@@ -530,14 +530,32 @@ Program Definition apply_subst2_M (s : substitution) (tau : ty) : @HoareState id
   ret (apply_subst2 s tau).
 
 Program Definition unify (tau1 tau2 : ty) : @HoareState id (@top id) substitution
-(fun i mu f => i = f /\ (forall s', exists s'', (forall v : id, apply_subst2 s' tau1 = apply_subst2 s' tau2 ->
-             apply_subst2 s' (var v) = apply_subst2 (compose_subst (fold_s mu) s'') (var v)))) :=
+(fun i mu f => i = f /\ (forall s', apply_subst2 (fold_s s') tau1 = apply_subst2 (fold_s s') tau2 ->
+             exists s'', forall v, apply_subst2 (fold_s s') (var v) = apply_subst2 (compose_subst (fold_s mu) s'') (var v))) :=
   match unify_simple_dep tau1 tau2 as y  with
   | existT _ c (inleft _ (exist _ mu HS)) => ret mu
   | existT _ c _ => failT _
   end.
 Next Obligation.
-  Admitted.
+  clear Heq_y.
+  split; auto.
+  intros.
+  rewrite <- apply_subst2_subst in H0.
+  rewrite <- apply_subst2_subst in H0.
+  edestruct e.
+  split. apply H0. auto.
+  exists (fold_s x0).
+  intros.
+  rewrite apply_subst2_fold.
+  rewrite apply_subst2_fold.
+  rewrite composition_subst2.
+  rewrite <- apply_subst2_subst.
+  rewrite <- apply_subst2_subst.
+  rewrite <- apply_subst2_subst.
+  rewrite <- apply_subst_append. 
+  rewrite <- H1.
+  reflexivity.
+Defined.
     
 Lemma add_subst_rewrite_for_modified_stamp : forall (s : substitution) (i : id) (tau : ty),
     (apply_subst2 ((i, tau)::s) (var i)) = tau.
@@ -625,9 +643,8 @@ Program Fixpoint W_hoare (e : term) (G : ctx) {measure (sizeTerm e)} :
               tau1_s1 <- @W_hoare l G _ ;
               tau2_s2 <- @W_hoare r (apply_subst_ctx2 (snd tau1_s1) G) _ ;
               alpha <- fresh ;
-              s <- unify (apply_subst (snd tau2_s2) (fst tau1_s1)) (Unify.arrow (fst tau2_s2) (var alpha)) ;
-              tau_r' <- apply_subst2_M (fold_s s) (var alpha) ;
-              ret (tau_r', (snd tau1_s1) ++ (snd tau2_s2) ++ s)
+              s <- unify (apply_subst2 (snd tau2_s2) (fst tau1_s1)) (Unify.arrow (fst tau2_s2) (var alpha)) ;
+              ret (apply_subst2 (fold_s s) (var alpha), (snd tau1_s1) ++ (snd tau2_s2) ++ s)
 
   | let_t x e1 e2  =>
                  tau1_s1 <- @W_hoare e1 G _ ;
@@ -815,13 +832,21 @@ Next Obligation.
     apply COM_L in SOUND_L as PRINC_L.
     destruct PRINC_L as [psi1 PRINC_L].
     unfold completeness in COM_R.
-    cut ((exists psi2, forall x : id, x < S alpha -> apply_subst2 ((alpha, tau_r) :: mu) (var x) = apply_subst2 psi2 (apply_subst2 mu (var x))) ).
-    intros PRINC_R.
-    destruct PRINC_R as [psi2 PRINC_R].
+    edestruct COM_R with (phi:=(alpha, tau_r)::mu).
+    skip.
+    rename H3 into PRINC_R.
+    destruct PRINC_R as [PRINC_R1 PRINC_R2].
     destruct PRINC_L as [PRINC_L1 PRINC_L2].
+    sort.
+
+    rewrite apply_subst2_fold in *.
     
-    specialize MGU with (s':= compose_subst mu psi2).
+    specialize MGU with (s':= psi1).
     destruct MGU as [s_psi MGU].
+    rewrite apply_subst2_fold.
+    rewrite <- apply_subst_arrow2.
+    fequals.
+    destruct tauLR; intuition.
     exists s_psi.
     splits.
     + 
