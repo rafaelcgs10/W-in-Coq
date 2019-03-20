@@ -416,11 +416,13 @@ Fixpoint remove_subst_by_id (i : id) (s : substitution) : substitution :=
   | (j, t)::s' => if (eq_id_dec i j) then remove_subst_by_id i s' else (j, t)::remove_subst_by_id i s'
   end.                                                                           
 
-Fixpoint fold_s (s : substitution) :=
+Fixpoint fold_s' (s : substitution) :=
   match s with
   | nil => nil
-  | (i, t)::s' =>  (i, apply_subst s' t)::(remove_subst_by_id i (fold_s s'))
+  | (i, t)::s' =>  (i, apply_subst s' t)::(fold_s' s')
 end.
+
+Definition fold_s s := (fold_s' s) ++ s.
 
 Program Definition getProof (G : ctx) : {tau : id | new_tv_ctx G tau}.
 Admitted.
@@ -499,14 +501,13 @@ Proof.
   symmetry.
   destruct a.
   simpl.
-  induction tau. mysimp.
-  rewrite IHs.
-  simpl.
-  erewrite remove_subst_diff; auto.
+  induction tau.
+  (*
+  mysimp.
   simpl.
   rewrite apply_subst_con.
   reflexivity.
-  mysimp.
+  simpl.
   rewrite apply_subst_arrow.
   fequals.
   apply IHtau1.
@@ -515,6 +516,8 @@ Proof.
   apply apply_subst2_arrow_inversion2 in IHs.
   auto.
 Qed.                                                                               
+   *)
+  Admitted.
 
 Hint Resolve apply_subst2_subst.
 
@@ -529,6 +532,26 @@ Hint Rewrite apply_subst2_fold : subst.
 Program Definition apply_subst2_M (s : substitution) (tau : ty) : @HoareState id (@top id) ty (fun i s' f => i = f /\ s' = apply_subst2 s tau) :=
   ret (apply_subst2 s tau).
 
+Fixpoint last_half i s  : substitution :=
+  match i with
+  | S (S i') => last_half i' (tail s)
+  | S i' => s
+  | 0 => s
+  end.
+
+Definition unfold_s s :=
+  let le := List.length s in last_half le s.
+
+Lemma unfold_fold : forall tau s, apply_subst s tau = apply_subst2 (unfold_s (fold_s s)) tau.
+  Admitted.
+
+Definition black_magic (s : substitution) : substitution.
+Admitted.
+
+Lemma magic : forall s tau1 tau2, apply_subst2 s tau1 = apply_subst2 s tau2 ->
+                             apply_subst (black_magic s) tau1 = apply_subst (black_magic s) tau2.
+Admitted.
+
 Program Definition unify (tau1 tau2 : ty) : @HoareState id (@top id) substitution
 (fun i mu f => i = f /\ (forall s', apply_subst2 (fold_s s') tau1 = apply_subst2 (fold_s s') tau2 ->
            exists s'', forall v, apply_subst2 (fold_s s') (var v) = apply_subst2 (compose_subst mu s'') (var v)) ) :=
@@ -540,17 +563,20 @@ Next Obligation.
   clear Heq_y.
   splits; auto.
   intros.
-  repeat rewrite <- apply_subst2_subst in H0.
   edestruct e.
-  split. apply H0. auto.
+  split.
+  eapply magic. 
+  apply H0. auto.
   exists (fold_s x0).
   intros.
   repeat rewrite apply_subst2_fold.
   rewrite composition_subst2.
   repeat rewrite <- apply_subst2_subst.
+  rewrite apply_subst2_subst.
   rewrite <- apply_subst_append. 
+  rewrite <- H1.
   auto.
-Defined.
+Admitted.
     
 Lemma add_subst_rewrite_for_modified_stamp : forall (s : substitution) (i : id) (tau : ty),
     (apply_subst2 ((i, tau)::s) (var i)) = tau.
@@ -688,9 +714,12 @@ Proof.
   assert (new_tv_subst s st). { eauto. }
                               apply IHs in H0.
   repeat rewrite apply_subst2_fold.
+  (*
   rewrite apply_subst_remove_diff;
   assumption.
 Qed.
+   *)
+  Admitted.
 
 Lemma new_tv_subst_trans : forall (s : substitution) (i1 i2 : id),
   new_tv_subst s i1 -> i1 <= i2 -> new_tv_subst s i2.
@@ -901,7 +930,7 @@ Next Obligation.
     clear W_hoare.
     rename H17 into MGU.
     rename i3 into alpha.
-    rename H6 into COM_L, H11 into COM_R.
+    rename H6 into COM_L, H12 into COM_R.
     rename s0 into mu, s into s1, s1 into s2.
     rename tau1 into tauL, tau into tauLR.
     (*aqui *)
@@ -916,30 +945,25 @@ Next Obligation.
     destruct PRINC_L as [psi1 PRINC_L].
     unfold completeness in COM_R.
     destruct PRINC_L as [PRINC_L1 PRINC_L2].
-    cut (exists psi2, new_tv_subst psi2 st /\ (tau_l = apply_subst2 (fold_s psi2) tauL /\
-                 forall x0 : id, x0 < st -> apply_subst2 psi1 (var x0) = apply_subst2 (fold_s (psi2 ++ [(alpha, tau_r)])) (apply_subst2 s2 (var x0)))).
+    cut (exists psi2, (tau_l = apply_subst2 psi2 tauL /\
+                 forall x0 : id, x0 < st -> apply_subst2 psi1 (var x0) = apply_subst2 psi2 (apply_subst2 s2 (var x0)))).
     intros PRINC_R.
     destruct PRINC_R as [psi2 PRINC_R].
-    destruct PRINC_R as [PRINC_R0 [PRINC_R1 PRINC_R2]].
+    destruct PRINC_R as [PRINC_R1 PRINC_R2].
     sort.
 
     
-    specialize MGU with (s':= psi2 ++ [(alpha, tau_r)]).
+    specialize MGU with (s':= ((alpha, tau_r)::psi2)).
     destruct MGU as [s_psi MGU].
     { repeat rewrite apply_subst2_fold.
-      erewrite (add_subst_new_tv_type psi2 alpha tauL); eauto.
-      erewrite <- PRINC_R1; eauto.
+      (*aqui 1 *)
       erewrite <- new_tv_compose_subst_type; eauto.
+      skip.
+      (*
       rewrite <- PRINC_L1; eauto.
-      rewrite append_subst_rewrite_for_modified_stamp; eauto.
-      - eapply new_tv_subst_trans.
-        apply PRINC_R0.
-        omega.
-      - eapply new_tv_subst_trans.
-        apply PRINC_R0.
-        omega.
-      }
-    
+      fequals; auto.
+       *)
+    }
     exists s_psi.
     split.
     +
@@ -947,14 +971,11 @@ Next Obligation.
       specialize MGU with (v := alpha).
       repeat rewrite apply_subst2_fold in MGU.
       erewrite <- MGU.
-      rewrite append_subst_rewrite_for_modified_stamp.
+      rewrite add_subst_rewrite_for_modified_stamp.
       reflexivity.
-      eapply new_tv_subst_trans.
-      apply PRINC_R0.
-      omega.
     + skip.
-    +
-  -
+    + eapply COM_R.
+      skip.
      (* aqui *)
 Next Obligation.
     Admitted.
