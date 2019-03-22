@@ -813,6 +813,26 @@ Definition unify_type (c : constraints) := wf_constraints c ->
 
 Unset Implicit Arguments.
 
+Lemma constraints_mk_inversion : forall t1 t2 C l, get_tys l = (t1, t2) -> get_ctxt l = C ->
+                                            l = mk_constraints C (fst (get_tys l)) (snd (get_tys l)).
+Proof.
+  intros.
+  induction l. mysimp.
+  destruct p.
+  simpl in *.
+  unfold mk_constraints.
+  subst.
+  reflexivity.
+Defined.
+
+Lemma arrow_lt_constraints: forall l l1 l2 r1 r2,
+    constraints_lt (mk_constraints l l1 l2) (mk_constraints l (arrow l1 r1) (arrow l2 r2)).
+Proof.
+  intros ; apply right_lex ; auto.
+  simpl.
+  omega.
+Defined.
+
 Program Fixpoint unify' (l : constraints) {wf constraints_lt l} : unify_type l :=
   fun wfl => match get_tys l with
   | (var i, t) => match occurs_dec i t with
@@ -864,7 +884,12 @@ simpl in wfl.
 destruct wfl.
 Admitted.
 Next Obligation.
-Admitted.
+  intros; splits; intros; mysimp.
+  reflexivity.
+  exists s'.
+  rewrite compose_subst_nil1.
+  intros. reflexivity.
+Defined.
 Next Obligation.
 Admitted.
 Next Obligation.
@@ -876,8 +901,13 @@ simpl in wfl.
 destruct wfl.
 destruct H.
 destruct H0.
-unfold constraints_lt.
-Admitted.
+erewrite constraints_mk_inversion with (C := get_ctxt l).
+repeat rewrite <- Heq_anonymous.
+simpl.
+eapply arrow_lt_constraints.
+symmetry. apply Heq_anonymous.
+reflexivity.
+Defined.
 Next Obligation.
 unfold wf_constraints in *.
 rewrite <- Heq_anonymous in wfl.
