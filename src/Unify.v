@@ -469,15 +469,17 @@ Qed.
    and t is a well-formed type with respect to C, s t is
    a well-formed type with respect to C - (dom s) *)
 
+(*
 Lemma substs_remove : forall s C t , wf_subst C s ->
                                      wf_ty C t ->
                                      wf_ty (minus C (dom s)) (apply_subst s t).
 Proof.
   induction s ; mysimp ; intros ; mysimp.
-  generalize (IHs (remove a C)) ; rewrite minus_remove ; intros ; auto.
+  generalize (IHs (remove a C)) ; rewrite minus_remove ; intros ; info_auto.
 Qed.
+*)
 
-Hint Resolve substs_remove.
+(* Hint Resolve substs_remove. *)
 
 Lemma minus_arrow : forall (C : varctxt) s v t, minus C (dom (s ++ (v,t) :: nil)) = remove v (minus C (dom s)).
 Proof.

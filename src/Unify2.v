@@ -4,7 +4,7 @@ Require Import Arith.Arith_base List Omega.
 Require Import Wellfounded.Lexicographic_Product.
 Require Import Relation_Operators.
 Require Import Coq.Setoids.Setoid.
-
+Require Import Program.
 Require Import LibTactics.
 
 (** * Type Definitions *)
@@ -67,29 +67,6 @@ Fixpoint size (t : ty) : nat :=
   match t with
     | arrow l r => 1 + size l + size r
     | _ => 1
-  end.
-
-(** * Definition of Constraints **)
-
-(** A constraint is just a pair of types *)
-
-Definition constr := (ty * ty)%type.
-
-(** A constraint list is just a list of pairs *)
-
-Definition list_constr := list constr.
-
-(** Measures of constraints follows direct from the type size definition *)
-
-Definition constr_size (c : constr) : nat :=
-  match c with
-    (t,t') => size t + size t'
-  end.
-
-Fixpoint list_measure (l : list_constr) : nat :=
-  match l with
-    | nil => 0
-    | p :: l => constr_size p + list_measure l
   end.
 
 (** * Context of Type Variables **)
@@ -286,11 +263,7 @@ Proof.
       auto.
 Qed.
 
-Fixpoint wf_constr_list (C : varctxt) (l : list_constr)  : Prop :=
-  match l with
-    | nil => True
-    | (t,t') :: C' => wf_ty C t /\ wf_ty C t' /\ wf_constr_list C C'
-  end.
+Definition wf_tys (C : varctxt) (t1 t2 : ty)  : Prop := wf_ty C t1 /\ wf_ty C t2.
 
 (** * The "Real" Constraint definition *)
 
@@ -299,29 +272,34 @@ Fixpoint wf_constr_list (C : varctxt) (l : list_constr)  : Prop :=
     This is needed for a simple termination argument
     for the unification algorithm. **)
 
-Definition constraints := sigT (fun _ : varctxt => list_constr).
+Definition constraints := sigT (fun _ : varctxt => (ty * ty)%type).
 
 Definition get_ctxt(c : constraints) : varctxt := let (v,_) := c in v.
-Definition get_list_constr(c : constraints) : list_constr := let (_,l) := c in l.
-Definition mk_constraints(C : varctxt)(l : list_constr) : constraints := existT _ C l.
+Definition get_tys(c : constraints) : (ty * ty)%type := let (_,l) := c in l.
+Definition mk_constraints(C : varctxt) (t1 t2 : ty) : constraints := existT _ C (t1, t2).
+
+Definition size_t (t : (ty * ty)) : nat :=
+  match t with
+  | (t1, t2) => size t1 + size t2
+  end.
 
 (** ** Constraint ordering *)
 
 (** A strict order on constraints. Here we use the library definition of lexicographic orderings. *)
 
 Definition constraints_lt : constraints -> constraints -> Prop :=
-  lexprod varctxt (fun _ => list_constr)
+  lexprod varctxt (fun _ => (ty * ty)%type)
           (fun (x y : varctxt) => length x < length y)
-          (fun (x : varctxt) (l l' : list_constr) => list_measure l < list_measure l').
+          (fun (x : varctxt) (t t' : (ty * ty)%type) => size_t t < size_t t').
 
 (** A proof that the order is well-founded *)
 
 Definition well_founded_constraints_lt : well_founded constraints_lt :=
-  @wf_lexprod varctxt (fun _ : varctxt => list_constr)
+  @wf_lexprod varctxt (fun _ : varctxt => (ty * ty)%type)
               (fun (x y : varctxt) => length x < length y)
-              (fun (x : varctxt) (l l' : list_constr) => list_measure l < list_measure l')
+              (fun (x : varctxt) (l l' : (ty * ty)%type) => size_t l < size_t l')
               (well_founded_ltof varctxt (@length id))
-              (fun _ => well_founded_ltof list_constr list_measure).
+              (fun _ => well_founded_ltof (ty * ty)%type size_t).
 
 (** * Occurs-check test *)
 
@@ -428,14 +406,6 @@ Fixpoint wf_subst (C : varctxt) (s : substitution) : Prop :=
   match s with
     | nil => True
     | (v,t) :: s' => member C v /\ wf_ty (remove v C) t /\ wf_subst (remove v C) s'
-  end.
-
-(** Substitution application in constraints *)
-
-Fixpoint apply_subst_constraint (s : substitution) (l : list_constr) : list_constr :=
-  match l with
-    | nil => nil
-    | (t,t1) :: l' => (apply_subst s t , apply_subst s t1) :: apply_subst_constraint s l'
   end.
 
 (** Removing a list of names from a given variable context. *)
@@ -583,8 +553,7 @@ Admitted.
 
 Lemma apply_subst_end : forall s v t t', apply_subst (compose_subst s ((v,t)::nil)) t' = apply_subst ((v, t)::nil) (apply_subst s t').
 Proof.
-  induction s ; intros; mysimp; repeat rewrite apply_compose_subst_nil1;
-    repeat rewrite apply_subst_nil; try reflexivity.
+  induction s ; intros; mysimp; repeat rewrite apply_compose_subst_nil1. repeat rewrite apply_subst_nil; try reflexivity.
 Admitted.
   
 Hint Resolve apply_subst_end.
@@ -600,21 +569,61 @@ Proof.
 Qed.
 *)
 
-
-(** If s is a well-formed substitution with respect to C,
-   and t is a well-formed type with respect to C, s t is
-   a well-formed type with respect to C - (dom s) *)
-
-Lemma substs_remove : forall s C t , wf_subst C s ->
-                                     wf_ty C t ->
-                                     wf_ty (minus C (dom s)) (apply_subst s t).
+Lemma member_remove_false : forall i C, member (remove i C) i -> False.
 Proof.
-  induction s ; mysimp ; intros ; mysimp. autorewrite with subst using congruence.
-  induction t0; mysimp.
-  generalize (IHs (remove a C)) ; rewrite minus_remove ; intros ; auto.
+  intros.
+  induction C;
+    mysimp.
+  simpl in H.
+  cases (eq_id_dec a i). auto.
+  simpl in H. cases (eq_id_dec a i); intuition.
 Qed.
 
-Hint Resolve substs_remove.
+Lemma wf_ty_var : forall i C, member C i <-> wf_ty C (var i).
+Proof.
+  split.
+  intros.
+  induction C.
+  inversion H.
+  simpl in *.
+  mysimp.
+  intros.
+  induction C.
+  inversion H.
+  simpl in *.
+  mysimp.
+Qed.
+
+Lemma wf_ty_var_false : forall i C, wf_ty (remove i C) (var i) -> False.
+Proof.
+  intros.
+  induction C; mysimp.
+  simpl in H.
+  cases (eq_id_dec a i).
+  auto.
+  simpl in H.
+  cases (eq_id_dec a i); intuition.
+Qed.
+  
+  
+Lemma subst_remove_single : forall a C t t0, wf_ty (remove a C) t -> wf_ty C t -> wf_ty C t0 ->
+                                     wf_ty (remove a C) (apply_subst ((a, t0)::nil) t).
+Proof.
+  intros.
+  induction t.
+  simpl in *. cases (eq_id_dec a i).
+  subst. apply member_remove_false in H. contradiction.
+  apply wf_ty_var.
+  assumption.
+  mysimp.
+  simpl in *.
+  destruct H, H0.
+  split;
+  auto.
+Qed.
+
+Lemma wf_subst_remove_inversion : forall i C s, wf_subst (remove i C) s -> wf_subst C s.
+  Admitted.
 
 Lemma wf_subst_last (s : substitution) : forall x t C, wf_subst C s ->
   member (minus C (dom s)) x -> wf_ty (remove x (minus C (dom s))) t ->
@@ -644,27 +653,9 @@ Hint Resolve wf_subst_arrowend.
 
 (** ** Termination Proof Lemmas *)
 
-Lemma lt_list_constr_lt_measure : forall t t' l, list_measure l < list_measure ((t,t') :: l).
+Lemma arrow_lt_size_t : forall l l' r r', size_t (l, l') + size_t (r, r') < size_t (arrow l r, arrow l' r').
 Proof.
-  induction t ; destruct t' ; intros ; simpl in * ; mysimp.
-Qed.
-
-Hint Resolve lt_list_constr_lt_measure.
-
-Lemma lt_list_constr_lt_constraints : forall t t' C l, constraints_lt (mk_constraints C l) (mk_constraints C ((t,t') :: l)).
-Proof.
-  intros ; apply right_lex ; auto.
-Qed.
-
-Lemma arrow_lt_measure : forall l l' r r' lc, list_measure ((l,l') :: (r, r') :: lc) < list_measure ((arrow l r, arrow l' r') :: lc).
-Proof.
-  intros ; induction lc ; mysimp ; try omega.
-Qed.
-
-Lemma arrow_lt_constraints : forall l l' r r' lc C, constraints_lt (mk_constraints C ((l,l') :: (r,r') :: lc))
-                                                                 (mk_constraints C ((arrow l r, arrow l' r') :: lc)).
-Proof.
-  intros ; apply right_lex ; mysimp ; try omega.
+  intros ; mysimp ; try omega.
 Qed.
 
 Lemma non_member_remove_length : forall C v, ~ member C v -> length (remove v C) = length C.
@@ -682,25 +673,6 @@ Proof.
 Qed.
 
 Hint Resolve remove_varctxt_length.
-
-Lemma varctxt_lt_constraints_varl :
-  forall C v t l, member C v ->
-                  constraints_lt (mk_constraints (remove v C) (apply_subst_constraint ((v,t) :: nil) l))
-                                 (mk_constraints C ((var v, t) :: l)).
-Proof.
-  intros ; apply left_lex ; auto.
-Defined.
-
-Lemma varctxt_lt_constraints_varr :
-  forall C v t l, member C v ->
-                  constraints_lt (mk_constraints (remove v C) (apply_subst_constraint ((v,t) :: nil) l))
-                                 (mk_constraints C ((t, var v) :: l)).
-Proof.
-  intros ; apply left_lex ; auto.
-Defined.
-
-Hint Resolve lt_list_constr_lt_constraints arrow_lt_constraints
-             varctxt_lt_constraints_varl varctxt_lt_constraints_varr.
 
 (** ** Relating occurs check and well formedness of types *)
 
@@ -732,6 +704,7 @@ Proof.
     try (rewrite IHt1 ; auto). try (rewrite IHt2 ; auto).
 Qed.
 
+(*
 Lemma ext_subst_ty_var : forall s s', (forall t, apply_subst s t = apply_subst s' t) ->
                                       forall v, apply_subst s (var v) = apply_subst s' (var v).
 Proof.
@@ -740,76 +713,58 @@ Qed.
 
 
 Hint Resolve ext_subst_var_ty ext_subst_ty_var.
+*)
 
-Lemma sub_occurs : forall t v u, ~ occurs v u -> u = sub t v u.
+Lemma subst_occurs : forall t v u, ~ occurs v u -> u = apply_subst ((v, t)::nil) u.
 Proof.
   induction u ; mysimp ; intros ; try firstorder ; try congruence.
 Qed.
 
-Hint Resolve sub_occurs.
+Hint Resolve subst_occurs.
 
 (** * Specification of the Unification Algorithm *)
 
-Inductive UnifyFailure : list_constr -> Prop :=
-  | occ_fail  : forall v t lc, occurs v t -> UnifyFailure (((var v), t) :: lc)
-  | occ_fail'  : forall v t lc, occurs v t -> UnifyFailure ((t, (var v)) :: lc)
-  | diff_cons : forall n n' lc, n <> n' -> UnifyFailure (((con n),(con n')) :: lc)
-  | con_arrow   : forall n l r lc, UnifyFailure (((con n),(arrow l r)) :: lc)
-  | arrow_con   : forall n l r lc, UnifyFailure (((arrow l r), (con n)) :: lc)
-  | arrow_left  : forall l l' r r' lc, UnifyFailure ((l,l') :: lc) -> UnifyFailure (((arrow l r), (arrow l' r')) :: lc)
-  | arrow_right  : forall l l' r r' lc, UnifyFailure ((l,l') :: (r, r') :: lc) -> UnifyFailure (((arrow l r), (arrow l' r')) :: lc)
-  | constr_rec : forall t t' l, UnifyFailure l -> UnifyFailure ((t,t') :: l)
-  | subs_rec : forall t t' s l, UnifyFailure (apply_subst_constraint s l) -> UnifyFailure ((t,t') :: l).
+Inductive UnifyFailure : ty -> ty -> Prop :=
+  | occ_fail  : forall v t, occurs v t -> UnifyFailure (var v) t
+  | occ_fail'  : forall v t, occurs v t -> UnifyFailure t (var v)
+  | diff_cons : forall n n', n <> n' -> UnifyFailure (con n) (con n')
+  | con_arrow   : forall n l r, UnifyFailure (con n) (arrow l r)
+  | arrow_con   : forall n l r, UnifyFailure (arrow l r) (con n)
+  | arrow_left  : forall l l' r r', UnifyFailure l l' -> UnifyFailure (arrow l r) (arrow l' r')
+  | arrow_right  : forall l l' r r', UnifyFailure r r' -> UnifyFailure (arrow l r) (arrow l' r') .
 
 Hint Constructors UnifyFailure.
 
 (** ** Definition of a unifier for a list of constraints *)
 
-Fixpoint unifier (cs : list_constr) (s : substitution) : Prop :=
-  match cs with
-    | nil => True
-    | (t,t') :: cs' => apply_subst s t = apply_subst s t' /\ unifier  cs' s
-  end.
+Definition unifier (t1 t2 : ty) (s : substitution) : Prop := apply_subst s t1 = apply_subst s t2.
 
 (** a simple lemma about unifiers and variable substitutions *)
 
-Lemma unifier_arrowend : forall l v t s,
-                         unifier (apply_subst_constraint ((v, t) :: nil) l) s ->
-                         unifier l ((v,t) :: s).
+Lemma unifier_arrowend : forall v t t1 t2 s, unifier (apply_subst ((v, t) :: nil) t1) (apply_subst ((v, t) :: nil) t2) s ->
+                         unifier t1 t2 (compose_subst ((v,t)::nil) s).
 Proof.
-  induction l ; intros ; mysimp ;
-    try (match goal with
-          | [a : constr |- _] => destruct a
-         end) ; simpl in * ; try splits*.
+  intros.
+  unfold unifier in *.
+  repeat rewrite apply_compose_equiv.
+  assumption.
 Defined.
 
 Lemma unify_ty : forall t v t' s, apply_subst s (var v) = apply_subst s t' ->
-                                  apply_subst s t = apply_subst s (sub t' v t).
+                                  apply_subst s t = apply_subst s (apply_subst ((v, t')::nil) t).
 Proof.
   induction t ; intros ; mysimp.
+  fequals*.
 Defined.
 
 Hint Resolve unify_ty.
 
-Lemma unifier_subst : forall l v t s, apply_subst s (var v) = apply_subst s t ->
-                                        unifier l s ->
-                                        unifier (apply_subst_constraint ((v,t) :: nil) l) s.
-Proof.
-  induction l ; intros ; mysimp ;
-    try (match goal with
-          | [a : constr |- _] => destruct a
-         end) ; simpl in * ; mysimp.
-  assert (apply_subst s (var v) = apply_subst s t) ; auto.
-  apply unify_ty with (t := t0) in H.
-  apply unify_ty with (t := t1) in H2.
-  rewrite <- H. rewrite <- H2. auto.
-Defined.
-
-Hint Resolve unifier_arrowend unifier_subst.
+Hint Resolve unifier_arrowend.
 
 Definition wf_constraints (c : constraints) :=
-  wf_constr_list (get_ctxt c) (get_list_constr c).
+  wf_tys (get_ctxt c) (fst (get_tys c)) (snd (get_tys c)).
 
+(*
 Lemma wf_constr_list_remove : forall l C v t, wf_constr_list C l ->
                                                 member C v ->
                                                 ~ occurs v t ->
@@ -820,6 +775,7 @@ Proof.
 Defined.
 
 Hint Resolve wf_constr_list_remove.
+*)
 
 
 (** * Type of the unification algorithm *)
@@ -835,10 +791,10 @@ we can either:
 *)
 
 Definition unify_type (c : constraints) := wf_constraints c ->
-           ({ s | unifier (get_list_constr c) s /\ wf_subst (get_ctxt c) s /\
-             forall s', unifier (get_list_constr c) s' ->
-               exists s'', forall v, apply_subst s' (var v) = apply_subst (s ++ s'') (var v)})
-           + { UnifyFailure (get_list_constr c) }.
+           ({ s | unifier (fst (get_tys c)) (snd (get_tys c)) s /\ wf_subst (get_ctxt c) s /\
+             forall s', unifier (fst (get_tys c)) (snd (get_tys c)) s' ->
+               exists s'', forall v, apply_subst s' (var v) = apply_subst (compose_subst s s'') (var v)})
+           + { UnifyFailure (fst (get_tys c)) (snd (get_tys c)) }.
 
 (** * Main definition of the unification function *)
 
@@ -854,6 +810,122 @@ Definition unify_type (c : constraints) := wf_constraints c ->
    generate the proof terms to the obligations to ensure the well-foundness of the recursive
    calls and to finish the proofs for soundness and completness of the algorithm.*)
 
+
+Unset Implicit Arguments.
+
+Program Fixpoint unify' (l : constraints) {wf constraints_lt l} : unify_type l :=
+  fun wfl => match get_tys l with
+  | (var i, t) => match occurs_dec i t with
+                   | left _ => inright _ 
+                   | right _ => if (eq_ty_dec (var i) t)
+                               then inleft _ (@exist substitution _ nil _) 
+                               else inleft _ (@exist substitution _ ((i, t)::nil) _)
+                   end
+  | (t, var i) => match occurs_dec i t with
+                   | left _ =>  inright _ 
+                   | right _ => if (eq_ty_dec (var i) t)
+                               then inleft _ (@exist substitution _ nil _) 
+                               else inleft _ (@exist substitution _ ((i, t)::nil) _)
+                   end
+  | (con i, con j) => if eq_id_dec i j
+                     then inleft _ (@exist substitution _ nil _) 
+                     else inright _ 
+  | (arrow l1 r1, arrow l2 r2) => match unify' (mk_constraints (get_ctxt l) l1 l2) _ with
+                               | inright E => inright _
+                               | inleft _ (exist _ s1 HS) =>
+                                 match unify' (mk_constraints _ (apply_subst s1 r1) (apply_subst s1 r2)) _ with
+                                 | inright E => inright _
+                                 | inleft _ (exist _ s2 HS') => inleft _ (@exist substitution _ (compose_subst s1 s2) _)
+                                 end
+                               end
+  | _ => inright _
+  end.
+Next Obligation.
+splits; mysimp.
+unfold unifier. reflexivity.
+intros.
+exists s'.
+rewrite compose_subst_nil1.
+intros. reflexivity.
+Defined.
+Next Obligation.
+splits; mysimp.
+unfold unifier. mysimp.
+intros.
+unfold wf_constraints in wfl.
+rewrite <- Heq_anonymous0 in wfl.
+simpl in wfl.
+destruct wfl.
+apply wf_ty_var in H0.
+assumption.
+unfold wf_constraints in wfl.
+rewrite <- Heq_anonymous0 in wfl.
+simpl in wfl.
+destruct wfl.
+Admitted.
+Next Obligation.
+Admitted.
+Next Obligation.
+Admitted.
+Next Obligation.
+Admitted.
+Next Obligation.
+unfold wf_constraints in wfl.
+rewrite <- Heq_anonymous in wfl.
+simpl in wfl.
+destruct wfl.
+destruct H.
+destruct H0.
+unfold constraints_lt.
+Admitted.
+Next Obligation.
+unfold wf_constraints in *.
+rewrite <- Heq_anonymous in wfl.
+simpl in *.
+destruct wfl.
+split.
+Admitted.
+Next Obligation.
+econstructor.
+Defined.
+Next Obligation.
+  simpl.
+Admitted.
+Next Obligation.
+  simpl.
+  unfold wf_constraints in *.
+  clear Heq_anonymous.
+  repeat rewrite <- Heq_anonymous0 in wfl.
+  simpl in wfl.
+  destruct wfl.
+  simpl.
+  splits.
+Admitted.
+Next Obligation.
+  econstructor.
+  simpl in *.
+Admitted.
+Next Obligation.
+  splits; simpl.
+Admitted.
+Next Obligation.
+  Admitted.
+Next Obligation.
+  intros; splits; intros;
+  intuition; inversion H2.
+Defined.
+Next Obligation.
+  intros; splits; intros;
+  intuition; inversion H3.
+Defined.
+Next Obligation.
+  apply well_founded_constraints_lt.
+Defined.
+          
+
+Definition unify_body (l : constraints)
+                      (unify : forall (l'  : constraints), constraints_lt l' l -> unify_type l') : unify_type l.
+intros.
 
 Definition unify_body (l : constraints)
                       (unify : forall (l'  : constraints),
@@ -954,7 +1026,7 @@ Definition unify_body (l : constraints)
                          apply f_equal.
                          rewrite sub_arrow_dist.
                          symmetry.
-                         eapply sub_occurs.
+                         eapply subst_occurs.
                          intro.
                          intuition.
 
