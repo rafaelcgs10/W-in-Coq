@@ -822,7 +822,7 @@ Definition unify_body (l : constraints)
                     end (refl_equal t) (refl_equal t')
               end
        end (refl_equal l)
-     ) ; clear unify ;  unfolds in prf ; simpl in * ; substs ; mysimp ; eauto ; simpl in * ; intros ;
+     ) . Focus  simpl. clear unify ;  unfolds in prf ; simpl in * ; substs ; mysimp ; eauto ; simpl in * ; intros ;
         try (do 2 fequals* ; symmetry ; auto ; fail) ; mysimp ; unfold wf_constraints in * ; simpl in * ; mysimp ;
         try (match goal with
              | [H : apply_subst ?s (arrow _ _) = apply_subst ?s (arrow _ _),
