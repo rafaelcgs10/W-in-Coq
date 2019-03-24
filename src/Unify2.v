@@ -413,7 +413,7 @@ Fixpoint minus (C : varctxt) (xs : list id) : varctxt :=
 Fixpoint wf_subst (C : varctxt) (s : substitution) : Prop :=
   match s with
     | nil => True
-    | (v,t) :: s' => member C v /\ wf_ty (remove v C) t /\ (wf_subst (remove v C) s') /\ (apply_subst s' t = t)
+    | (v,t) :: s' => member C v /\ wf_ty (remove v C) t /\ (wf_subst (remove v C) s') /\ (wf_ty (minus C (dom s)) t)
   end.
 
 Lemma remove_comm : forall x y C, remove x (remove y C) = remove y (remove x C).
@@ -615,8 +615,11 @@ Proof.
   splits; auto.
   simpl in *.
   eapply wf_ty_cons in H0.
+Abort.
+(*
   apply H0.
 Defined.
+*)
 
 Lemma member_diff_inversion : forall a i0 C, a <> i0 -> member (a :: C) i0 -> member C i0.
 Proof.
@@ -679,7 +682,7 @@ Proof.
   rewrite remove_comm in H1.
   eapply IHs.
   apply H1.
-Defined.
+Abort.
 
 Lemma subst_diff_nil_r : forall s, subst_diff nil s = nil.
 Proof.
@@ -1007,9 +1010,12 @@ Proof.
     reflexivity.
     reflexivity.
     destruct H3.
+Abort.
+(*
     apply wf_subst_remove_inversion in H3.
     assumption.
 Qed.
+*)
 
 Lemma remove_minus_cons : forall i a b, (remove i (minus (i :: a) b)) = remove i (minus a b).
 Proof.
@@ -1092,58 +1098,30 @@ Lemma apply_not_chance_not_occurs : forall a t0 s t, ~ occurs a t0 -> apply_subs
   auto.
 Qed.  
 
-Lemma substs_remove_var : forall s C t a, wf_subst C (a::s) ->
-                                     wf_ty C t ->
-                                     wf_ty (minus C (dom (a::s))) (apply_subst (a::s) t).
+Lemma substs_remove_var : forall s C i, wf_subst C s ->
+                                     wf_ty C (var i) ->
+                                     wf_ty (minus C (dom s)) (apply_subst s (var i)).
 Proof.
   induction s . intros ; simpl in *; mysimp.
-  intros.
-  specialize IHs with (a := a).
-  destruct a0, a.
-  simpl in H.
-  destructs H.
-  destructs H2.
-  simpl.
-  eapply occurs_wf_ty.
-  eapply occurs_wf_ty.
-  specialize IHs with (C := remove i0 C).
-
-    eapply occurs_wf_ty.
-    
-  simpl.
-  rewrite minus_remove_dist2.
   
   intros.
-  induction s . intros ; simpl in *; mysimp.
+  destruct a.
+  specialize IHs with (i := i).
   simpl in H.
-  destruct a, a0.
   destructs H.
-  destructs H2.
+  simpl.
+  destruct (eq_id_dec i0 i).
+  - subst.
+    assumption.
+  -
+  specialize IHs with (C := (minus C [i0])).
   simpl in *.
-  destruct (eq_id_dec i0 i).
-  +
-  
-
-  
-  assert (wf_subst C s). skip.
-  apply IHs in H4.
-  destruct (eq_id_dec i0 i).
-  + subst.
-    induction s.
-    mysimp.
-    simpl in H2. destruct a.
-    destructs H2.
-  
   cases (find_subst s i).
-  subst.
-  specialize IHC with (s := s) (i := i).
-  
-  simpl in H.
-  destructs H.
-
-  rewrite apply_subst_nil. assumption.
-  intros.
-  induction s.
+  + rewrite minus_remove_dist2.
+    auto.
+  + rewrite minus_remove_dist2.
+    auto.
+Qed.
 
 Lemma substs_remove : forall s C t , wf_subst C s ->
                                      wf_ty C t ->
