@@ -6,6 +6,7 @@ Require Import Relation_Operators.
 Require Import Coq.Setoids.Setoid.
 Require Import Program.
 Require Import LibTactics.
+Require Import Sublist.
 
 (** * Type Definitions *)
 
@@ -100,6 +101,8 @@ Proof.
     auto.
 Qed.
 
+Hint Resolve member_app.
+
 Lemma member_app2 : forall c c' i, member c' i -> member (c++c') i.
 Proof.
   induction c.
@@ -112,6 +115,8 @@ Proof.
     auto.
     auto.
 Qed.
+
+Hint Resolve member_app2.
 
 (** Decidability of the previous membership relation *)
 
@@ -144,6 +149,8 @@ Proof.
      + apply IHc in H.
        auto.
 Qed.
+
+Hint Resolve member_app_or.
 
 Lemma member_or_app : forall c c' i, member c i \/ member c' i <-> member (c++c') i.
 Proof.
@@ -413,15 +420,13 @@ Fixpoint minus (C : varctxt) (xs : list id) : varctxt :=
 Fixpoint wf_subst (C : varctxt) (s : substitution) : Prop :=
   match s with
     | nil => True
-    | (v,t) :: s' => member C v /\ wf_ty (remove v C) t /\ (wf_subst (remove v C) s') /\ (wf_ty (minus C (dom s)) t)
+    | (v,t) :: s' => member C v /\ wf_ty (remove v C) t /\ wf_ty (minus C (dom s')) t /\ (wf_subst (remove v C) s') 
   end.
 
 Lemma remove_comm : forall x y C, remove x (remove y C) = remove y (remove x C).
 Proof.
   induction C ; mysimp.
 Qed.
-
-Print remove_comm.
 
 Hint Resolve remove_comm.
 
@@ -507,16 +512,11 @@ Hint Resolve apply_subst_list_nil.
 Hint Rewrite apply_subst_list_nil : subst.
 
 Definition compose_subst (s1 s2 : substitution) :=
-    subst_diff s2 s1 ++ apply_subst_list s1 s2.
+      apply_subst_list s1 s2 ++ s2.
 
 Lemma compose_subst_nil_l : forall s2, compose_subst nil s2 = s2.
 Proof.
   intros; induction s2; mysimp.
-  unfold compose_subst.
-  rewrite subst_diff_nil_l.
-  simpl.
-  rewrite app_nil_r.
-  reflexivity.
 Qed.
 
 Hint Resolve compose_subst_nil_l.
@@ -526,13 +526,13 @@ Hint Rewrite compose_subst_nil_l : subst.
 
 Lemma apply_compose_subst_nil_l : forall s t, apply_subst (compose_subst nil s) t = apply_subst s t.
 Proof.
-  intros; mysimp. autorewrite with subst using congruence.
+  intros; mysimp. 
 Qed.
 
 Hint Resolve apply_compose_subst_nil_l.
 Hint Rewrite apply_compose_subst_nil_l : subst.
 
-Lemma apply_compose_subst_nil2 : forall s t, apply_subst (compose_subst s nil) t = apply_subst s t.
+Lemma apply_compose_subst_nil_r : forall s t, apply_subst (compose_subst s nil) t = apply_subst s t.
 Proof.
   intros; mysimp; induction s; autorewrite with subst using congruence.
   induction t; mysimp.
@@ -542,14 +542,33 @@ Proof.
   auto.
 Qed.
 
-Hint Resolve apply_compose_subst_nil2.
-Hint Rewrite apply_compose_subst_nil2 : subst.
+Hint Resolve apply_compose_subst_nil_r.
+Hint Rewrite apply_compose_subst_nil_r : subst.
 
-
-Lemma apply_compose_equiv : forall s2 s1 t, apply_subst (compose_subst s1 s2) t = apply_subst s2 (apply_subst s1 t).
+Lemma apply_subst_fold : forall s, (forall i, match find_subst s i with | Some t' => t' | None => var i end = apply_subst s (var i)).
 Proof.
-  induction s2; intros; mysimp. repeat rewrite apply_compose_subst_nil2.  autorewrite with subst using congruence.
-Admitted.
+  intros. reflexivity.
+Qed.
+
+Lemma apply_subst_fold2 :  forall s s', (forall i, match find_subst s i with | Some t' => t' | None => var i end =
+                                         match find_subst s' i with | Some t' => t' | None => var i end) <->
+                                   (forall i, apply_subst s (var i) = apply_subst s' (var i)).
+Proof.
+  intros; split; intro; 
+    simpl in *;
+    auto.
+Qed.
+
+Lemma apply_compose_equiv : forall s1 s2 t, apply_subst (compose_subst s1 s2) t = apply_subst s2 (apply_subst s1 t).
+Proof.
+  induction s1; intros; mysimp. repeat rewrite apply_compose_subst_nil_l.  autorewrite with subst using congruence.
+  induction t; mysimp; simpl in *; eauto.
+  repeat rewrite apply_subst_fold.
+  erewrite <- IHs1.
+  simpl.
+  unfold compose_subst. reflexivity.
+  fequals.
+Qed.
 
 Lemma member_remove_false : forall i C, member (remove i C) i -> False.
 Proof.
@@ -604,23 +623,6 @@ Proof.
   auto.
 Qed.
 
-(*
-Lemma wf_subst_remove_cons : forall s C i, wf_subst C s -> wf_subst (i::C) s.
-Proof.
-  induction s; intros.
-  auto.
-  simpl in *.
-  destruct a.
-  destructs H.
-  destruct (eq_id_dec i i0); auto.
-  splits; auto.
-  simpl in *.
-  eapply wf_ty_cons in H0.
-Abort.
-  apply H0.
-Defined.
-*)
-
 Lemma member_diff_inversion : forall a i0 C, a <> i0 -> member (a :: C) i0 -> member C i0.
 Proof.
   intros.
@@ -666,25 +668,48 @@ Proof.
   splits; auto.
 Qed.
 
+Hint Resolve wf_ty_remove_inversion.
 
-(*
-Lemma wf_subst_remove_inversion : forall s C i, wf_subst (remove i C) s -> wf_subst C s.
+Lemma member_remove_remove_comm : forall C i j k, member (remove i (remove j C)) k -> member (remove j (remove i C)) k.
 Proof.
-  induction s; intros.
-  auto.
-  simpl in *.
-  destruct a.
-  destructs H.
-  eapply member_remove_inversion in H as H'; eauto.
-  splits; auto.
-  eapply wf_ty_remove_inversion.
-  rewrite remove_comm.
-  apply H0.
-  rewrite remove_comm in H1.
-  eapply IHs.
-  apply H1.
-Abort.
-*)
+  induction C; intros; mysimp; simpl in *; eauto.
+  destruct (eq_id_dec i j); intuition; simpl in *.
+  destruct (eq_id_dec i i); intuition; simpl in *.
+  destruct (eq_id_dec j j); intuition; simpl in *.
+  destruct (eq_id_dec a j); intuition; simpl in *.
+  destruct (eq_id_dec a i); intuition; simpl in *.
+  destruct (eq_id_dec a k); intuition; simpl in *.
+Qed.
+
+Hint Resolve member_remove_remove_comm.
+
+Lemma wf_ty_remove_remove_comm : forall i j C t, wf_ty (remove i (remove j C)) t -> wf_ty (remove j (remove i C)) t.
+Proof.
+  intros.
+  induction t;
+  simpl in *; auto.
+  destruct H.
+  splits; eauto.
+Qed.
+
+Hint Resolve wf_ty_remove_remove_comm.
+
+Lemma wf_subst_remove_inversion : forall s i C, wf_subst (remove i C) s -> wf_subst C s.
+Proof.
+  induction s; intros;
+    simpl in *; eauto.
+  destruct a. destructs H. splits; eauto.
+  rewrite remove_comm in H0.
+  eauto.
+  rewrite minus_remove in H1.
+  eauto.
+  specialize IHs with (C := remove i0 C) (i := i).
+  apply IHs.
+  rewrite remove_comm in H2.
+  assumption.
+Qed.
+
+Hint Resolve wf_subst_remove_inversion.
 
 Lemma subst_diff_nil_r : forall s, subst_diff nil s = nil.
 Proof.
@@ -914,13 +939,27 @@ Qed.
 
 Hint Resolve minus_nil2.
 
-Lemma  minus_app_comm : forall l l2 l1, minus l (l1 ++ l2) = minus l (l2 ++ l1).
-Proof.
-  induction l2; intros; mysimp.
-  rewrite app_nil_r. reflexivity.
-  rewrite <- IHl2.
-Admitted.
+Lemma arrowcons (A:Type) : forall (s1 s2:list A) x, s1 ++ x::s2 = (s1 ++ x::nil) ++ s2.
+  intros ; rewrite app_ass ; auto.
+Qed.
 
+Lemma  minus_app_comm_cons : forall l1 l2 l a, minus l (l1 ++ a::l2) = minus l (a::l1 ++ l2).
+Proof. 
+  induction l1; intros. reflexivity.
+  simpl.
+  rewrite remove_comm.
+  fequals.
+  rewrite IHl1.
+  simpl. reflexivity.
+Qed.
+
+Lemma  minus_app_comm : forall l1 l2 l, minus l (l1 ++ l2) = minus l (l2 ++ l1).
+Proof.
+  induction l1. intros. simpl. rewrite app_nil_r. reflexivity.
+  intros.
+  rewrite minus_app_comm_cons. simpl.
+  rewrite IHl1. reflexivity.
+Qed.
 
 Lemma ids_ty_apply_subst : forall s t, (ids_ty (apply_subst s t)) = List.concat (List.map ids_ty ( (List.map (apply_subst s) (List.map var (ids_ty t))))).
 Proof.
@@ -933,11 +972,6 @@ Proof.
   rewrite <- IHt2.
   reflexivity.
 Qed.
-
-Lemma minus_dist : forall a1 a2 b, minus (a1 ++ a2) b = (minus a1 b) ++ (minus a2 b).
-Proof.
-  intros.
-Admitted.
 
 Fixpoint member_b (C : varctxt) (i : id) : bool :=
   match C with
@@ -984,10 +1018,6 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma remove_minus_cons : forall i a b, (remove i (minus (i :: a) b)) = remove i (minus a b).
-Proof.
-Admitted.
-
 Lemma remove_remove_inversion : forall a i, remove i (remove i a) = (remove i a).
 Proof.
   intros.
@@ -1029,20 +1059,6 @@ Proof.
     reflexivity.
 Defined.
 
-Lemma minus_eq_nil :  forall a, minus a a = nil.
-Proof.
-  intros.
-  induction a.
-  reflexivity.
-  simpl.
-Admitted.
-
-Lemma minus_eq_nil_app :  forall a b, minus a (a ++ b) = nil.
-Proof.
-  intros.
-  induction b. rewrite app_nil_r.
-Admitted.
-
 Lemma apply_not_chance_not_occurs : forall a t0 s t, ~ occurs a t0 -> apply_subst ((a, t0) :: s) t = t -> ~ occurs a t.
   intros.
   intro.
@@ -1065,20 +1081,116 @@ Lemma apply_not_chance_not_occurs : forall a t0 s t, ~ occurs a t0 -> apply_subs
   auto.
 Qed.  
 
-Lemma apply_subst_fold : forall s, (forall i, match find_subst s i with | Some t' => t' | None => var i end = apply_subst s (var i)).
+Lemma substs_remove_var' : forall s C i, wf_subst C s ->
+                                     wf_ty C (var i) ->
+                                     wf_ty C  (apply_subst s (var i)).
 Proof.
-  intros. reflexivity.
+  induction s . intros ; simpl in *; mysimp.
+  intros.
+  destruct a.
+  specialize IHs with (i := i).
+  simpl in H.
+  destructs H.
+  simpl.
+  destruct (eq_id_dec i0 i).
+  - subst.
+    eauto.
+  -
+  specialize IHs with (C := (C)).
+  simpl in *.
+  cases (find_subst s i);
+   eauto.
+Qed. 
+
+Lemma substs_remove' : forall t s C , wf_subst C s ->
+                                     wf_ty C t ->
+                                     wf_ty C (apply_subst s t).
+Proof.
+  induction t; intros; mysimp.
+  rewrite apply_subst_fold.
+  apply substs_remove_var'; auto.
+  destruct H0.
+  auto.
+  destruct H0.
+  auto.
 Qed.
 
-Lemma apply_subst_fold2 :  forall s s', (forall i, match find_subst s i with | Some t' => t' | None => var i end =
-                                         match find_subst s' i with | Some t' => t' | None => var i end) <->
-                                   (forall i, apply_subst s (var i) = apply_subst s' (var i)).
+Lemma wf_ty_remove_minus_inversion : forall s a C t, wf_ty (remove a (minus C (dom s))) t -> wf_ty (remove a C) t.
 Proof.
-  intros; split; intro; 
-    simpl in *;
-    auto.
+  induction s; intros; mysimp; simpl in *; eauto.
 Qed.
 
+Lemma wf_subst_remove_comm : forall s C b a, wf_subst (remove a (remove b C)) s -> wf_subst (remove b (remove a C)) s.
+Proof.
+  induction s; intros; simpl in *; mysimp; eauto.
+  assert ((remove b (remove a0 C)) = (remove a0 (remove b C))). {
+    rewrite remove_comm. reflexivity. }
+  rewrite H3. assumption.
+  rewrite remove_comm. assumption.
+  assert ((remove b (remove a0 C)) = (remove a0 (remove b C))). {
+    rewrite remove_comm. reflexivity. }
+  rewrite H3. assumption.
+Qed.
+
+Lemma wf_subst_remove_minus_inversion : forall B C s a, wf_subst (remove a (minus C B)) s -> wf_subst (remove a C) s.
+Proof.
+  induction B. intros; mysimp; simpl in *; eauto.
+  intros.
+  specialize IHB with (C := remove a0 C) (s := s) (a:= a).
+  simpl in *.
+  apply wf_subst_remove_comm in H.
+  rewrite minus_remove in IHB.
+  apply IHB in H.
+  apply wf_subst_remove_inversion in H.
+  assumption.
+Qed.
+
+Lemma wf_ty_remove_minus_inversion2 : forall s a C t, wf_ty (remove a (minus C s)) t -> wf_ty (minus C s) t.
+Proof.
+  induction s; intros; mysimp; simpl in *; eauto.
+Qed.
+
+Lemma wf_ty_minus_inversion : forall s C t, wf_ty (minus C s) t -> wf_ty C t.
+Proof.
+  induction s; intros; mysimp; simpl in *; eauto.
+Qed.
+
+Hint Resolve wf_ty_remove_inversion.
+
+Lemma wf_ty_remove_remove : forall t C i j, wf_ty (remove i C) t -> wf_ty (remove j C) t -> wf_ty (remove i (remove j C)) t.
+Proof.
+  induction t.
+  induction C; intros; eauto; mysimp; simpl in *; eauto.
+  destruct (eq_id_dec j j); try contradiction; eauto.
+  destruct (eq_id_dec j i0); try contradiction; eauto.
+  simpl in H.
+  destruct (eq_id_dec j i); subst; try contradiction; eauto.
+  destruct (eq_id_dec i0 j); subst; try contradiction; simpl in *; eauto.
+  destruct (eq_id_dec i0 i0); subst; try contradiction; simpl in *; eauto.
+  destruct (eq_id_dec i0 i); subst; try contradiction; simpl in *; eauto.
+  destruct (eq_id_dec a i0); subst; try contradiction; simpl in *; eauto.
+  destruct (eq_id_dec a j); subst; try contradiction; simpl in *; eauto.
+  intros. auto.
+  intros.
+  simpl in *.
+  mysimp.
+Qed.
+  
+Hint Resolve wf_ty_remove_remove.
+
+Lemma wf_ty_remove_minus : forall s i C t, wf_ty (remove i C) t -> wf_ty (minus C (dom s)) t -> wf_ty (remove i (minus C (dom s))) t.
+Proof.
+  induction s; intros; eauto; mysimp; simpl in *; eauto.
+Qed.
+
+Hint Resolve wf_ty_remove_minus.
+(*
+  specialize IHs with (C := remove a C) (t := t).
+  rewrite minus_remove in IHs.
+  apply IHs; eauto.
+  apply wf_ty_remove_minus_inversion in H0. 
+*)
+  
 
 Lemma substs_remove_var : forall s C i, wf_subst C s ->
                                      wf_ty C (var i) ->
@@ -1094,15 +1206,17 @@ Proof.
   simpl.
   destruct (eq_id_dec i0 i).
   - subst.
-    assumption.
+    eauto.
   -
   specialize IHs with (C := (minus C [i0])).
   simpl in *.
   cases (find_subst s i).
   + rewrite minus_remove_dist2.
-    auto.
+    eapply IHs.
+    eauto.
+    eauto.
   + rewrite minus_remove_dist2.
-    auto.
+    eauto.
 Qed.
 
 Lemma substs_remove : forall t s C , wf_subst C s ->
@@ -1118,9 +1232,16 @@ Proof.
   auto.
 Qed.
 
+Hint Resolve substs_remove substs_remove'.
+
 Lemma apply_compose_assoc_var : forall s1 s2 s3 i, apply_subst (compose_subst (compose_subst s1 s2) s3) (var i) =
                                               apply_subst (compose_subst s1 (compose_subst s2 s3)) (var i).
-Admitted.
+Proof.
+  induction s1. intros. eauto.
+  intros.
+  repeat rewrite apply_compose_equiv.
+  reflexivity.
+Qed.
 
 Lemma len_remove_le : forall C i, length (remove i C) <= length C.
 Proof.
@@ -1232,49 +1353,138 @@ Proof.
     + rewrite remove_comm. eapply aux''. auto.
 Qed.
 
-Lemma wf_subst_compose : forall s1 s2 C,  (wf_subst C s1 /\ wf_subst C s2) -> wf_subst C (compose_subst s1 s2).
-Admitted.
+Lemma lala : forall s C i, member (minus C (dom s)) i -> find_subst s i = None.
+Proof.
+  induction s; intros; simpl in *; eauto; mysimp; simpl in *.
+  apply member_remove_false in H. contradiction.
+  specialize IHs with (C := remove a C).
+  apply IHs.
+  rewrite minus_remove. auto.
+Qed.
 
-Lemma arrowcons : forall s1 s2 C x,  wf_subst C (compose_subst (compose_subst s1 (x::nil)) s2) -> wf_subst C (compose_subst s1 (x::s2)).
+Lemma toto : forall t s1 C, wf_ty (minus C (dom s1)) t -> apply_subst s1 t = t.
+Proof.
+  induction t; intros.
+  - simpl in H.
+    apply lala in H.
+    simpl. rewrite H.
+    reflexivity.
+  - reflexivity.
+  - rewrite apply_subst_arrow.
+    simpl in H. destructs H.
+    fequals.
+    eapply IHt1.
+    apply H.
+    eapply IHt2.
+    apply H0.
+Qed.
+
+Lemma ria : forall s2 s1 C, wf_subst (minus C (dom s1)) s2 -> apply_subst_list s2 s1 = s2. 
+Proof.
+  induction s2; intros.
+  reflexivity.
+  simpl. destruct a.
+  simpl in H.
+  destructs H.
+  rewrite IHs2 with (C := remove i C).
+  apply wf_ty_remove_inversion in H0.
+  apply toto in H0. 
+  rewrite H0.
+  reflexivity.
+  rewrite minus_remove.
+  assumption.
+Qed.
+
+Lemma apply_subst_list_dom : forall s1 s2, dom (apply_subst_list s1 s2) = dom s1.
+Proof.
+  induction s1; intros; mysimp; simpl in *; eauto.
+  congruence.
+Qed.
+
+Lemma dom_dist_app : forall s1 s2, dom (s1 ++ s2) = (dom s1) ++ (dom s2).
+Proof.
+  induction s1; intros; mysimp; simpl in *; eauto.
+  congruence.
+Qed.
+
+Lemma dom_dist_compose : forall s1 i t, dom (compose_subst s1 [(i, t)]) = dom s1 ++ [i].
+Proof.
+  induction s1; intros; mysimp; simpl in *; eauto.
+  rewrite dom_dist_app.
+  rewrite apply_subst_list_dom.
+  simpl.
+  reflexivity.
+Qed.
+
+Lemma wf_subst_last (s : substitution) : forall x t C, wf_subst C s ->
+  member (minus C (dom s)) x -> wf_ty (remove x (minus C (dom s))) t ->
+    wf_subst C (compose_subst s [(x,t)]).
+Proof.
+  induction s ; simpl ; intros . mysimp. eauto.
+  destruct a. destructs H.
+  simpl in *. splits; eauto.
+  induction t0; mysimp; simpl in *; eauto; mysimp; eauto.
+  apply wf_ty_remove_inversion in H1. apply wf_ty_remove_minus_inversion in H1. assumption.
+  induction t0; mysimp; simpl in *; eauto; mysimp; eauto.
+  rewrite dom_dist_app. rewrite apply_subst_list_dom. simpl.
+  rewrite minus_app_comm. simpl. eauto. 
+  rewrite dom_dist_app. rewrite apply_subst_list_dom. simpl.
+  rewrite minus_app_comm. simpl. eauto. 
+  fold (compose_subst s [(x, t)]).
+  eapply IHs with (C:= remove i C); eauto.
+  rewrite minus_remove. auto.
+  rewrite minus_remove. auto.
+Qed.
+
+Lemma compose_cons : forall s1 s2 i t C, wf_subst C s1 -> wf_subst C ((i, t) :: s2) ->  wf_subst C (compose_subst (compose_subst s1 [(i, t)]) s2) ->
+                                      wf_subst C (compose_subst s1 ((i, t) :: s2)).
 Proof.
   intros.
-  apply wf_subst_compose.
-  eapply substs_remove in H.
-  Admitted.
+  unfold compose_subst in *.
+  rewrite arrowcons.
+  assert ((apply_subst_list s1 ((i, t) :: s2) ++ [(i, t)]) = apply_subst_list (apply_subst_list s1 [(i, t)] ++ [(i, t)]) s2).
+  { induction s1. simpl in *. mysimp. erewrite toto; eauto. destruct a. simpl in *. mysimp. erewrite <- IHs1; eauto. fequals. fequals. induction t0; mysimp; eauto.
+    erewrite toto; eauto. simpl in *. mysimp. fequals; eauto. } 
+  rewrite H2.
+  fold (compose_subst s1 [(i, t)]) .
+  eauto.
+Qed.
 
-Lemma wf_subst_arrowend : forall C s2 s1,  wf_subst C s1 ->
+Lemma member_minus_inversion : forall a C i, member (minus C a) i -> member C i.
+Proof.
+  induction a; intros; simpl in *; mysimp.
+  eauto.
+Qed.
+
+Hint Resolve member_minus_inversion.
+
+Lemma minus_minus_comm : forall A B C, minus (minus C A) B = minus (minus C B) A.
+Proof.
+  induction A. intros; repeat rewrite minus_nil2. reflexivity.
+  intros.
+  simpl.
+  rewrite minus_remove.
+  fequals.
+Qed.
+ 
+Lemma wf_subst_arrowend : forall s2 C s1,  wf_subst C s1 ->
                                          wf_subst (minus C (dom s1)) s2 ->
                                          wf_subst C (compose_subst s1 s2).
 Proof.
   induction s2 ; simpl ; intros. rewrite compose_subst_nil_r ; auto.
-  destruct a. destructs H0. simpl in *. apply arrowcons. eapply IHs2; auto. 
-  unfold compose_subst.
-  - induction s1.
-    + simpl. splits; auto.
-    + destruct a.
-      simpl.
-      simpl in H.
-      destructs H.
-      simpl in *.
-      destruct (eq_id_dec i i0).
-      * simpl. subst.
-        splits; auto.
-        skip. (* i0 não esta em t0 por H4 *)
-        simpl. skip. (* n sei *)
-        simpl.
-
-      *
+  destruct a. destructs H0.
+  eapply compose_cons; eauto. simpl. splits; eauto. apply wf_ty_remove_minus_inversion in H1. assumption. eauto.
+  rewrite minus_minus_comm in H2.
+  apply wf_ty_minus_inversion in H2. assumption.
+  apply wf_subst_remove_minus_inversion in H3.
+  assumption.
+  eapply IHs2.
+  eapply wf_subst_last; eauto. 
+  rewrite dom_dist_compose.
+  rewrite minus_app_comm.
   simpl.
-  cases (in_subst_b i s1).
-  unfold apply_subst_list.
-  simpl.
-
-  simpl in *.
-  (*
-  destructs H0.
-  mysimp. rewrite arrowcons. apply IHs2. auto. rewrite minus_arrow ; auto.
-*)
-  Admitted.
+  assumption.
+Qed.
 
 Hint Resolve wf_subst_arrowend.
 
@@ -1328,13 +1538,12 @@ intros.
 exists s'.
 intros.
 repeat rewrite apply_subst_fold.
-unfold unifier in H2.
-rewrite apply_compose_equiv.
 destruct (eq_id_dec i v).
+unfold unifier in H2.
 subst.
-rewrite H2.
-mysimp.
-mysimp.
+assumption.
+repeat rewrite apply_subst_fold.
+reflexivity.
 Defined.
 Next Obligation.
   intros; splits; intros; mysimp.
@@ -1349,22 +1558,27 @@ rewrite <- Heq_anonymous0 in wfl.
 simpl in wfl.
 destruct wfl.
 splits; mysimp.
-skip.
+unfold unifier. mysimp.
+erewrite subst_occurs; auto.
 intros.
-
 exists s'.
 intros.
 unfold unifier in H3.
 repeat rewrite apply_subst_fold.
-rewrite apply_compose_equiv.
 destruct (eq_id_dec i v).
 subst.
 rewrite <- H3.
-mysimp.
-mysimp.
+reflexivity.
+repeat rewrite apply_subst_fold.
+reflexivity.
 Defined.
 Next Obligation.
-Admitted.
+  splits; mysimp; try reflexivity.
+  intros.
+  exists s'.
+  rewrite compose_subst_nil_l.
+  reflexivity.
+Defined.
 Next Obligation.
 unfold wf_constraints in wfl.
 rewrite <- Heq_anonymous in wfl.
@@ -1405,15 +1619,17 @@ Next Obligation.
 Defined.
 Next Obligation.
   simpl.
-  unfold wf_constraints in *.
   clear Heq_anonymous.
+  unfold wf_constraints in *.
   repeat rewrite <- Heq_anonymous0 in wfl.
   simpl in wfl.
   destruct wfl.
   simpl.
   destruct H, H0.
-  split;
-    eapply substs_remove; auto.
+  splits;
+
+  (* pobre aqui *)
+    eapply substs_remove; eauto.
 Defined.
 Next Obligation.
   eauto.
@@ -1457,132 +1673,15 @@ Defined.
 Next Obligation.
   apply well_founded_constraints_lt.
 Defined.
+
+(** * FINAL *)                        
           
-
-Definition unify_body (l : constraints)
-                      (unify : forall (l'  : constraints), constraints_lt l' l -> unify_type l') : unify_type l.
-intros.
-
-Definition unify_body (l : constraints)
-                      (unify : forall (l'  : constraints),
-                                 constraints_lt l' l -> unify_type l') : unify_type l.
-   unfold unify_type ; intros prf ;
-   destruct l as [C l] ; simpl ;
-   refine (
-       match l as l' return l = l' ->
-          ({ s | unifier l s /\ wf_subst C s /\
-              forall s', unifier l s' ->
-              exists s'', forall v, apply_subst s' (var v) = apply_subst (s ++ s'') (var v)} +
-                        { UnifyFailure l }) with
-          | nil => fun H1 => inleft _ (@exist substitution _ nil _)
-          | (t,t') :: l' => fun H1 =>
-              match eq_ty_dec t t' return
-                 ({ s | unifier l s /\ wf_subst C s /\
-                forall s', unifier l s' ->
-                 exists s'', forall v, apply_subst s' (var v) = apply_subst (s ++ s'') (var v)})
-                    + {UnifyFailure l} with
-                | left _ =>
-                       match unify (mk_constraints C l') _ _ with
-                        | inleft (exist _ s _) =>  inleft _ (@exist substitution _ s _)
-                        | inright _ => inright _ _
-                      end
-                | right _ =>
-                    match t as t1, t' as t1'
-                       return t = t1 -> t' = t1' ->
-                         ({ s | unifier l s /\ wf_subst C s /\
-                           forall s', unifier l s' ->
-                exists s'', forall v, apply_subst s' (var v) = apply_subst (s ++ s'') (var v)})
-                                    + { UnifyFailure l } with
-                        | var v, t =>
-                            fun H1 H2 =>
-                              match occurs_dec v t with
-                                | left _ => inright _ _
-                                | right _ =>
-                                    match unify (mk_constraints (minus C (v :: nil))
-                                                (apply_subst_constraint ((v,t) :: nil) l')) _ _ with
-                                      | inleft (exist _ s _) => inleft _ (@exist substitution _ ((v,t) :: s) _ )
-                                      | inright _ => inright _ _
-                                    end
-                              end
-                        | t, var v =>
-                            fun H1 H2 =>
-                              match occurs_dec v t with
-                                | left _ => inright _ _
-                                | right _ =>
-                                    match unify (mk_constraints (minus C (v :: nil))
-                                                (apply_subst_constraint ((v,t) :: nil) l')) _ _ with
-                                      | inleft (exist _ s _) => inleft _ (@exist substitution _ ((v,t) :: s) _ )
-                                      | inright _ => inright _ _
-                                    end
-                              end
-                        | con n, con n' =>
-                            fun H1 H2 => inright _ _
-                        | con _ , arrow _ _ =>
-                            fun H1 H2 => inright _ _
-                        | arrow _ _, con _ =>
-                            fun H1 H2 => inright _ _
-                        | arrow l1 r, arrow l1' r' =>
-                            fun H1 H2 =>
-                              match unify (mk_constraints C ((l1,l1') :: (r,r') :: l')) _ _ with
-                                | inleft (exist _ s _)  => inleft _ (@exist substitution _ s _)
-                                | inright _ => inright _ _
-                              end
-                    end (refl_equal t) (refl_equal t')
-              end
-       end (refl_equal l)
-     ) ; clear unify ;  unfolds in prf ; simpl in * ; substs ; mysimp ; eauto ; simpl in * ; intros ;
-        try (do 2 fequals* ; symmetry ; auto ; fail) ; mysimp ; unfold wf_constraints in * ; simpl in * ; mysimp ;
-        try (match goal with
-             | [H : apply_subst ?s (arrow _ _) = apply_subst ?s (arrow _ _),
-                Hu : unifier _ ?s,
-                H1 :  forall s',
-                        apply_subst s' _ = apply_subst s' _ /\
-                        apply_subst s' _ = apply_subst s' _ /\ unifier _ s' ->
-                        exists s'',
-                          forall v : id, _ |- _ ] =>
-                   do 2 rewrite apply_subst_arrow in H ; injection H ; clear H ;
-                   intros Ha Hb ; destruct (H1 _ (conj Hb (conj Ha Hu))) as [sc Hc] ;
-                   exists* sc 
-               | [H : apply_subst ?s (var _) = apply_subst ?s ?t,
-                  Hu : unifier _ ?s,
-                  H1 : forall s', unifier _ s' -> _ |- _] =>
-                      apply (unifier_subst _ _ _ _ H) in Hu ; destruct (H1 _ H4) as [sa Ha] ;
-                      eexists ; intros ; case_if* ; substs ; try rewrite H ;
-                      eapply ext_subst_var_ty in Ha ; eauto
-               | [H : apply_subst ?s ?t = apply_subst ?s (var _),
-                  Hu : unifier _ ?s,
-                  H1 : forall s', unifier _ s' -> _ |- _] =>
-                       symmetry in H ; apply (unifier_subst _ _ _ _ H) in Hu ;
-                       destruct (H1 _ Hu) as [sa Ha] ; eexists ; intros ; case_if* ; substs ;
-                       try rewrite H ; eapply ext_subst_var_ty in Ha ; eauto
-             end) ; try (apply wf_constr_list_remove ; auto ; splits*).
-                         apply f_equal. info_auto.
-                         apply wf_constr_list_remove ; auto.
-                         mysimp.
-                         apply f_equal.
-                         rewrite sub_arrow_dist.
-                         symmetry.
-                         eapply subst_occurs.
-                         intro.
-                         intuition.
-
-Defined.
-
-Definition unify : forall l : constraints, unify_type l :=
-  well_founded_induction well_founded_constraints_lt unify_type unify_body.
-
-Print Opaque Dependencies unify.
-
 Definition projSubs (A : Type) (B : Prop)
            (P : A -> Prop) (u : sumor (sig P) B) : option A :=
   match u with
   | inleft _ (exist _ v _) => Some v
   | inright _ => None
   end.
-Definition ex_wf := wf_constr_list ((1)::(2)::nil) ((var 1, var 2)::nil).
-
-Check (unify (existT _ (0::1::nil) ((var 1, var 0)::nil)) _).
-
 
 Definition ids_ty_dep : forall (tau : ty), {l : list id | wf_ty l tau}.
 refine (fix ids_ty_dep (tau : ty) : {t : list id | wf_ty t tau} :=
@@ -1648,35 +1747,13 @@ Definition unify_simple : forall t1 t2 : ty, option substitution.
   pose proof ids_ty_dep2 as dep.
   specialize dep with (tau:=t1) (tau':=t2).
   destruct dep.
+  (*
   refine ((projSubs ((unify (existT _ (x) ((t1, t2)::nil))) _))).
   unfold wf_constraints.
   simpl.
   intuition.
 Defined.
-
-Check (fun t1 t2 x => (unify (existT _ (x) ((t1, t2)::nil)))).
-
-
-Definition unify_simple_dep : forall t1 t2 : ty, 
-{x & {s : substitution | unifier (get_list_constr (existT (fun _ : list id => list (ty * ty)) x
-((t1, t2) :: nil))) s /\ wf_subst (get_ctxt (existT (fun _ : list id => list (ty * ty)) x ((t1, t2) :: nil))) s /\
-  (forall s' : substitution, unifier (get_list_constr
-        (existT (fun _ : list id => list (ty * ty)) x
-           ((t1, t2) :: nil))) s' -> exists s'' : list (id * ty), forall v : id, apply_subst s' (var v) = apply_subst (s ++ s'') (var v))} +
-  {UnifyFailure (get_list_constr (existT (fun _ : list id => list (ty * ty)) x ((t1, t2) :: nil)))} }.
-Proof.
-  intros.
-  pose proof ids_ty_dep2 as dep.
-  specialize dep with (tau:=t1) (tau':=t2).
-  destruct dep.
-  exists x.
-  refine ((((unify (existT _ _ ((t1, t2)::nil))) _))).
-  unfold wf_constraints.
-  simpl.
-  intuition.
-Qed.
-
-Check unify_simple_dep.
+*)
 
 Definition FV_subst (s: substitution) := ((dom s) ++ (img_ids s)).
 
