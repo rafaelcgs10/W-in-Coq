@@ -28,8 +28,10 @@ Fixpoint in_ctx (y : id) (G : ctx) : option schm :=
 Lemma apply_subst_ctx_nil : forall G, apply_subst_ctx nil G = G.
 Proof.
   induction G; mysimp.
-  destruct a. rewrite IHG. reflexivity.
+  destruct a. rewrite apply_subst_schm_nil. rewrite IHG. reflexivity.
 Qed.
+
+Hint Resolve apply_subst_ctx_nil.
 
 Lemma subst_add_type_scheme : forall (G : ctx) (i : id) (s : substitution) (sigma : schm),
     apply_subst_ctx s ((i, sigma)::G) = (i,(apply_subst_schm s sigma))::(apply_subst_ctx s G).
@@ -38,14 +40,18 @@ Proof.
   reflexivity.
 Qed.
 
+Hint Resolve subst_add_type_scheme.
+
 Lemma apply_subst_ctx_compose : forall G s1 s2 ,
-    apply_subst_ctx (s1++s2) G = apply_subst_ctx s2 (apply_subst_ctx s1 G).
+    apply_subst_ctx (compose_subst s1 s2) G = apply_subst_ctx s2 (apply_subst_ctx s1 G).
 Proof.  
   induction G .
   - mysimp.
   - intros . mysimp. destruct a.
-    rewrite apply_subst_schm_append. rewrite IHG ; auto.
+    rewrite apply_schm_compose_equiv. rewrite IHG ; auto.
 Qed.
+
+Hint Resolve apply_subst_ctx_compose.
 
 Lemma apply_subst_ctx_eq :forall i s tau G,
     (i, apply_subst_schm s tau)::apply_subst_ctx s G =
@@ -53,6 +59,8 @@ Lemma apply_subst_ctx_eq :forall i s tau G,
 Proof.
   intros. reflexivity.
 Qed.
+
+Hint Resolve apply_subst_ctx_eq.
 
 Definition FV_ctx (G : ctx) : list id :=
   List.concat (List.map FV_schm (List.map (@snd id schm) G)). 
@@ -75,6 +83,8 @@ Proof.
       apply IHG; auto.
 Qed.
 
+Hint Resolve not_in_FV_ctx.
+
 (** Identity condition for apply_ctx *)
 Lemma subst_ctx_when_s_disjoint_with_ctx: forall (G: ctx) (s: substitution),
     (are_disjoints (dom s) (FV_ctx G)) ->
@@ -95,3 +105,5 @@ Proof.
     apply disjoint_list_and_append_inversion3 in H.
     mysimp.
 Qed.
+
+Hint Resolve subst_ctx_when_s_disjoint_with_ctx.

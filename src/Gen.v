@@ -125,7 +125,8 @@ Lemma is_sublist_gen_vars2 : forall (rho: ren_subst) (G: ctx) (t: ty),
   induction t.
   - intros; simpl in *.
     cases (in_list_id i (FV_ctx G)).
-    + rewrite <- (dom_rename_to_subst) in *.
+    + fold (apply_subst (rename_to_subst rho) (var i)).
+      rewrite <- (dom_rename_to_subst) in *.
       erewrite apply_subst_dom_false.
       simpl. destruct (in_list_id i (FV_ctx G)); try contradiction.
       apply nil_is_sublist.
@@ -141,6 +142,7 @@ Lemma is_sublist_gen_vars2 : forall (rho: ren_subst) (G: ctx) (t: ty),
     + inversion H2. inversion H. subst.
       specialize H3 with (st:=i).
       simpl in H3. destruct (eq_id_dec i i); intuition.
+      fold (apply_subst (rename_to_subst rho) (var i)).
       rewrite apply_subst_rename_to_subst; auto.
       simpl.
       assert (in_list_id (apply_ren_subst rho i) (FV_ctx G) = false).
@@ -212,6 +214,7 @@ Proof.
     + intros.
       assert (in_list_id i (dom_ren rho) = false).
       {erewrite disjoint_inversion2. reflexivity.  apply H0. auto. }
+      fold (apply_subst (rename_to_subst rho) (var i)).
       rewrite apply_subst_dom_false; auto.
       simpl.
       destruct (in_list_id i (FV_ctx G)); intuition.
@@ -219,6 +222,7 @@ Proof.
       auto.
     + intros.
       inversion H.
+      repeat fold (apply_subst (rename_to_subst rho) (var i)).
       rewrite apply_subst_rename_to_subst; auto.
       simpl.
       inversion H1.
@@ -235,7 +239,6 @@ Proof.
       reflexivity.
   - intros.
     simpl.
-    rewrite apply_subst_con.
     reflexivity.
   - intros.
     inversion H1.
@@ -306,29 +309,34 @@ Proof.
   induction tau; intros.
   - simpl in *.
     cases (in_list_id i (FV_ctx G)).
-    + rewrite is_not_generalizable.
-      simpl. rewrite <- ty_to_subst_schm.
+    +
+      fold (apply_subst s (var i)).
+      rewrite is_not_generalizable.
+      rewrite <- ty_to_subst_schm.
       reflexivity.
       eapply sublist_FV_ctx; auto.
-    + erewrite apply_subst_dom_false.
+    +
+      repeat fold (apply_subst s (var i)).
+      erewrite apply_subst_dom_false.
       simpl.
       rewrite not_in_FV_ctx; auto.
       cases (index_list_id i l);
-        simpl; rewrite apply_subst_schm_gen;
-          reflexivity.
-      apply are_disjoints_symetry in H0.
+        simpl; eauto.
+      apply are_disjoints_symetry in H0. 
+      unfold are_disjoints in H0.
+      specialize H0 with (x:=i).
       apply H0. mysimp.
-      apply are_disjoints_symetry in H.
+      apply are_disjoints_symetry in H. 
+      unfold are_disjoints in H.
+      specialize H with (x:=i).
       apply H. mysimp.
   - rewrite apply_subst_con.
-    simpl. rewrite apply_subst_schm_con. reflexivity.
+    simpl. reflexivity.
   - rewrite apply_subst_arrow. simpl.
     erewrite IHtau1; auto.
     erewrite IHtau2; auto.
     cases (gen_ty_aux tau1 G l).
     cases (gen_ty_aux tau2 G l0).
-    simpl. 
-    rewrite apply_subst_schm_arrow.
     simpl. 
     fequals.
     fequals.

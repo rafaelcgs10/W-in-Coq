@@ -95,6 +95,8 @@ Proof.
       destruct (eq_id_dec i0 x); intuition.
 Qed.
 
+Hint Resolve dom_img_rename_subst.
+
 Definition compute_renaming2 : forall (i : id) (l l1 l2 : list id),
     (forall x, in_list_id x l = true -> x < i) -> (forall x, in_list_id x l1 = true -> x < i) ->
     (forall x, in_list_id x l2 = true -> x < i) ->
@@ -239,6 +241,8 @@ Definition compute_renaming2 : forall (i : id) (l l1 l2 : list id),
   -  reflexivity.
 Defined.
 
+Hint Resolve compute_renaming2.
+
 Lemma exists_renaming_not_concerned_with2: forall (l l1 l2: (list id)),
   {r:ren_subst | (renaming_of_not_concerned_with r l l1 l2)}.
 Proof.
@@ -283,6 +287,8 @@ Proof.
   assumption.
 Defined.
 
+Hint Resolve exists_renaming_not_concerned_with2.
+
 Lemma index_rename_aux : forall (rho: ren_subst) (i: id) (l: (list id)) (c : id),
     (is_rename_subst rho) -> (is_sublist_id l (dom_ren rho)) -> in_list_id i (dom_ren rho) = true ->
     index_list_id_aux c i l =
@@ -304,6 +310,8 @@ Proof.
       mysimp.
 Qed.
 
+Hint Resolve index_rename_aux.
+
 Lemma index_rename : forall (rho : ren_subst) (i : id) (l: (list id)),
     (is_rename_subst rho) ->
     (is_sublist_id l (dom_ren rho)) ->
@@ -314,6 +322,8 @@ Proof.
   unfold index_list_id.
   apply index_rename_aux; auto.
 Qed.
+
+Hint Resolve index_rename.
 
 (** For some l disjoint with img_ren rho, apply_ren_subst rho i is not in l*)
 Lemma rename_img : forall (i : id) (rho : ren_subst) (l: list id),
@@ -332,6 +342,8 @@ Proof.
   auto.
 Qed.
 
+Hint Resolve rename_img.
+
 Lemma in_list_id_dom_img : forall rho i, 
     (in_list_id i (dom_ren rho) = true -> in_list_id (apply_ren_subst rho i) (img_ren rho) = true).
 Proof.
@@ -342,6 +354,8 @@ Proof.
     intros.
     simpl in *. destruct (eq_id_dec i0 i); intros; simpl in *; mysimp. 
 Qed.
+
+Hint Resolve in_list_id_dom_img.
 
 Lemma apply_subst_rename_to_subst : forall rho i,
     are_disjoints (dom_ren rho) (img_ren rho) ->
@@ -360,7 +374,10 @@ Proof.
     simpl. 
     destruct (eq_id_dec i0 i).
     auto.
-    rewrite IHrho; auto.
+    fold (apply_subst (rename_to_subst rho) (var i)).
+    apply IHrho.
     eapply are_disjoints_cons_inversion.
     apply H.
 Qed.
+
+Hint Resolve apply_subst_rename_to_subst.
