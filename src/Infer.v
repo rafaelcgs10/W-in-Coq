@@ -14,6 +14,7 @@ Require Import List.
 Require Import NewTypeVariable.
 Require Import HoareMonad.
 Require Import Program.
+Require Import MoreGeneral.
 
 Ltac inversionExist :=
   match goal with
@@ -467,6 +468,10 @@ Lemma new_tv_compose_subst_ctx : forall (s s1 s2 : substitution) (st : id) (G : 
        new_tv_ctx G st -> apply_subst_ctx s G = apply_subst_ctx s2 (apply_subst_ctx s1 G).
 Admitted.
 
+Lemma s_gen_t_more_general_than_gen_s_t : forall (s : substitution) (G : ctx) (tau : ty),
+ more_general (apply_subst_schm s (gen_ty tau G)) (gen_ty (apply_subst s tau) (apply_subst_ctx s G)).
+Admitted.
+
 
 Program Fixpoint W_hoare (e : term) (G : ctx) {measure (sizeTerm e)} :
   @HoareState id (fun i => new_tv_ctx G i) (ty * substitution)
@@ -498,7 +503,7 @@ Program Fixpoint W_hoare (e : term) (G : ctx) {measure (sizeTerm e)} :
   | let_t x e1 e2  =>
                  tau1_s1 <- @W_hoare e1 G _ ;
                  tau2_s2 <- @W_hoare e2 ((x,gen_ty (fst tau1_s1) (apply_subst_ctx (snd tau1_s1) G) )::(apply_subst_ctx (snd tau1_s1) G)) _ ;
-                 ret (fst tau2_s2, (snd tau2_s2) ++ (snd tau1_s1))
+                 ret (fst tau2_s2, compose_subst (snd tau1_s1) (snd tau2_s2))
   end. 
 Next Obligation. (* Case: properties used in const *)
   intros; unfold top; auto.
@@ -664,7 +669,6 @@ Next Obligation.
 Next Obligation.
   destruct (W_hoare l G _ >>= _).
   crushAssumptions.
-  subst. sort.
   clear W_hoare.
   - omega.
   - skip.
@@ -677,15 +681,14 @@ Next Obligation.
     rename x4 into alpha, x into st.
     rename x6 into mu, t1 into s1, t2 into s2.
     rename x2 into tauL, x0 into tauLR.
-    rename H6 into COM_L, H12 into COM_R.
+    rename H6 into COMP_L, H12 into COMP_R.
     unfold completeness. intros.
     rename H6 into SOUND_LR, tau' into tau_r.
     inversion_clear SOUND_LR.
     rename tau into tau_l.
     rename H6 into SOUND_L, H7 into SOUND_R.
-    (* rename H4 into SOUND_L2, H9 into SOUND_R2. *)
     sort.
-    apply COM_L in SOUND_L as PRINC_L.
+    apply COMP_L in SOUND_L as PRINC_L.
     destruct PRINC_L as [psi1 PRINC_L].
     destruct PRINC_L as [PRINC_L1 PRINC_L2].
     cut (exists psi2, (tau_l = apply_subst psi2 tauL /\
@@ -720,7 +723,7 @@ Next Obligation.
       erewrite <- (new_tv_compose_subst_type psi1 s2 psi2); eauto.
       apply new_tv_s_ty; auto.
       eapply new_tv_ty_trans_le; eauto. 
-    + eapply COM_R; eauto.
+    + eapply COMP_R; eauto.
       erewrite <- new_tv_compose_subst_ctx; eauto.
 Defined.
 Next Obligation.
@@ -730,274 +733,45 @@ Next Obligation.
 Next Obligation.
     Admitted.
 Next Obligation.
-    Admitted.
-
-
-(*
-Definition infer_dep : forall (e : term) (G : ctx),
-    Infer ({tau : ty & {s : substitution | has_type (apply_subst_ctx s G) e tau /\ completeness e G tau s}}).
-  refine (fix infer_dep (e : term) (G : ctx) :
-            Infer ({tau : ty & {s : substitution | has_type (apply_subst_ctx s G) e tau /\ completeness e G tau s}}) :=
-            match e with
-            | const_t x =>
-              sigma_dep <- look_dep x G ;
-              match sigma_dep with 
-              | exist _ sigma pS => 
-                etau <- schm_inst_dep sigma ;
-                match etau  with
-                | exist _ tau A =>  ret (existT _ tau (exist _ nil _))
-                end 
-              end
-            | var_t x =>
-              sigma_dep <- look_dep x G ;
-              match sigma_dep with 
-              | exist _ sigma pS => 
-                etau <- schm_inst_dep sigma ;
-                match etau  with
-                | exist _ tau A =>  ret (existT _ tau (exist _ nil _))
-                end 
-              end
-            | lam_t x e =>
-              alpha <- fresh ;
-              taus <- infer_dep e ((x, ty_to_schm (var alpha)) :: G) ;
-              match taus with
-              | (existT _ tau (exist _ s' p)) =>
-                ret (existT _ ( (arrow (apply_subst s' (var alpha)) tau)) (exist _ s' _))
-              end 
-            | app_t l rho =>
-              taus <- infer_dep l G ;
-              match taus with
-              | existT _ tau (exist _ s p) => 
-                taus' <- infer_dep rho (apply_subst_ctx s G) ;
-                match taus' with
-                | existT _ tau' (exist _ s' p') => 
-                  alpha <- fresh ;
-                  match unify_simple_dep (apply_subst s' tau) (arrow tau' (var alpha)) with
-                  | existT _ c (inleft _ (exist _ x HS)) => ret (existT _ (apply_subst x (var alpha)) (exist _ (s ++ s' ++ x) _))
-                  | existT _ c _ => failT _
-                  end
-                end
-              end
-
-            | let_t x e1 e2  =>
-              taus <- infer_dep e1 G ;
-              match taus with
-              | existT _ tau (exist _ s p) =>
-                taus' <- infer_dep e2 ((x,gen_ty tau (apply_subst_ctx s G) )::(apply_subst_ctx s G)) ;
-                match taus' with
-                | existT _ tau' (exist _ s' p') => ret (existT _ tau' (exist _ (s ++ s') _))
-                end
-              end
-                
-                
-            end).
-  - clear infer_dep.
-    assert (has_type (apply_subst_ctx [] G) (var_t x) tau) as HST1.
-    { eapply var_ht. rewrite apply_subst_ctx_nil. apply pS. destruct A.  destruct H. unfold is_schm_instance. exists x0. apply H. }
-    split.
-    + apply HST1.
-    + unfold completeness.
-      intros.
-      clear etau sigma_dep.
-      rename H into HST2.
-      rename A into i_s_is_tau_and_compute_gen.
-      sort.
-      destruct i_s_is_tau_and_compute_gen as [i_s i_s_tau_compute_gen].
-      destruct i_s_tau_compute_gen.
-      destruct H.
-      inversion HST2.
-      destruct (assoc_subst_exists G x phi H2) as [sigma'  Hi].
-      destruct Hi.
-      rewrite H6 in pS.
-      inversion pS.
-      subst.
-      destruct H4.
-      apply H1 in H.
-      destruct H.
-      exists (x1 ++ phi).
-      split.
-      * auto.
-      *
-
-
-
-        destruct H3 as [i_s'].
-      exists (compute_subst st i_s' ++ phi).
-      rewrite inCtx in pS.
-      inversion pS.
-      subst.
-      split.
-      *
-        eapply t_is_app_T_aux.
-        eapply new_tv_ctx_implies_new_tv_schm. 
-        apply inCtx. auto.
-        skip.
-        auto.
-      exists (i_s ++ phi).
-      split.
-      * eapply H1.
-        subst.
-        
-        skip.
-        skip.
-        (* parei aqui *)
-        simpl.
-
-        
-      
-      rewrite apply_subst_ctx_nil in HST1.
-      apply has_type_is_stable_under_substitution with (s:=phi) in HST1 as HST3.
-      inversion HST2.
-      inversion HST3.
-      destruct H3.
-      subst. sort.
-      destruct A as [i_s].
-        destruct (list_ty_and_id_inv (compute_generic_subst st (max_gen_vars sigma))) as [GEN GENC].
-        destruct A.
-        destruct (apply_compute_gen_subst st sigma (max_gen_vars sigma) x0).
-        rewrite e0 in H.
-        inversion H.
-        subst.
-        eapply t_is_app_T_aux.
-        eapply new_tv_ctx_implies_new_tv_schm. 
-        apply pS; auto.
-        auto.
-        skip.
-        destruct A.
-        skip.
-        skip.
-      * appl
-
-
-        
-      clear etau.
-      destruct A.
-      sort.
-      inversion HST1.
-      inversion HST2.
-      inversion HST3.
-      subst.
-      destruct (assoc_subst_exists G x phi H12) as [sigma''  Hi'].
-      destruct Hi.
-      destruct Hi'.
-      sort.
-      rewrite H5 in H.
-      inversion H.
-      rewrite H10 in H6.
-      rewrite <- H6 in H3.
-      subst. sort.
-      
-      subst.
-      rewrite H1 in pS.
-      inversion pS.
-      subst.
-      sort.
-      inversion HST in H.
-      subst.
-      destruct (assoc_subst_exists G x phi H2) as [sigma''  Hi'].
-      destruct Hi'.
-      inversion H7.
-      assert (sigma'' = sigma). skip.
-      subst.
-
-               
-      inve
-
-      
-      simpl in HST.
-      remember A as A'.
-      clear HeqA'.
-      sort.
-      subst.
-      exists phi.
-      simpl.
-      
-      exists ((compute_subst st i_s) ++ nil).
-      splits.
-      
-      in
-      subst.
-
-      
-      inversion H.
-      destruct H6.
-      destruct a.
-      substs.
-      rewrite pS in H6.
-      inversion H6.
-      substs. clear H6. sort.
-
-
-      pose proof (assoc_subst_exists G x phi H2).
-      inversion H6 in pS.
-      unfold is_schm_instance in H4.
-  - clear infer_dep taus taus' s1 s0 s2 s3.
-    split.
-    simpl in HS.
-    destruct HS.
-    destruct H.
-    destruct H0.
-    rewrite app_assoc.
-    rewrite apply_subst_ctx_compose.
-    rewrite apply_subst_ctx_compose.
-    eapply app_ht with (tau:= apply_subst x tau').
-    rewrite <- apply_subst_arrow.
-    rewrite <- H.
-    apply has_type_is_stable_under_substitution.
-    apply has_type_is_stable_under_substitution.
-    apply p.
-    apply has_type_is_stable_under_substitution.
-    apply p'.
-    skip.
-  - clear infer_dep taus taus' s0 s1.
-    skip.
-    (**
-    destruct p'.
-    pose proof exists_renaming_not_concerned_with2 (gen_ty_vars tau (apply_subst_ctx s G))
-         (FV_ctx (apply_subst_ctx s G)) (FV_subst s')  as lol.
-    destruct lol as [rho].
-    inversion r.
-    subst.
-    pose proof (gen_ty_in_subst_ctx (apply_subst_ctx s G) s' (apply_subst (rename_to_subst rho) tau)) as hip.
-    pose proof (renaming_not_concerned_with_gen_vars ) as hip2.
-    apply hip2 in r as r'.
-    apply hip in r' as r''.
-    pose proof (subst_ctx_when_s_disjoint_with_ctx (apply_subst_ctx s G) (rename_to_subst rho)) as top. 
-    pose proof (apply_subst_ctx_compose G (rename_to_subst rho) s) as top2.
-    apply let_ht with (tau:= apply_subst s' (apply_subst (rename_to_subst rho) tau)).
-    rewrite apply_subst_ctx_compose.
-    eapply has_type_is_stable_under_substitution.
-    erewrite <- top.
-    eapply has_type_is_stable_under_substitution.
-    apply p.
-    rewrite dom_rename_to_subst.
-    rewrite H0.
-    apply free_and_bound_are_disjoints.
-    rewrite apply_subst_ctx_compose.
-    rewrite <- gen_ty_in_subst_ctx.
-    rewrite <- subst_add_type_scheme.
-    rewrite <- gen_alpha4_bis; auto.
-    auto.
-    *)
-  - clear infer_dep s taus.
-    split.
-    simpl in p.
-    rewrite ty_to_subst_schm in p.
-    eapply lam_ht.
-    apply p.
-    skip.
-  - clear infer_dep.
-    split.
-    econstructor.
-    rewrite apply_subst_ctx_nil.
-    apply pS.
-    apply A.
-    skip.
+  destruct (W_hoare e1 G _ >>= _).
+  crushAssumptions; subst;
+  clear W_hoare.
+  - omega.
+  - skip.
+  - skip.
+  - skip.
+  - skip.
+  - intro. intros.
+    rename H12 into SOUND_e2, H5 into SOUND_e1.
+    rename H6 into COMP_e1, H13 into COMP_e2.
+    rename x into st0, t into st3.
+    rename x3 into tau_e2, t2 into s2, x2 into st2.
+    rename x1 into tau_e1, t1 into s1, x0 into st1.
+    rename H7 into SOUND_let.
+    inversion_clear SOUND_let.
+    rename H5 into SOUND2_e1.
+    rename H6 into SOUND2_e2.
+    rename tau into tau_e1', tau' into tau_e2'.
+    sort.
+    apply COMP_e1 in SOUND2_e1 as PRINC_e1.
+    destruct PRINC_e1 as [psi1 [PRINC_e11 PRINC_e12]].
+    cut (exists psi2, (tau_e2' = apply_subst psi2 tau_e2 /\
+             forall x0 : id, x0 < st2 -> apply_subst psi1 (var x0) = apply_subst psi2 (apply_subst s2 (var x0)))).
+    intro PRINC_e2.
+    destruct PRINC_e2 as [psi2 [PRINC_e21 PRINC_e22]].
+    exists psi2.
+    split; auto.
+    intros.
+    rewrite apply_compose_equiv.
+    erewrite <- (new_tv_compose_subst_type psi1 s2 psi2); eauto.
+    eapply COMP_e2.
+    rewrite subst_add_type_scheme.
+    (* desafio aqui *)
+    eapply typing_in_a_more_general_ctx with
+        (G2 := (st0,  (gen_ty (apply_subst psi1 tau_e1) (apply_subst_ctx psi1 (apply_subst_ctx s1 G))))::(apply_subst_ctx psi1 (apply_subst_ctx s1 G))). 
+    eapply more_general_ctx_cons. eauto.
+    eapply s_gen_t_more_general_than_gen_s_t.
+    rewrite <- PRINC_e11.
+    erewrite <- new_tv_compose_subst_ctx; eauto.
 Defined.
 
-Definition runInfer_id e g i := infer_dep e g (mkState i).
-Definition runInfer e g := infer_dep e g (mkState 0).
-
-Compute runInfer (var_t 0) nil.
-
-*)
