@@ -1723,19 +1723,22 @@ refine (fix ids_ty_dep2 (tau tau' : ty) : {t : list id | wf_ty t tau /\ wf_ty t 
   try (apply wf_ty_app_comm; apply wf_ty_app; auto).
 Qed.
 
-
-(*
-Definition unify_simple : forall t1 t2 : ty, option substitution.
+Definition unify : forall t1 t2 : ty,
+   {x & ({ s | unifier t1 t2 s /\ wf_subst x s /\
+           forall s', unifier t1 t2 s' ->
+                 exists s'', forall v, apply_subst s' (var v) = apply_subst (compose_subst s s'') (var v)})
+                 + { UnifyFailure t1 t2 }}.
+Proof.
   intros.
   pose proof ids_ty_dep2 as dep.
   specialize dep with (tau:=t1) (tau':=t2).
-  destruct dep.
-  refine ((projSubs ((unify (existT _ (x) ((t1, t2)::nil))) _))).
+  destruct dep, a.
+  exists x.
+  refine (unify' (mk_constraints x t1 t2) _).
   unfold wf_constraints.
   simpl.
-  intuition.
-Defined.
-*)
+  split; auto.
+Qed.
 
 Definition FV_subst (s: substitution) := ((dom s) ++ (img_ids s)).
 
