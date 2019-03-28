@@ -92,10 +92,125 @@ Fixpoint compute_inst_subst (st : id) (n : nat) : list ty :=
     end
   end.
 
+Lemma nth_error_nil : forall i, nth_error (nil : list ty) i = None.
+Proof.
+  intros.
+  induction i; mysimp.
+Qed.
+
+Hint Resolve nth_error_nil.
+
+Lemma nth_error_compute_inst_Some : forall i k j, i < k -> nth_error (compute_inst_subst j k) i = Some (var (i + j)).
+Proof.
+  induction i.
+  - intros. destruct k.
+    + inversion H.
+    + reflexivity.
+  - intros. destruct k.
+    + inversion H.
+    + simpl.
+      erewrite IHi.
+      fequals.
+      fequals.
+      omega.
+      omega.
+Qed.
+
+Hint Resolve nth_error_compute_inst_Some.
+
+Lemma nth_error_compute_inst_None' : forall i j, nth_error (compute_inst_subst j i) i = None.
+Proof.
+  induction i.
+  - intros. reflexivity.
+  - intros. simpl. auto.
+Qed.
+
+Hint Resolve nth_error_compute_inst_None'.
+
+Lemma nth_error_None_None_cons : forall i (l : list ty) a, nth_error (a :: l) i = None -> nth_error l i = None.
+Proof.
+  induction i; intros. simpl in *. inversion H.
+  simpl in *.
+  induction l. reflexivity.
+  eapply IHi.
+  apply H.
+Qed.
+
+Hint Resolve nth_error_None_None_cons.
+
+Lemma nth_error_None_None : forall (l : list ty) i, nth_error l i = None -> nth_error l (S i) = None.
+Proof.
+  intros.
+  induction l.
+  erewrite nth_error_nil.
+  reflexivity.
+  apply nth_error_None_None_cons in H.
+  auto.
+Qed.
+
+Hint Resolve nth_error_None_None.
+
+Lemma nth_error_None_None_S : forall k i j, nth_error (compute_inst_subst j k) i = None -> nth_error (compute_inst_subst (S j) k) i = None.
+Proof.
+  induction k; intros. simpl. auto.
+  induction i. simpl in *. inversion H.
+  simpl. auto.
+Qed.
+
+Hint Resolve nth_error_None_None_S.
+
+Lemma nth_error_compute_inst_None : forall i k j, k < i -> nth_error (compute_inst_subst j k) i = None.
+Proof.
+  induction i.
+  - intros. inversion H.
+  - intros.
+    induction k.
+    simpl in *. reflexivity.
+    specialize IHi with (j := j) (k := k).
+    apply nth_error_None_None_S.
+    apply IHi.
+    omega.
+Qed.
+
+Hint Resolve nth_error_compute_inst_None.
+
+Lemma new_tv_schm_to_new_tv_ty : forall sigma x x0 i, new_tv_schm sigma x ->
+                          apply_inst_subst (compute_inst_subst x i) sigma = Some_schm x0 ->
+                          new_tv_ty x0 (x + i).
+Proof.
+  induction sigma; intros; simpl in *; mysimp.
+  - inversion H. inversion H0. econstructor. omega.
+  - inversion H0.  econstructor.
+  - pose proof (Nat.lt_ge_cases i0 i).
+    destruct H1.
+    + erewrite nth_error_compute_inst_None in H0; auto. 
+      inversion H0.
+    + apply Nat.lt_eq_cases in H1.
+      destruct H1.
+      * erewrite nth_error_compute_inst_Some in H0; auto.
+        inversion H0. inversion H.
+        subst.
+        econstructor.
+        omega.
+      * subst.
+        rewrite nth_error_compute_inst_None' in H0.
+        inversion H0.
+  - inversion H.
+    subst.
+    cases (apply_inst_subst (compute_inst_subst x i) sigma1).
+    cases (apply_inst_subst (compute_inst_subst x i) sigma2).
+    inversion H0.
+    econstructor; eauto. 
+    inversion H0.
+    inversion H0.
+Qed.
+
+Hint Resolve new_tv_schm_to_new_tv_ty.
+      
 Program Definition schm_inst_dep (sigma : schm) :
   @HoareState id (@top id) (ty * inst_subst)
               (fun i r f => f = i + (max_gen_vars sigma) /\ apply_inst_subst (snd r) sigma = Some_schm (fst r) /\
-              compute_inst_subst i (max_gen_vars sigma) = (snd r)) :=
+              compute_inst_subst i (max_gen_vars sigma) = (snd r) /\ (new_tv_schm sigma i -> new_tv_ty (fst r) f)) :=
     match max_gen_vars sigma as y with
     | nmax => 
        st <- @get id ;
@@ -107,6 +222,9 @@ Next Obligation.
   simpl in *.
   destruct (apply_inst_subst_hoare (compute_inst_subst x (max_gen_vars sigma)) sigma >>= _).
   crushAssumptions.
+  intros.
+  subst.
+  eapply new_tv_schm_to_new_tv_ty; eauto.
 Defined.
 
 Program Definition look_dep (x : id) (G : ctx) :
@@ -410,6 +528,25 @@ Lemma s_gen_t_more_general_than_gen_s_t : forall (s : substitution) (G : ctx) (t
  more_general (apply_subst_schm s (gen_ty tau G)) (gen_ty (apply_subst s tau) (apply_subst_ctx s G)).
 Admitted.
 
+Lemma new_tv_schm_plus : forall sigma st st', new_tv_schm sigma st -> new_tv_schm sigma (st + st').
+Proof.
+  induction sigma; intros; try econstructor; eauto.
+  inversion H. subst. auto.
+  inversion H. subst. auto.
+Qed.
+
+Hint Resolve new_tv_schm_plus.
+
+Lemma new_tv_ctx_plus : forall G st st', new_tv_ctx G st -> new_tv_ctx G (st + st').
+Proof.
+  induction G; intros; simpl in *; auto.
+  econstructor.
+  destruct a.
+  inversion H. subst.
+  econstructor; eauto.
+Qed.
+
+Hint Resolve new_tv_ctx_plus.
 
 Program Fixpoint W_hoare (e : term) (G : ctx) {measure (sizeTerm e)} :
   @HoareState id (fun i => new_tv_ctx G i) (ty * substitution)
@@ -454,20 +591,12 @@ Next Obligation.
   rename x1 into tau, x3 into tau'.
   - omega.
   - econstructor; simpl; intros; intuition.
-  - induction tau; simpl in *; eauto. 
-    inversion H5.
-    econstructor. 
-
-    destruct a.
-    inversion H. subst. simpl in H2. destruct (eq_id_dec i st0).
-    subst. inversion H2. subst. apply IHG. auto. inversion H.
-    subst.
-    s
-    subst.
-  - subst. skip.
-  - econstructor; eauto. 
+  - eauto. 
+  - subst. rewrite apply_subst_ctx_nil. eauto.
+  - (* Case: var soundness *)
+    econstructor; eauto. 
     rewrite apply_subst_ctx_nil. eauto.
-    unfold is_schm_instance. renameAll. exists t1. assumption.
+    unfold is_schm_instance. exists (compute_inst_subst st1 (max_gen_vars tau)). assumption.
   (* Case: var completeness *)
   - subst.
     unfold completeness.
@@ -475,7 +604,6 @@ Next Obligation.
     inversion H0.
     subst.
     inversion H6.
-    renameAll.
     destruct (assoc_subst_exists G i0 s sigma1 H3) as [sigma' H3'].
     destruct H3' as [H31  H32].
     destruct H6.
