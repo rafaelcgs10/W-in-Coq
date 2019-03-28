@@ -548,7 +548,9 @@ Qed.
 
 Hint Resolve new_tv_ctx_plus.
 
-Program Fixpoint W_hoare (e : term) (G : ctx) {measure (sizeTerm e)} :
+Unset Implicit Arguments.
+
+Program Fixpoint W_hoare (e : term) (G : ctx) {struct e} :
   @HoareState id (fun i => new_tv_ctx G i) (ty * substitution)
               (fun i x f => i <= f /\ new_tv_subst (snd x) f /\ new_tv_ty (fst x) f /\
                new_tv_ctx (apply_subst_ctx (snd x) G) f /\ has_type (apply_subst_ctx ((snd x)) G) e (fst x) /\ completeness e G (fst x) ((snd x)) i) :=
@@ -565,49 +567,50 @@ Program Fixpoint W_hoare (e : term) (G : ctx) {measure (sizeTerm e)} :
 
   | lam_t x e' =>
               alpha_G' <- @addFreshCtx G x ;
-              tau_s <- @W_hoare e' (snd alpha_G') _ ;
+              tau_s <- W_hoare e' (snd alpha_G')  ;
               ret ((Unify.arrow (apply_subst ((snd tau_s)) (var (fst alpha_G'))) (fst tau_s)), (snd tau_s))
 
   | app_t l r =>
-              tau1_s1 <- @W_hoare l G _ ;
-              tau2_s2 <- @W_hoare r (apply_subst_ctx (snd tau1_s1) G) _ ;
+              tau1_s1 <- W_hoare l G  ;
+              tau2_s2 <- W_hoare r (apply_subst_ctx (snd tau1_s1) G)  ;
               alpha <- fresh ;
               s <- unify (apply_subst (snd tau2_s2) (fst tau1_s1)) (Unify.arrow (fst tau2_s2) (var alpha)) ;
               ret (apply_subst s (var alpha), compose_subst  (snd tau1_s1) (compose_subst (snd tau2_s2) s))
 
   | let_t x e1 e2  =>
-                 tau1_s1 <- @W_hoare e1 G _ ;
-                 tau2_s2 <- @W_hoare e2 ((x,gen_ty (fst tau1_s1) (apply_subst_ctx (snd tau1_s1) G) )::(apply_subst_ctx (snd tau1_s1) G)) _ ;
+                 tau1_s1 <- W_hoare e1 G  ;
+                 tau2_s2 <- W_hoare e2 ((x,gen_ty (fst tau1_s1) (apply_subst_ctx (snd tau1_s1) G) )::(apply_subst_ctx (snd tau1_s1) G))  ;
                  ret (fst tau2_s2, compose_subst (snd tau1_s1) (snd tau2_s2))
   end. 
-Next Obligation. (* Case: properties used in const *)
+Next Obligation. (* Case: properties used in var_t *)
   intros; unfold top; auto.
 Defined.
-Next Obligation. 
+Next Obligation.  (* Case: soundness and completeness of var_t *)
   edestruct (look_dep x G >>= _).
   crushAssumptions;
-  clear W_hoare; subst;
+  subst;
   rename x into st0, x2 into st1;
   rename x1 into tau, x3 into tau'.
   - omega.
   - econstructor; simpl; intros; intuition.
   - eauto. 
   - subst. rewrite apply_subst_ctx_nil. eauto.
-  - (* Case: var soundness *)
+  - (* Case: var_t soundness *)
     econstructor; eauto. 
     rewrite apply_subst_ctx_nil. eauto.
     unfold is_schm_instance. exists (compute_inst_subst st1 (max_gen_vars tau)). assumption.
-  (* Case: var completeness *)
+  (* Case: var_t completeness *)
   - subst.
     unfold completeness.
     intros.
     inversion H0.
     subst.
     inversion H6.
-    destruct (assoc_subst_exists G i0 s sigma1 H3) as [sigma' H3'].
+    rename x into is_s.
+    destruct (assoc_subst_exists G st0 phi sigma H3) as [sigma' H3'].
     destruct H3' as [H31  H32].
     destruct H6.
-    exists (compose_subst (compute_subst st x0) s).
+    exists (compose_subst (compute_subst st1 is_s) phi).
     splits.
     + eapply t_is_app_T_aux with (p := max_gen_vars sigma').
       * eapply new_tv_ctx_implies_new_tv_schm. 
@@ -627,64 +630,16 @@ Next Obligation.
       reflexivity.
       assumption.
 Defined.
-Next Obligation. (* Case: properties used in var *)
+Next Obligation. (* Case: properties used in const_t *)
   intros; unfold top; auto.
 Defined.
-Next Obligation. 
-  edestruct (look_dep x G >>= _).
-  crushAssumptions.
-  - subst. omega.
-  - econstructor. simpl. intros. intuition.
-  - skip.
-  - subst. skip.
-  (* Case: var soundness  *)
-  - econstructor; eauto. rewrite apply_subst_ctx_nil. eauto.
-    unfold is_schm_instance. renameAll. exists t1. assumption.
-  (* Case: var completeness  *)
-  - subst.
-    unfold completeness.
-    intros.
-    inversion H0.
-    subst.
-    inversion H6.
-    renameAll.
-    destruct (assoc_subst_exists G i0 s sigma1 H3) as [sigma' H3'].
-    destruct H3' as [H31  H32].
-    destruct H6.
-    exists (compose_subst (compute_subst st x0) s).
-    split.
-    + eapply t_is_app_T_aux with (p := max_gen_vars sigma').
-      * eapply new_tv_ctx_implies_new_tv_schm. 
-       apply H31. auto.
-      * reflexivity.
-      * rewrite H2 in H31.
-        inversion H31. subst.
-        assumption.
-      * sort.
-        rewrite H2 in H31.
-        inversion H31.
-        subst.
-        assumption.
-    + intros.
-      rewrite apply_subst_nil.
-      rewrite apply_app_compute_subst.
-      reflexivity.
-      assumption.
-Defined.
+Next Obligation. (* Case: soundness and completeness of cons_t *)
+Admitted.
 Next Obligation. 
   Admitted.
-Next Obligation. (* Case: properties used in lam *)
-  splits; auto.
-  intros; splits; auto.
-  intros; auto.
-  unfold top; auto.
-  crushAssumptions.
-  intros.
-  unfold top; auto.
-Defined.
 Next Obligation. (* Case: lam soundness  *)
   simpl.
-  destruct (W_hoare e' (((x, sc_var x0)) :: G) _ >>= _).
+  destruct (W_hoare e' (((x, sc_var x0)) :: G) >>= _).
   simpl.
   crushAssumptions;
   rename x0 into st0, t1 into s, x1 into tau0.
@@ -735,17 +690,12 @@ Next Obligation. (* Case: lam soundness  *)
         assumption.
 Defined.
 Next Obligation. 
-  simpl.
-  Admitted.
-Next Obligation.
-  Admitted.
-Next Obligation.
   intros; splits; auto.
   intros; splits; auto.
   mysimp.
     Admitted.
 Next Obligation.
-  destruct (W_hoare l G _ >>= _).
+  destruct (W_hoare l G  >>= _).
   crushAssumptions.
   clear W_hoare.
   - omega.
@@ -807,11 +757,7 @@ Defined.
 Next Obligation.
     Admitted.
 Next Obligation.
-    Admitted.
-Next Obligation.
-    Admitted.
-Next Obligation.
-  destruct (W_hoare e1 G _ >>= _).
+  destruct (W_hoare e1 G >>= _).
   crushAssumptions; subst;
   clear W_hoare.
   - omega.
