@@ -48,71 +48,9 @@ Ltac repeat_until_block tac :=
   | [ |- _ ] => tac (); repeat_until_block tac
   end.
 
-Ltac renames_id :=
-  generalize (I : BLOCK);
-  repeat match goal with
-         | [ H : _ |- _ ] => revert H
-         end;
-  repeat_until_block
-    ltac:(fun _
-          => intro;
-             try lazymatch goal with
-             | [ i : id |- _] => let i' := fresh "i" in (rename i into i')
-             end).
-
-Ltac renames_subst :=
-  generalize (I : BLOCK);
-  repeat match goal with
-         | [ H : _ |- _ ] => revert H
-         end;
-  repeat_until_block
-    ltac:(fun _
-          => intro;
-             try lazymatch goal with
-             | [ i : substitution |- _] => let s := fresh "s" in (rename i into s)
-             end).
-
-Ltac renames_ty :=
-  generalize (I : BLOCK);
-  repeat match goal with
-         | [ H : _ |- _ ] => revert H
-         end;
-  repeat_until_block
-    ltac:(fun _
-          => intro;
-             try lazymatch goal with
-             | [ i : ty |- _] => let tau := fresh "tau" in (rename i into tau)
-             end).
-
-Ltac renames_schm :=
-  generalize (I : BLOCK);
-  repeat match goal with
-         | [ H : _ |- _ ] => revert H
-         end;
-  repeat_until_block
-    ltac:(fun _
-          => intro;
-             try lazymatch goal with
-             | [ i : schm |- _] => let sigma := fresh "sigma" in (rename i into sigma)
-             end).
-
-Ltac renames_st :=
-  generalize (I : BLOCK);
-  repeat match goal with
-         | [ H : _ |- _ ] => revert H
-         end;
-  repeat_until_block
-    ltac:(fun _
-          => intro;
-             try lazymatch goal with
-             | [ _ : new_tv_ctx _ ?i  |- _] => let st := fresh "st" in (rename i into st)
-             end).
-
-Ltac renameAll := renames_id; renames_schm; renames_subst; renames_ty; renames_st; sort.
-
 Ltac crushAssumptions := (repeat (simpl; crush)) ; try inversionExist; try splits;
                          eauto; try (subst; reflexivity); try autorewrite with subst using eauto;
-                         try (subst; omega); renameAll; sort.
+                         try (subst; omega); sort.
 
 Fixpoint max_gen_vars (sigma : schm) : nat :=
   match sigma with
@@ -510,10 +448,22 @@ Next Obligation. (* Case: properties used in const *)
 Defined.
 Next Obligation. 
   edestruct (look_dep x G >>= _).
-  crushAssumptions.
-  - subst. omega.
+  crushAssumptions;
+  clear W_hoare; subst;
+  rename x into st0, x2 into st1;
+  rename x1 into tau, x3 into tau'.
+  - omega.
   - econstructor; simpl; intros; intuition.
-  - skip.
+  - induction tau; simpl in *; eauto. 
+    inversion H5.
+    econstructor. 
+
+    destruct a.
+    inversion H. subst. simpl in H2. destruct (eq_id_dec i st0).
+    subst. inversion H2. subst. apply IHG. auto. inversion H.
+    subst.
+    s
+    subst.
   - subst. skip.
   - econstructor; eauto. 
     rewrite apply_subst_ctx_nil. eauto.
