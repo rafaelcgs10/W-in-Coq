@@ -121,13 +121,6 @@ Admitted.
 Hint Resolve not_in_domain_compute.
 Hint Rewrite not_in_domain_compute.
 
-Lemma new_tv_ctx_implies_new_tv_schm : forall (G : ctx) (sigma : schm) (st x : id),
-    in_ctx x G = Some sigma -> new_tv_ctx G st -> new_tv_schm sigma st.
-Proof.
-  Admitted.
-
-Hint Resolve new_tv_ctx_implies_new_tv_schm.
-
 Lemma assoc_subst_exists : forall (G : ctx) (i : id) (s : substitution) (sigma : schm),
     in_ctx i (apply_subst_ctx s G) = Some sigma ->
     {sigma' : schm | in_ctx i G = Some sigma' /\ sigma = apply_subst_schm s sigma'}.
@@ -177,23 +170,6 @@ Hint Rewrite apply_app_compute_subst : subst.
 
 (** Gives you a fresh variable *)
 Program Definition fresh : @HoareState id (@top id) id (fun i x f => S i = f /\ i = x) := fun n => exist _ (Some (n, S n)) _.
-
-Lemma new_tv_schm_Succ : forall sigma i, new_tv_schm sigma i -> new_tv_schm sigma (S i).
-Proof.
-  intros.
-  induction sigma;
-  inversion H; econstructor; auto.
-Qed.
-
-Hint Resolve new_tv_schm_Succ.
-
-Lemma new_tv_ctx_Succ : forall G i, new_tv_ctx G i -> new_tv_ctx G (S i).
-Proof.
-  intros.
-  induction H; econstructor; eauto.
-Qed.
-
-Hint Resolve new_tv_ctx_Succ.
 
 Program Definition addFreshCtx (G : ctx) (x : id) (alpha : id):
   @HoareState id (fun i => new_tv_ctx G i) ctx (fun i r f => alpha < i -> (new_tv_ctx r f /\ f = i /\ new_tv_ty (var alpha) f)) :=
@@ -374,13 +350,13 @@ Program Fixpoint W_hoare (e : term) (G : ctx) {struct e} :
               alpha <- fresh ;
               G' <- addFreshCtx G x alpha ;
               tau_s <- W_hoare e' G'  ;
-              ret ((Unify.arrow (apply_subst ((snd tau_s)) (var alpha)) (fst tau_s)), (snd tau_s))
+              ret ((arrow (apply_subst ((snd tau_s)) (var alpha)) (fst tau_s)), (snd tau_s))
 
   | app_t l r =>
               tau1_s1 <- W_hoare l G  ;
               tau2_s2 <- W_hoare r (apply_subst_ctx (snd tau1_s1) G)  ;
               alpha <- fresh ;
-              s <- unify (apply_subst (snd tau2_s2) (fst tau1_s1)) (Unify.arrow (fst tau2_s2) (var alpha)) ;
+              s <- unify (apply_subst (snd tau2_s2) (fst tau1_s1)) (arrow (fst tau2_s2) (var alpha)) ;
               ret (apply_subst s (var alpha), compose_subst  (snd tau1_s1) (compose_subst (snd tau2_s2) s))
 
   | let_t x e1 e2  =>
@@ -398,8 +374,7 @@ Next Obligation.  (* Case: soundness and completeness of var_t *)
   rename x into st0, x2 into st1;
   rename x1 into tau, x3 into tau'.
   - omega.
-  - econstructor; simpl; intros; intuition.
-  - eauto. 
+  - eauto.
   - subst. rewrite apply_subst_ctx_nil. eauto.
   - (* Case: var_t soundness *)
     econstructor; eauto. 
@@ -517,31 +492,35 @@ Next Obligation.
   rename H17 into MGU;
   rename x4 into alpha, x into st0, x1 into st1;
   rename x6 into mu, t1 into s1, t2 into s2;
+  rename H6 into COMP_L, H12 into COMP_R;
   rename x2 into tauL, x0 into tauLR.
   - omega.
   - subst.
-    econstructor.
-    intros.
-    inversion H2.
-    inversion H8.
-    subst.
-    skip.
+    apply new_tv_compose_subst; eauto.
+    apply new_tv_compose_subst; eauto.
+    eapply H18.
+    splits; eauto.
+    econstructor; eauto.
   - fold (apply_subst mu (var alpha)).
     subst.
-    apply new_tv_s_ty.
-    econstructor. auto.
-    econstructor.
-    intros.
-    skip.
-
-  - skip.
+    apply new_tv_s_ty; eauto.
+    apply H18; eauto.
+    splits; eauto.
+    econstructor; eauto.
+  - subst.
+    eapply new_tv_s_ctx; eauto.
+    apply new_tv_compose_subst; eauto.
+    apply new_tv_compose_subst; eauto.
+    eapply H18.
+    splits; eauto.
+    econstructor; eauto.
   - skip.
   - subst.
-    rename H6 into COMP_L, H12 into COMP_R.
     unfold completeness. intros.
-    rename H6 into SOUND_LR, tau' into tau_r.
+    rename H6 into SOUND_LR.
     inversion_clear SOUND_LR.
     rename tau into tau_l.
+    rename tau' into tau_r.
     rename H6 into SOUND_L, H7 into SOUND_R.
     sort.
     apply COMP_L in SOUND_L as PRINC_L.
@@ -583,13 +562,21 @@ Next Obligation.
       erewrite <- new_tv_compose_subst_ctx; eauto.
 Defined.
 Next Obligation.
+  unfold top.
+  intros; splits; auto.
+  intros; splits; auto.
+  destructs H0;
+  try splits; auto.
+  econstructor; eauto.
+  destruct x1; simpl in *.
+  (* pobremae com gen_ty aqui *)
     Admitted.
 Next Obligation.
   destruct (W_hoare e1 G >>= _).
   crushAssumptions; subst;
   clear W_hoare.
   - omega.
-  - skip.
+  - ski.
   - skip.
   - skip.
   - skip.

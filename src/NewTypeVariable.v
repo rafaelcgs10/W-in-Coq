@@ -96,12 +96,6 @@ Qed.
 
 Hint Resolve new_tv_schm_to_new_tv_ty.
 
-Lemma new_tv_subst_trans : forall (s : substitution) (i1 i2 : id),
-  new_tv_subst s i1 -> i1 <= i2 -> new_tv_subst s i2.
-Admitted.
-
-Hint Resolve new_tv_subst_trans.
-
 Lemma new_tv_s_id : forall (st st' : id) (s : substitution),
     new_tv_subst s st -> st' < st -> new_tv_ty (apply_subst s (var st')) st.
 Admitted.
@@ -129,13 +123,6 @@ Proof.
 Qed.
 
 Hint Resolve new_tv_ty_ids.
-
-Lemma new_tv_ty_trans_le : forall (tau : ty) (st1 st2 : id), new_tv_ty tau st1 -> st1 <= st2 -> new_tv_ty tau st2.
-Proof.
-  intros.
-  Admitted.
-
-Hint Resolve new_tv_ty_trans_le.
 
 Lemma new_tv_compose_subst_ctx : forall (s s1 s2 : substitution) (st : id) (G : ctx),
        (forall x : id, x < st -> apply_subst s (var x) = apply_subst s2 (apply_subst s1 (var x))) ->
@@ -172,4 +159,57 @@ Proof.
 Qed.
 
 Hint Resolve new_tv_ty_to_schm.
+
+Lemma new_tv_s_ctx : forall (st : id) (s : substitution) (G : ctx),
+    new_tv_ctx G st -> new_tv_subst s st -> new_tv_ctx (apply_subst_ctx s G) st.
+Admitted.
+
+Hint Resolve new_tv_s_ctx.
+
+Lemma new_tv_schm_Succ : forall sigma i, new_tv_schm sigma i -> new_tv_schm sigma (S i).
+Proof.
+  intros.
+  induction sigma;
+  inversion H; econstructor; auto.
+Qed.
+
+Hint Resolve new_tv_schm_Succ.
+
+Lemma new_tv_ctx_Succ : forall G i, new_tv_ctx G i -> new_tv_ctx G (S i).
+Proof.
+  intros.
+  induction H; econstructor; eauto.
+Qed.
+
+Hint Resolve new_tv_ctx_Succ.
+
+Lemma new_tv_ctx_implies_new_tv_schm : forall (G : ctx) (sigma : schm) (st x : id),
+    in_ctx x G = Some sigma -> new_tv_ctx G st -> new_tv_schm sigma st.
+Proof.
+  Admitted.
+
+Hint Resolve new_tv_ctx_implies_new_tv_schm.
+
+Lemma new_tv_ctx_trans : forall st st' G, new_tv_ctx G st -> st <= st' -> new_tv_ctx G st'.
+Admitted.
+
+Hint Resolve new_tv_ctx_trans.
+
+Lemma new_tv_schm_trans : forall st st' G, new_tv_ctx G st -> st <= st' -> new_tv_ctx G st'.
+Admitted.
+
+Hint Resolve new_tv_schm_trans.
+
+Lemma new_tv_subst_trans : forall (s : substitution) (i1 i2 : id),
+  new_tv_subst s i1 -> i1 <= i2 -> new_tv_subst s i2.
+Admitted.
+
+Hint Resolve new_tv_subst_trans.
+
+Lemma new_tv_ty_trans_le : forall (tau : ty) (st1 st2 : id), new_tv_ty tau st1 -> st1 <= st2 -> new_tv_ty tau st2.
+Proof.
+  intros.
+  Admitted.
+
+Hint Resolve new_tv_ty_trans_le.
 
