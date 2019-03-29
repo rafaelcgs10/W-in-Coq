@@ -1,13 +1,14 @@
 Set Implicit Arguments.
 
 
-Require Import Unify.
+Require Import SimpleTypes.
+Require Import Subst.
 Require Import Arith.Arith_base List Omega.
 Require Import Wellfounded.Lexicographic_Product.
 Require Import Relation_Operators.
 Require Import Coq.Setoids.Setoid.
-
 Require Import LibTactics.
+Require Import MyLtacs.
 
 
 (** Check if a id is in a list *)

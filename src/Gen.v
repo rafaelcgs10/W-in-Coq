@@ -8,6 +8,9 @@ Require Import Disjoints.
 Require Import Unify.
 Require Import Arith.Arith_base.
 Require Import List.
+Require Import SimpleTypes.
+Require Import Subst.
+Require Import MyLtacs.
 
 (** * Generalization of non-free variables in a type *)
 

@@ -3,7 +3,9 @@ Set Implicit Arguments.
 Require Import Disjoints.
 Require Import Sublist.
 Require Import ListIds.
-Require Import Unify.
+Require Import SimpleTypes.
+Require Import Subst.
+Require Import MyLtacs.
 Require Import Arith.Arith_base List Omega.
 Require Import Wellfounded.Lexicographic_Product.
 Require Import Relation_Operators.

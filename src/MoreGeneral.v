@@ -1,6 +1,5 @@
 Set Implicit Arguments.
 
-Require Import Unify.
 Require Import Schemes.
 Require Import Gen.
 Require Import List.
@@ -8,6 +7,9 @@ Require Import ListIds.
 Require Import Context.
 Require Import Typing.
 Require Import NewTypeVariable.
+Require Import SimpleTypes.
+Require Import Subst.
+Require Import MyLtacs.
 
 Require Import LibTactics.
 

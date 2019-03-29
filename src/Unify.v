@@ -3,60 +3,13 @@ Set Implicit Arguments.
 Require Import Arith.Arith_base List Omega.
 Require Import Wellfounded.Lexicographic_Product.
 Require Import Relation_Operators.
+Require Import LibTactics.
 Require Import Coq.Setoids.Setoid.
 Require Import Program.
-Require Import LibTactics.
-
-(** * Type Definitions *)
-
-(** ** Identifier definition *)
-
-(** Identifiers are just natural numbers. This eases the task of equality test *)
-
-Definition id := nat.
-
-(** Decidable equality of identifiers *)
-
-Definition eq_id_dec : forall (v v' : id), {v = v'} + {v <> v'} := eq_nat_dec.
-
-(** Type definition is direct *)
-
-Inductive ty : Set :=
-  | var : id -> ty
-  | con : id -> ty
-  | arrow : ty -> ty -> ty.
-
-(** List of ids in a type *)
-Fixpoint ids_ty(tau : ty) : list id :=
-  match tau with
-  | var i => i::nil
-  | arrow l r => (ids_ty l) ++ (ids_ty r) 
-  | _ => nil
-  end.
-
-(** Decidable equality test for types *)
-
-Definition eq_ty_dec : forall (t t' : ty), {t = t'} + {t <> t'}.
-  pose eq_id_dec.
-  decide equality.
-Defined.
-
-Ltac s :=
-  match goal with
-    | [ H : _ /\ _ |- _] => destruct H
-    | [ H : _ \/ _ |- _] => destruct H
-    | [ |- context[eq_id_dec ?a ?b] ] => destruct (eq_id_dec a b) ; subst ; try congruence
-    | [ |- context[eq_nat_dec ?a ?b] ] => destruct (eq_nat_dec a b) ; subst ; try congruence
-    | [ x : (id * ty)%type |- _ ] => let t := fresh "t" in destruct x as [x t]
-    | [ H : (_,_) = (_,_) |- _] => inverts* H
-    | [ H : Some _ = Some _ |- _] => inverts* H
-    | [ H : Some _ = None |- _] => congruence
-    | [ H : None = Some _ |- _] => congruence
-    | [ |- _ /\ _] => split ~
-    | [ H : ex _ |- _] => destruct H
-  end.
-
-Ltac mysimp := (repeat (simpl; s)) ; simpl; auto with arith.
+Require Import SimpleTypes.
+Require Import Subst.
+Require Import NewTypeVariable.
+Require Import MyLtacs.
 
 (* end hide *)
 
@@ -335,28 +288,6 @@ Definition occurs_dec : forall v t, {occurs v t} +  {~ occurs v t}.
                   end
             end) ; mysimp ; intuition.
 Defined.
-
-(** * Substitutions *)
-
-(** A operation for substitute all the ocurrences of variable x in t2 by t1. *)
-Definition substitution := list (id * ty).
-
-Fixpoint find_subst (s : substitution) (i : id) : option ty :=
-  match s with
-    | nil => None
-    | (v,t') :: s' => if (eq_id_dec v i) then Some t' else find_subst s' i
-  end.
-
-Fixpoint apply_subst (s : substitution) (t : ty) : ty :=
-  match t with
-  | arrow l r => arrow (apply_subst s l) (apply_subst s r)
-  | var i => match find_subst s i with
-            | None => var i
-            | Some t' => t'
-            end
-  | con i => con i
-  end.
-
 (** Removing a variable from a variable context *)
 
 Fixpoint remove (v : id) (ctx : varctxt) : varctxt :=
@@ -395,14 +326,6 @@ Hint Resolve subst_remove.
 
 (* end hide *)
 
-(** ** Substitution Definitions and Its Well Formedness Predicate *)
-
-(** Substitution and its dom *)
-
-Definition dom (s : substitution) : list id := List.map (@fst id ty) s.
-Definition img (s : substitution) : list ty := List.map (@snd id ty) s.
-Definition img_ids (s : substitution) : list id := List.concat (List.map ids_ty (img s)).
-
 (** Removing a list of names from a given variable context. *)
 
 Fixpoint minus (C : varctxt) (xs : list id) : varctxt :=
@@ -439,123 +362,6 @@ Proof.
   induction s ; mysimp ; intros ; mysimp ; rewrite IHs ; auto.
 Qed.
 
-(** ** Some Obvious Facts About Substitutions **)
-
-Lemma apply_subst_id : forall t, apply_subst nil t = t.
-Proof.
-  induction t ; mysimp.
-  congruence.
-Qed.
-
-Hint Resolve apply_subst_id.
-Hint Rewrite apply_subst_id : subst.
-
-Lemma apply_subst_con : forall s n, apply_subst s (con n) = con n.
-Proof.
-  induction s ; mysimp.
-Qed.
-
-Hint Resolve apply_subst_con.
-Hint Rewrite apply_subst_con : subst.
-
-Lemma apply_subst_arrow : forall s l r, apply_subst s (arrow l r) = arrow (apply_subst s l) (apply_subst s r).
-Proof.
-  induction s ; mysimp.
-Qed.
-
-Hint Resolve apply_subst_arrow.
-Hint Rewrite apply_subst_arrow : subst.
-
-(** ** Substitution composition **)
-Fixpoint in_subst_b (i : id) (s : substitution) : bool :=
-  match s with
-  | nil => false
-  | (j, _)::s' => if eq_id_dec i j then true else in_subst_b i s'
-  end.
-
-Fixpoint apply_subst_list (s1 s2 : substitution) : substitution :=
-  match s1 with
-  | nil => nil
-  | (i, t)::s1' => (i, apply_subst s2 t)::apply_subst_list s1' s2
-  end.
-
-Lemma apply_subst_nil : forall t, apply_subst nil t = t.
-Proof.
-  intros; induction t; mysimp.
-  congruence.
-Qed.
-
-Hint Resolve apply_subst_nil.
-Hint Rewrite apply_subst_nil : subst.
-
-Lemma apply_subst_list_nil : forall s, apply_subst_list s nil = s.
-Proof.
-  induction s; mysimp.
-  rewrite apply_subst_nil.
-  congruence.
-Qed.
-
-Hint Resolve apply_subst_list_nil.
-Hint Rewrite apply_subst_list_nil : subst.
-
-Definition compose_subst (s1 s2 : substitution) :=
-      apply_subst_list s1 s2 ++ s2.
-
-Lemma compose_subst_nil_l : forall s2, compose_subst nil s2 = s2.
-Proof.
-  intros; induction s2; mysimp.
-Qed.
-
-Hint Resolve compose_subst_nil_l.
-Hint Rewrite compose_subst_nil_l : subst.
-
-(** ** Some Obvious Facts About Composition **)
-
-Lemma apply_compose_subst_nil_l : forall s t, apply_subst (compose_subst nil s) t = apply_subst s t.
-Proof.
-  intros; mysimp. 
-Qed.
-
-Hint Resolve apply_compose_subst_nil_l.
-Hint Rewrite apply_compose_subst_nil_l : subst.
-
-Lemma apply_compose_subst_nil_r : forall s t, apply_subst (compose_subst s nil) t = apply_subst s t.
-Proof.
-  intros; mysimp; induction s; autorewrite with subst using congruence.
-  induction t; mysimp.
-  repeat rewrite apply_subst_arrow in IHs.
-  inversion IHs.
-  fequals;
-  auto.
-Qed.
-
-Hint Resolve apply_compose_subst_nil_r.
-Hint Rewrite apply_compose_subst_nil_r : subst.
-
-Lemma apply_subst_fold : forall s, (forall i, match find_subst s i with | Some t' => t' | None => var i end = apply_subst s (var i)).
-Proof.
-  intros. reflexivity.
-Qed.
-
-Lemma apply_subst_fold2 :  forall s s', (forall i, match find_subst s i with | Some t' => t' | None => var i end =
-                                         match find_subst s' i with | Some t' => t' | None => var i end) <->
-                                   (forall i, apply_subst s (var i) = apply_subst s' (var i)).
-Proof.
-  intros; split; intro; 
-    simpl in *;
-    auto.
-Qed.
-
-Lemma apply_compose_equiv : forall s1 s2 t, apply_subst (compose_subst s1 s2) t = apply_subst s2 (apply_subst s1 t).
-Proof.
-  induction s1; intros; mysimp. repeat rewrite apply_compose_subst_nil_l.  autorewrite with subst using congruence.
-  induction t; mysimp; simpl in *; eauto.
-  repeat rewrite apply_subst_fold.
-  erewrite <- IHs1.
-  simpl.
-  unfold compose_subst. reflexivity.
-  fequals.
-Qed.
 
 Lemma member_remove_false : forall i C, member (remove i C) i -> False.
 Proof.
@@ -851,10 +657,11 @@ we can either:
 *)
 
 Definition unify_type (c : constraints) := wf_constraints c ->
-           ({ s | unifier (fst (get_tys c)) (snd (get_tys c)) s /\ wf_subst (get_ctxt c) s /\
-             forall s', unifier (fst (get_tys c)) (snd (get_tys c)) s' ->
-               exists s'', forall v, apply_subst s' (var v) = apply_subst (compose_subst s s'') (var v)})
-           + { UnifyFailure (fst (get_tys c)) (snd (get_tys c)) }.
+                    ({ s | unifier (fst (get_tys c)) (snd (get_tys c)) s /\ wf_subst (get_ctxt c) s /\
+                           (forall st, (new_tv_ty (fst (get_tys c)) st /\ new_tv_ty (snd (get_tys c)) st) -> new_tv_subst s st) /\
+                           forall s', unifier (fst (get_tys c)) (snd (get_tys c)) s' ->
+                                 exists s'', forall v, apply_subst s' (var v) = apply_subst (compose_subst s s'') (var v)})
+                    + { UnifyFailure (fst (get_tys c)) (snd (get_tys c)) }.
 
 (** * Main definition of the unification function *)
 
@@ -1469,6 +1276,17 @@ Qed.
 
 Hint Resolve wf_subst_arrowend.
 
+Lemma in_list_id_new_tv_tv_lt : forall t i x st, ListIds.in_list_id x (img_ids [(i, t)]) = true -> new_tv_ty t st -> x < st.
+Proof.
+  induction t; intros; simpl in *; eauto.
+  Unshelve. inversion H.
+  inversion H.
+  inversion H.
+  apply i.
+Qed.
+
+Hint Resolve in_list_id_new_tv_tv_lt.
+
 Program Fixpoint unify' (l : constraints) {wf constraints_lt l} : unify_type l :=
   fun wfl => match get_tys l with
   | (var i, t) => match occurs_dec i t with
@@ -1513,9 +1331,20 @@ simpl in wfl.
 destruct wfl.
 splits; mysimp.
 unfold unifier.
-mysimp.
+mysimp;
+intros;
+destruct H2;
+econstructor;
+intros. 
+econstructor.
+intros. simpl in H3.
+destruct H2; auto.
+inversion H2. 
+destruct (eq_id_dec i x).
+subst. auto.
+subst.
+eauto.
 intros.
-
 exists s'.
 intros.
 repeat rewrite apply_subst_fold.
@@ -1528,7 +1357,7 @@ reflexivity.
 Defined.
 Next Obligation.
   intros; splits; intros; mysimp.
-  reflexivity.
+  reflexivity. 
   exists s'.
   rewrite compose_subst_nil_l.
   intros. reflexivity.
@@ -1541,6 +1370,15 @@ destruct wfl.
 splits; mysimp.
 unfold unifier. mysimp.
 erewrite subst_occurs; auto.
+intros.
+econstructor. intros.
+destruct H3; auto.
+simpl in H4.
+destruct (eq_id_dec i x).
+subst.
+inversion H5. 
+subst. auto.
+eauto.
 intros.
 exists s'.
 intros.
@@ -1584,7 +1422,6 @@ split; auto.
 Defined.
 Next Obligation.
   clear e Heq_anonymous unify'.
-  (* aqui *)
   erewrite constraints_mk_inversion with (C := get_ctxt l); eauto.
   destruct wfl.
   repeat rewrite <- Heq_anonymous0 in *.
@@ -1608,9 +1445,7 @@ Next Obligation.
   simpl.
   destruct H, H0.
   splits;
-
-  (* pobre aqui *)
-    eapply substs_remove; eauto.
+  eapply substs_remove; eauto.
 Defined.
 Next Obligation.
   eauto.
@@ -1622,8 +1457,10 @@ Next Obligation.
   - repeat rewrite apply_compose_equiv.
     repeat rewrite apply_subst_arrow.
     fequals.
-  -  (* novo ponto hard *)
-    eapply wf_subst_arrowend; auto.
+  - eapply wf_subst_arrowend; auto.
+  - intros. destruct H. inversion H. subst. inversion H0. subst.
+    eapply new_tv_compose_subst; eauto. eapply n; eauto.
+    splits; eauto. 
   - intros.
     inversion H.
     eapply e0 in u0 as Hl1.
@@ -1725,6 +1562,7 @@ Qed.
 
 Definition unify : forall t1 t2 : ty,
    {x & ({ s | unifier t1 t2 s /\ wf_subst x s /\
+               (forall st, (new_tv_ty t1 st /\ new_tv_ty t2 st) -> new_tv_subst s st) /\
            forall s', unifier t1 t2 s' ->
                  exists s'', forall v, apply_subst s' (var v) = apply_subst (compose_subst s s'') (var v)})
                  + { UnifyFailure t1 t2 }}.
@@ -1739,9 +1577,6 @@ Proof.
   simpl.
   split; auto.
 Qed.
-
-Definition FV_subst (s: substitution) := ((dom s) ++ (img_ids s)).
-
 
 Fixpoint id_in_subst (i : id) (s : substitution) : option ty :=
   match s with

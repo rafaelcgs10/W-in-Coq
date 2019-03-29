@@ -7,10 +7,12 @@ Require Import ListIds.
 Require Import Schemes.
 Require Import Rename.
 Require Import Disjoints.
-Require Import Unify.
+Require Import Subst.
 Require Import Gen.
 Require Import Arith.Arith_base.
 Require Import List.
+Require Import SimpleTypes.
+Require Import MyLtacs.
 
 (** * Lambda term definition *)
 

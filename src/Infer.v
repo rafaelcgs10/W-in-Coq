@@ -15,6 +15,9 @@ Require Import NewTypeVariable.
 Require Import HoareMonad.
 Require Import Program.
 Require Import MoreGeneral.
+Require Import SimpleTypes.
+Require Import Subst.
+Require Import MyLtacs.
 
 Ltac inversionExist :=
   match goal with
@@ -83,129 +86,6 @@ Program Definition apply_inst_subst_hoare (is_s : inst_subst) (sigma : schm):
   | Some_schm tau => ret tau 
   end .
 
-Fixpoint compute_inst_subst (st : id) (n : nat) : list ty :=
-  match n with
-  | 0 => nil
-  | S n' =>
-    match compute_inst_subst (S st) n' with
-    | l' => (var st :: l')
-    end
-  end.
-
-Lemma nth_error_nil : forall i, nth_error (nil : list ty) i = None.
-Proof.
-  intros.
-  induction i; mysimp.
-Qed.
-
-Hint Resolve nth_error_nil.
-
-Lemma nth_error_compute_inst_Some : forall i k j, i < k -> nth_error (compute_inst_subst j k) i = Some (var (i + j)).
-Proof.
-  induction i.
-  - intros. destruct k.
-    + inversion H.
-    + reflexivity.
-  - intros. destruct k.
-    + inversion H.
-    + simpl.
-      erewrite IHi.
-      fequals.
-      fequals.
-      omega.
-      omega.
-Qed.
-
-Hint Resolve nth_error_compute_inst_Some.
-
-Lemma nth_error_compute_inst_None' : forall i j, nth_error (compute_inst_subst j i) i = None.
-Proof.
-  induction i.
-  - intros. reflexivity.
-  - intros. simpl. auto.
-Qed.
-
-Hint Resolve nth_error_compute_inst_None'.
-
-Lemma nth_error_None_None_cons : forall i (l : list ty) a, nth_error (a :: l) i = None -> nth_error l i = None.
-Proof.
-  induction i; intros. simpl in *. inversion H.
-  simpl in *.
-  induction l. reflexivity.
-  eapply IHi.
-  apply H.
-Qed.
-
-Hint Resolve nth_error_None_None_cons.
-
-Lemma nth_error_None_None : forall (l : list ty) i, nth_error l i = None -> nth_error l (S i) = None.
-Proof.
-  intros.
-  induction l.
-  erewrite nth_error_nil.
-  reflexivity.
-  apply nth_error_None_None_cons in H.
-  auto.
-Qed.
-
-Hint Resolve nth_error_None_None.
-
-Lemma nth_error_None_None_S : forall k i j, nth_error (compute_inst_subst j k) i = None -> nth_error (compute_inst_subst (S j) k) i = None.
-Proof.
-  induction k; intros. simpl. auto.
-  induction i. simpl in *. inversion H.
-  simpl. auto.
-Qed.
-
-Hint Resolve nth_error_None_None_S.
-
-Lemma nth_error_compute_inst_None : forall i k j, k < i -> nth_error (compute_inst_subst j k) i = None.
-Proof.
-  induction i.
-  - intros. inversion H.
-  - intros.
-    induction k.
-    simpl in *. reflexivity.
-    specialize IHi with (j := j) (k := k).
-    apply nth_error_None_None_S.
-    apply IHi.
-    omega.
-Qed.
-
-Hint Resolve nth_error_compute_inst_None.
-
-Lemma new_tv_schm_to_new_tv_ty : forall sigma x x0 i, new_tv_schm sigma x ->
-                          apply_inst_subst (compute_inst_subst x i) sigma = Some_schm x0 ->
-                          new_tv_ty x0 (x + i).
-Proof.
-  induction sigma; intros; simpl in *; mysimp.
-  - inversion H. inversion H0. econstructor. omega.
-  - inversion H0.  econstructor.
-  - pose proof (Nat.lt_ge_cases i0 i).
-    destruct H1.
-    + erewrite nth_error_compute_inst_None in H0; auto. 
-      inversion H0.
-    + apply Nat.lt_eq_cases in H1.
-      destruct H1.
-      * erewrite nth_error_compute_inst_Some in H0; auto.
-        inversion H0. inversion H.
-        subst.
-        econstructor.
-        omega.
-      * subst.
-        rewrite nth_error_compute_inst_None' in H0.
-        inversion H0.
-  - inversion H.
-    subst.
-    cases (apply_inst_subst (compute_inst_subst x i) sigma1).
-    cases (apply_inst_subst (compute_inst_subst x i) sigma2).
-    inversion H0.
-    econstructor; eauto. 
-    inversion H0.
-    inversion H0.
-Qed.
-
-Hint Resolve new_tv_schm_to_new_tv_ty.
       
 Program Definition schm_inst_dep (sigma : schm) :
   @HoareState id (@top id) (ty * inst_subst)
@@ -315,17 +195,12 @@ Qed.
 
 Hint Resolve new_tv_ctx_Succ.
 
-Program Definition addFreshCtx (G : ctx) (x : id) : @HoareState id (fun i => new_tv_ctx G i) (id * ctx) (fun i r f => new_tv_ctx (snd r) f /\ f = S i) :=
-  alpha <- fresh ;
-    ret (alpha, ((x, ty_to_schm (var alpha)) :: G)).
+Program Definition addFreshCtx (G : ctx) (x : id) (alpha : id):
+  @HoareState id (fun i => new_tv_ctx G i) ctx (fun i r f => alpha < i -> (new_tv_ctx r f /\ f = i /\ new_tv_ty (var alpha) f)) :=
+  ret ((x, ty_to_schm (var alpha)) :: G).
 Next Obligation.
   split; intros;
   unfold top; auto.
-Defined.
-Next Obligation.
-  econstructor; auto.
-  econstructor; auto.
-  econstructor; auto.
 Defined.
 
 Fixpoint sizeTerm e : nat :=
@@ -346,13 +221,9 @@ Qed.
 Hint Resolve remove_subst_diff.
 *)
   
-Program Definition apply_subst_M (s : substitution) (tau : ty) :
-  @HoareState id (@top id) ty (fun i s' f => i = f /\ s' = apply_subst s tau) :=
-  ret (apply_subst s tau).
-
 Program Definition unify (tau1 tau2 : ty) : @HoareState id (@top id) substitution
 (fun i mu f => i = f /\ (forall s', apply_subst s' tau1 = apply_subst s' tau2 ->
-           exists s'', forall tau, apply_subst s' tau = apply_subst (compose_subst mu s'') tau) ) :=
+           exists s'', forall tau, apply_subst s' tau = apply_subst (compose_subst mu s'') tau) /\ ((new_tv_ty tau1 i /\ new_tv_ty tau2 i) -> new_tv_subst mu i) ) :=
   match Unify.unify tau1 tau2 as y  with
   | existT _ c (inleft _ (exist _ mu HS)) => ret mu
   | existT _ c _ => failT _
@@ -478,75 +349,9 @@ Proof.
 Qed.
 *)
 
-Lemma new_tv_subst_trans : forall (s : substitution) (i1 i2 : id),
-  new_tv_subst s i1 -> i1 <= i2 -> new_tv_subst s i2.
-Admitted.
-
-Hint Resolve new_tv_subst_trans.
-
-Lemma new_tv_s_id : forall (st st' : id) (s : substitution),
-    new_tv_subst s st -> st' < st -> new_tv_ty (apply_subst s (var st')) st.
-Admitted.
-
-Hint Resolve new_tv_s_id.
-
-Lemma new_tv_s_ty : forall (st : id) (s : substitution) (tau : ty),
-    new_tv_ty tau st -> new_tv_subst s st -> new_tv_ty (apply_subst s tau) st.
-Admitted.
-
-Hint Resolve new_tv_s_ty.
-
-Lemma new_tv_var_id : forall st1 st2 : id, st1 < st2 -> new_tv_ty (var st1) st2.
-Admitted.
-
-Hint Resolve new_tv_var_id.
-
-Lemma new_tv_ty_ids : forall (st : id) (tau : ty), new_tv_ty tau st ->
-                                               forall x : id, in_list_id x (ids_ty tau) = true -> x < st.
-Proof.
-  induction tau; intros; simpl in *; mysimp; intuition.
-  destruct (eq_id_dec i x); intuition. inversion H. omega.
-  apply in_list_id_or_append_inversion in H0.
-  destruct H0; inversion H; auto.
-Qed.
-
-Hint Resolve new_tv_ty_ids.
-
-Lemma new_tv_ty_trans_le : forall (tau : ty) (st1 st2 : id), new_tv_ty tau st1 -> st1 <= st2 -> new_tv_ty tau st2.
-Proof.
-  intros.
-  Admitted.
-
-Hint Resolve new_tv_ty_trans_le.
-
-Lemma new_tv_compose_subst_ctx : forall (s s1 s2 : substitution) (st : id) (G : ctx),
-       (forall x : id, x < st -> apply_subst s (var x) = apply_subst s2 (apply_subst s1 (var x))) ->
-       new_tv_ctx G st -> apply_subst_ctx s G = apply_subst_ctx s2 (apply_subst_ctx s1 G).
-Admitted.
-
 Lemma s_gen_t_more_general_than_gen_s_t : forall (s : substitution) (G : ctx) (tau : ty),
  more_general (apply_subst_schm s (gen_ty tau G)) (gen_ty (apply_subst s tau) (apply_subst_ctx s G)).
 Admitted.
-
-Lemma new_tv_schm_plus : forall sigma st st', new_tv_schm sigma st -> new_tv_schm sigma (st + st').
-Proof.
-  induction sigma; intros; try econstructor; eauto.
-  inversion H. subst. auto.
-  inversion H. subst. auto.
-Qed.
-
-Hint Resolve new_tv_schm_plus.
-
-Lemma new_tv_ctx_plus : forall G st st', new_tv_ctx G st -> new_tv_ctx G (st + st').
-Proof.
-  induction G; intros; simpl in *; auto.
-  econstructor.
-  destruct a.
-  inversion H. subst.
-  econstructor; eauto.
-Qed.
-
-Hint Resolve new_tv_ctx_plus.
 
 Unset Implicit Arguments.
 
@@ -566,9 +371,10 @@ Program Fixpoint W_hoare (e : term) (G : ctx) {struct e} :
             ret ((fst tau_iss), nil)
 
   | lam_t x e' =>
-              alpha_G' <- @addFreshCtx G x ;
-              tau_s <- W_hoare e' (snd alpha_G')  ;
-              ret ((Unify.arrow (apply_subst ((snd tau_s)) (var (fst alpha_G'))) (fst tau_s)), (snd tau_s))
+              alpha <- fresh ;
+              G' <- addFreshCtx G x alpha ;
+              tau_s <- W_hoare e' G'  ;
+              ret ((Unify.arrow (apply_subst ((snd tau_s)) (var alpha)) (fst tau_s)), (snd tau_s))
 
   | app_t l r =>
               tau1_s1 <- W_hoare l G  ;
@@ -641,14 +447,22 @@ Next Obligation. (* Case: lam soundness  *)
   simpl.
   destruct (W_hoare e' (((x, sc_var x0)) :: G) >>= _).
   simpl.
-  crushAssumptions;
-  rename x0 into st0, t1 into s, x1 into tau0.
+  crushAssumptions; clear W_hoare;
+  rename x0 into st0, t1 into s, x1 into tau_r, t into st1.
   - subst. omega.
   - subst. assumption.
-  - skip.
-  - subst. skip.
   - subst.
-    clear W_hoare.
+    destruct (find_subst s st0).
+    + rename t into tau_l.
+      econstructor; eauto.
+      inversion H5.
+      subst.
+      eauto.
+    + econstructor; eauto.
+  - subst.
+    destruct (find_subst s st0);
+     inversion H5; assumption.
+  - subst.
     econstructor.
     simpl in H0.
     assert (sc_var st0 = ty_to_schm (var st0)). auto.
@@ -661,7 +475,7 @@ Next Obligation. (* Case: lam soundness  *)
       inversion_clear H1.
       fold (apply_subst s (var st0)).
       cut (exists s' : substitution,
-              tau'0 = apply_subst s' tau0 /\
+              tau'0 = apply_subst s' tau_r /\
               (forall x' : id, x' < S st0 ->  apply_subst (((st0, tau):: phi)) (var x') = apply_subst s' (apply_subst s (var x'))) ) .
       intros.
       destruct H1; auto.
@@ -690,25 +504,39 @@ Next Obligation. (* Case: lam soundness  *)
         assumption.
 Defined.
 Next Obligation. 
+  unfold top.
   intros; splits; auto.
   intros; splits; auto.
-  mysimp.
-    Admitted.
+  destructs H0;
+  try splits; auto.
+Defined.
 Next Obligation.
   destruct (W_hoare l G  >>= _).
-  crushAssumptions.
-  clear W_hoare.
+  crushAssumptions;
+  clear W_hoare;
+  rename H17 into MGU;
+  rename x4 into alpha, x into st0, x1 into st1;
+  rename x6 into mu, t1 into s1, t2 into s2;
+  rename x2 into tauL, x0 into tauLR.
   - omega.
-  - skip.
-  - skip.
+  - subst.
+    econstructor.
+    intros.
+    inversion H2.
+    inversion H8.
+    subst.
+    skip.
+  - fold (apply_subst mu (var alpha)).
+    subst.
+    apply new_tv_s_ty.
+    econstructor. auto.
+    econstructor.
+    intros.
+    skip.
+
   - skip.
   - skip.
   - subst.
-    clear W_hoare.
-    rename H17 into MGU.
-    rename x4 into alpha, x into st.
-    rename x6 into mu, t1 into s1, t2 into s2.
-    rename x2 into tauL, x0 into tauLR.
     rename H6 into COMP_L, H12 into COMP_R.
     unfold completeness. intros.
     rename H6 into SOUND_LR, tau' into tau_r.
@@ -720,7 +548,7 @@ Next Obligation.
     destruct PRINC_L as [psi1 PRINC_L].
     destruct PRINC_L as [PRINC_L1 PRINC_L2].
     cut (exists psi2, (tau_l = apply_subst psi2 tauL /\
-                 forall x0 : id, x0 < x1 -> apply_subst psi1 (var x0) = apply_subst psi2 (apply_subst s2 (var x0)))).
+                 forall x0 : id, x0 < st1 -> apply_subst psi1 (var x0) = apply_subst psi2 (apply_subst s2 (var x0)))).
     intros PRINC_R.
     destruct PRINC_R as [psi2 [PRINC_R1 PRINC_R2]].
     specialize MGU with (s':= ((alpha, tau_r)::psi2)).
@@ -730,7 +558,7 @@ Next Obligation.
       simpl. destruct (eq_id_dec alpha alpha); intuition.
       erewrite (add_subst_new_tv_ty psi2 alpha tauL); eauto.
       rewrite <- PRINC_R1.
-      erewrite <- (new_tv_compose_subst_type psi1 s2 ((alpha, tau_r)::psi2) x1 tauLR); eauto.
+      erewrite <- (new_tv_compose_subst_type psi1 s2 ((alpha, tau_r)::psi2) st1 tauLR); eauto.
       intros.
       erewrite add_subst_new_tv_ty; eauto. 
      }

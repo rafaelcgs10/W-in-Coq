@@ -1,7 +1,9 @@
 Set Implicit Arguments.
 
 Require Import ListIds.
-Require Import Unify.
+Require Import Subst.
+Require Import SimpleTypes.
+Require Import MyLtacs.
 Require Import Disjoints.
 Require Import Arith.Arith_base List Omega.
 Require Import Wellfounded.Lexicographic_Product.
@@ -445,3 +447,94 @@ Proof.
 Qed.
 
 Hint Resolve apply_schm_compose_equiv.
+
+Fixpoint compute_inst_subst (st : id) (n : nat) : list ty :=
+  match n with
+  | 0 => nil
+  | S n' =>
+    match compute_inst_subst (S st) n' with
+    | l' => (var st :: l')
+    end
+  end.
+
+Lemma nth_error_nil : forall i, nth_error (nil : list ty) i = None.
+Proof.
+  intros.
+  induction i; mysimp.
+Qed.
+
+Hint Resolve nth_error_nil.
+
+Lemma nth_error_compute_inst_Some : forall i k j, i < k -> nth_error (compute_inst_subst j k) i = Some (var (i + j)).
+Proof.
+  induction i.
+  - intros. destruct k.
+    + inversion H.
+    + reflexivity.
+  - intros. destruct k.
+    + inversion H.
+    + simpl.
+      erewrite IHi.
+      fequals.
+      fequals.
+      omega.
+      omega.
+Qed.
+
+Hint Resolve nth_error_compute_inst_Some.
+
+Lemma nth_error_compute_inst_None' : forall i j, nth_error (compute_inst_subst j i) i = None.
+Proof.
+  induction i.
+  - intros. reflexivity.
+  - intros. simpl. auto.
+Qed.
+
+Hint Resolve nth_error_compute_inst_None'.
+
+Lemma nth_error_None_None_cons : forall i (l : list ty) a, nth_error (a :: l) i = None -> nth_error l i = None.
+Proof.
+  induction i; intros. simpl in *. inversion H.
+  simpl in *.
+  induction l. reflexivity.
+  eapply IHi.
+  apply H.
+Qed.
+
+Hint Resolve nth_error_None_None_cons.
+
+Lemma nth_error_None_None : forall (l : list ty) i, nth_error l i = None -> nth_error l (S i) = None.
+Proof.
+  intros.
+  induction l.
+  erewrite nth_error_nil.
+  reflexivity.
+  apply nth_error_None_None_cons in H.
+  auto.
+Qed.
+
+Hint Resolve nth_error_None_None.
+
+Lemma nth_error_None_None_S : forall k i j, nth_error (compute_inst_subst j k) i = None -> nth_error (compute_inst_subst (S j) k) i = None.
+Proof.
+  induction k; intros. simpl. auto.
+  induction i. simpl in *. inversion H.
+  simpl. auto.
+Qed.
+
+Hint Resolve nth_error_None_None_S.
+
+Lemma nth_error_compute_inst_None : forall i k j, k < i -> nth_error (compute_inst_subst j k) i = None.
+Proof.
+  induction i.
+  - intros. inversion H.
+  - intros.
+    induction k.
+    simpl in *. reflexivity.
+    specialize IHi with (j := j) (k := k).
+    apply nth_error_None_None_S.
+    apply IHi.
+    omega.
+Qed.
+
+Hint Resolve nth_error_compute_inst_None.

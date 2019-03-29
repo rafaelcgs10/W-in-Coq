@@ -4,6 +4,9 @@ Require Import LibTactics.
 Require Import ListIds.
 Require Import Context.
 Require Import Schemes.
+Require Import SimpleTypes.
+Require Import Subst.
+Require Import MyLtacs.
 Require Import Disjoints.
 Require Import Unify.
 Require Import Arith.Arith_base.
