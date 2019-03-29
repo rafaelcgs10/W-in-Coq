@@ -118,3 +118,5 @@ Proof.
       exists (map_apply_subst_ty s x).
       apply H0.
 Qed.
+
+Hint Resolve has_type_is_stable_under_substitution.

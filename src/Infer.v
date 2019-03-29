@@ -199,9 +199,12 @@ Qed.
 Hint Resolve remove_subst_diff.
 *)
   
-Program Definition unify (tau1 tau2 : ty) : @HoareState id (@top id) substitution
-(fun i mu f => i = f /\ (forall s', apply_subst s' tau1 = apply_subst s' tau2 ->
-           exists s'', forall tau, apply_subst s' tau = apply_subst (compose_subst mu s'') tau) /\ ((new_tv_ty tau1 i /\ new_tv_ty tau2 i) -> new_tv_subst mu i) ) :=
+Program Definition unify (tau1 tau2 : ty) :
+  @HoareState id (@top id) substitution (fun i mu f => i = f /\
+                                      (forall s', apply_subst s' tau1 = apply_subst s' tau2 ->
+                                             exists s'', forall tau, apply_subst s' tau = apply_subst (compose_subst mu s'') tau) /\
+                                      ((new_tv_ty tau1 i /\ new_tv_ty tau2 i) -> new_tv_subst mu i) /\
+                                        apply_subst mu tau1 = apply_subst mu tau2) :=
   match Unify.unify tau1 tau2 as y  with
   | existT _ c (inleft _ (exist _ mu HS)) => ret mu
   | existT _ c _ => failT _
@@ -471,7 +474,12 @@ Next Obligation.
     eapply H18.
     splits; eauto.
     econstructor; eauto.
-  - skip.
+  - fold (apply_subst mu (var alpha)) in *.
+    subst.
+    repeat rewrite apply_subst_ctx_compose.
+    apply app_ht with (tau := apply_subst mu tauL); eauto.
+    rewrite <- H19;
+    eauto.
   - subst.
     unfold completeness. intros.
     rename H6 into SOUND_LR.
