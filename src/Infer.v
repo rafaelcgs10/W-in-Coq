@@ -576,9 +576,9 @@ Next Obligation.
   crushAssumptions; subst;
   clear W_hoare.
   - omega.
-  - ski.
-  - skip.
-  - skip.
+  - eauto.
+  - auto.
+  - eapply new_tv_s_ctx; eauto.
   - skip.
   - intro. intros.
     rename H12 into SOUND_e2, H5 into SOUND_e1.
