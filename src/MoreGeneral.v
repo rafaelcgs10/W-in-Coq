@@ -32,9 +32,13 @@ Lemma typing_in_a_more_general_ctx : forall (e : term) (G2 G1 : ctx) (t : ty),
     more_general_ctx G1 G2 -> has_type G2 e t -> has_type G1 e t.
 Admitted.
 
+Hint Resolve typing_in_a_more_general_ctx.
+
 Lemma more_general_gen_ty : forall (G1 G2 : ctx) (t : ty),
     more_general_ctx G1 G2 -> more_general (gen_ty t G1) (gen_ty t G2).
 Admitted.
+
+Hint Resolve more_general_gen_ty.
 
 Lemma more_general_ctx_refl : forall G : ctx, more_general_ctx G G.
 simple induction G; auto.

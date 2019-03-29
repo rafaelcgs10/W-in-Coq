@@ -5,7 +5,6 @@ Require Import ListIds.
 Require Import Schemes.
 Require Import Rename.
 Require Import Disjoints.
-Require Import Unify.
 Require Import Arith.Arith_base.
 Require Import List.
 Require Import SimpleTypes.

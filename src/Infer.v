@@ -520,14 +520,11 @@ Next Obligation.
 Defined.
 Next Obligation.
   unfold top.
-  intros; splits; auto.
-  intros; splits; auto.
+  intros; splits; eauto.
+  intros; splits; eauto.
   destructs H0;
-  try splits; auto.
-  econstructor; eauto.
-  destruct x1; simpl in *.
-  (* pobremae com gen_ty aqui *)
-    Admitted.
+  try splits; eauto.
+Defined.
 Next Obligation.
   destruct (W_hoare e1 G >>= _).
   crushAssumptions; subst;

@@ -1,6 +1,7 @@
 Set Implicit Arguments.
 
 Require Import SimpleTypes.
+Require Import Gen.
 Require Import Omega.
 Require Import Schemes.
 Require Import List.
@@ -257,3 +258,8 @@ Lemma add_subst_new_tv_ty : forall (s : substitution) (st : id) (tau1 tau2 : ty)
 
 Hint Resolve add_subst_new_tv_ty.
 Hint Rewrite add_subst_new_tv_ty : subst.
+
+Lemma new_tv_gen_ty: forall (t : ty) (G : ctx) (st : id), new_tv_ty t st -> new_tv_ctx G st -> new_tv_schm (gen_ty t G) st.
+  Admitted.
+
+Hint Resolve new_tv_gen_ty.

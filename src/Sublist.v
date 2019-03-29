@@ -8,7 +8,6 @@ Require Import SimpleTypes.
 Require Import Subst.
 Require Import MyLtacs.
 Require Import Disjoints.
-Require Import Unify.
 Require Import Arith.Arith_base.
 Require Import List.
 
