@@ -114,12 +114,14 @@ Program Definition look_dep (x : id) (G : ctx) :
   | None => failT _
   end.
 
+(*
 Lemma not_in_domain_compute : forall (sg : list ty) (x st : id), x < st ->
  id_in_subst x (compute_subst st sg) = None.
 Admitted.
 
 Hint Resolve not_in_domain_compute.
 Hint Rewrite not_in_domain_compute.
+*)
 
 Lemma assoc_subst_exists : forall (G : ctx) (i : id) (s : substitution) (sigma : schm),
     in_ctx i (apply_subst_ctx s G) = Some sigma ->
@@ -228,51 +230,6 @@ Lemma add_subst_rewrite_for_unmodified_stamp : forall (s : substitution) (i j : 
 Qed.
 
 Hint Resolve add_subst_rewrite_for_unmodified_stamp.
-
-Lemma new_tv_schm_apply_subst : forall i tau s sigma, new_tv_schm sigma i ->
-                                                  apply_subst_schm ((i, tau) :: s) sigma = apply_subst_schm s sigma.
-Proof.
-  intros.
-  induction sigma;
-  mysimp.
-  cases (find_subst s i0); eauto;
-  try inversion H; omega.
-  inversion H. subst.
-  fequals; eauto.
-Qed.
-  
-Hint Resolve new_tv_schm_apply_subst.
-
-Lemma new_tv_ctx_apply_subst_ctx : forall st tau s G, new_tv_ctx G st -> apply_subst_ctx ((st, tau) :: s) G = apply_subst_ctx s G.
-Proof.
-  Admitted.
-
-Hint Resolve new_tv_ctx_apply_subst_ctx.
-
-Lemma add_subst_add_ctx : forall (G : ctx) (s : substitution) (x : id) (st : id) (tau : ty),
-    new_tv_ctx G st -> apply_subst_ctx ((st, tau)::s) ((x, sc_var st)::G) =  (x, (ty_to_schm tau)) :: (apply_subst_ctx s G).
-Proof.
-  intros;
-  mysimp.
-  rewrite new_tv_ctx_apply_subst_ctx; auto.
-Qed.
-  
-Hint Resolve add_subst_add_ctx.
-
-Lemma new_tv_compose_subst_type : forall (s s1 s2 : substitution) (st : id) (t : ty),
- (forall i : id, i < st -> apply_subst s (var i) = apply_subst s2 (apply_subst s1 (var i))) ->
- new_tv_ty t st -> apply_subst s t = apply_subst s2 (apply_subst s1 t).
-Admitted.
-
-Hint Resolve new_tv_compose_subst_type.
-Hint Rewrite new_tv_compose_subst_type : subst.
-
-Lemma add_subst_new_tv_ty : forall (s : substitution) (st : id) (tau1 tau2 : ty),
-    new_tv_ty tau1 st -> apply_subst ((st, tau2)::s) tau1 = apply_subst s tau1.
-  Admitted.
-
-Hint Resolve add_subst_new_tv_ty.
-Hint Rewrite add_subst_new_tv_ty : subst.
 
 Lemma img_ids_append_cons : forall a t s, img_ids ((a, t)::s) = ids_ty t ++ img_ids s.
 Proof.
@@ -535,9 +492,9 @@ Next Obligation.
     {
       fold (apply_subst ((alpha, tau_r)::psi2) (var alpha)).
       simpl. destruct (eq_id_dec alpha alpha); intuition.
-      erewrite (add_subst_new_tv_ty psi2 alpha tauL); eauto.
+      erewrite (@add_subst_new_tv_ty psi2 alpha tauL); eauto.
       rewrite <- PRINC_R1.
-      erewrite <- (new_tv_compose_subst_type psi1 s2 ((alpha, tau_r)::psi2) st1 tauLR); eauto.
+      erewrite <- (@new_tv_compose_subst_type psi1 s2 ((alpha, tau_r)::psi2) st1 tauLR); eauto.
       intros.
       erewrite add_subst_new_tv_ty; eauto. 
      }
