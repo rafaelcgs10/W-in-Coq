@@ -536,19 +536,44 @@ Defined.
 Next Obligation.
   destruct (W_hoare e1 G >>= _).
   crushAssumptions; subst;
-  clear W_hoare.
+  clear W_hoare;
+  rename H12 into SOUND_e2, H5 into SOUND_e1;
+  rename H6 into COMP_e1, H13 into COMP_e2;
+  rename x into st0, t into st3;
+  rename x3 into tau_e2, t2 into s2, x2 into st2;
+  rename x1 into tau_e1, t1 into s1, x0 into st1.
   - omega.
   - eauto.
   - auto.
   - eapply new_tv_s_ctx; eauto.
-  - skip.
+  -
+    pose proof exists_renaming_not_concerned_with2 (gen_ty_vars tau_e1 (apply_subst_ctx s1 G))
+         (FV_ctx (apply_subst_ctx s1 G)) (FV_subst s2)  as renaming.
+    destruct renaming as [rho renaming].
+    inversion renaming.
+    subst.
+    pose proof (gen_ty_in_subst_ctx (apply_subst_ctx s1 G) s2 (apply_subst (rename_to_subst rho) tau_e1)) as hip.
+    pose proof (renaming_not_concerned_with_gen_vars) as hip2.
+    apply hip2 in renaming as renaming'.
+    apply hip in renaming' as renaming''.
+    pose proof (subst_ctx_when_s_disjoint_with_ctx (apply_subst_ctx s1 G) (rename_to_subst rho)) as disj_ctx_subst. 
+    pose proof (apply_subst_ctx_compose G (rename_to_subst rho) s1) as rename_compose.
+    apply let_ht with (tau:= apply_subst s2 (apply_subst (rename_to_subst rho) tau_e1)).
+    rewrite apply_subst_ctx_compose.
+    eapply has_type_is_stable_under_substitution.
+    erewrite <- disj_ctx_subst.
+    eapply has_type_is_stable_under_substitution.
+    assumption.
+    rewrite dom_rename_to_subst.
+    rewrite H6.
+    apply free_and_bound_are_disjoints.
+    rewrite apply_subst_ctx_compose.
+    rewrite <- gen_ty_in_subst_ctx.
+    rewrite <- subst_add_type_scheme.
+    rewrite <- gen_alpha4_bis; auto.
+    auto.
   - intro. intros.
-    rename H12 into SOUND_e2, H5 into SOUND_e1.
-    rename H6 into COMP_e1, H13 into COMP_e2.
-    rename x into st0, t into st3.
-    rename x3 into tau_e2, t2 into s2, x2 into st2.
-    rename x1 into tau_e1, t1 into s1, x0 into st1.
-    rename H7 into SOUND_let.
+    rename H5 into SOUND_let.
     inversion_clear SOUND_let.
     rename H5 into SOUND2_e1.
     rename H6 into SOUND2_e2.
