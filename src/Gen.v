@@ -48,6 +48,9 @@ Proof.
   reflexivity.
 Qed.
 
+Hint Resolve gen_ty_vars_arrow.
+Hint Rewrite gen_ty_vars_arrow:RE.
+
 (** Snd gen_ty_aux distributes over arrow *)
 Lemma snd_gen_ty_aux_arrow_rewrite : forall (tau tau': ty) (G : ctx) (l: list id),
     (snd (gen_ty_aux (arrow tau tau') G l)) =
@@ -57,6 +60,9 @@ Proof.
   cases (gen_ty_aux tau G l). simpl. rewrite Eq.
   cases (gen_ty_aux tau' G l0). reflexivity.
 Qed.
+
+Hint Resolve snd_gen_ty_aux_arrow_rewrite.
+Hint Rewrite snd_gen_ty_aux_arrow_rewrite:RE.
 
 (** The generalizable ids form a sublist of dom rho, for some conditions *)
 Lemma is_sublist_gen_ty_dom_rho: forall (G : ctx) (rho : ren_subst) (tau: ty) (l : list id),
@@ -91,6 +97,8 @@ Proof.
     apply H3.
 Qed.        
 
+Hint Resolve is_sublist_gen_ty_dom_rho.
+
 Lemma free_and_bound_are_disjoints : forall (G : ctx) (tau: ty),
     (are_disjoints (gen_ty_vars tau G ) (FV_ctx G)).
 Proof.
@@ -116,6 +124,8 @@ Proof.
     apply IHtau2.
     assumption.
 Qed.
+
+Hint Resolve free_and_bound_are_disjoints.
 
 Lemma is_sublist_gen_vars2 : forall (rho: ren_subst) (G: ctx) (t: ty),
     (is_rename_subst rho) ->
@@ -161,6 +171,8 @@ Lemma is_sublist_gen_vars2 : forall (rho: ren_subst) (G: ctx) (t: ty),
       apply H2.
 Qed.
 
+Hint Resolve is_sublist_gen_vars2.
+
 Lemma is_sublist_gen_vars3 : forall (rho : ren_subst) (s: substitution) (G : ctx) (tau: ty),
     (is_rename_subst rho) -> (dom_ren rho) = (gen_ty_vars tau G) ->
     (are_disjoints (FV_ctx G) (img_ren rho)) ->
@@ -174,6 +186,8 @@ Proof.
   eapply free_and_bound_are_disjoints. rewrite <- H0.
   apply sublist_reflexivity.
 Qed.
+
+Hint Resolve is_sublist_gen_vars3.
 
 Lemma renaming_not_concerned_with_gen_vars: forall (rho : ren_subst) (s: substitution) (G : ctx) (tau: ty),
     (renaming_of_not_concerned_with rho (gen_ty_vars tau G) (FV_ctx G) (FV_subst s)) ->
@@ -196,6 +210,7 @@ Proof.
     eapply is_sublist_gen_vars3; auto.
 Qed.
 
+Hint Resolve renaming_not_concerned_with_gen_vars.
 
 (** This lemma is used to prove gen_ty_renaming, which says that gen_ty
  works that same for a special renaming *)
@@ -267,6 +282,8 @@ Proof.
     auto.
 Qed.
 
+Hint Resolve gen_ty_renaming_aux.
+
 (** If the ids of a ty are free in the G, then gen_ty_aux is just ty_to_schm *)
 Lemma is_not_generalizable : forall (G : ctx)  (tau : ty) (l: list id),
     is_sublist_id (ids_ty tau) (FV_ctx G) -> gen_ty_aux tau G l= (ty_to_schm tau, l).
@@ -280,6 +297,9 @@ Proof.
     apply sublist_of_append_inversion2 in H. auto.
     apply sublist_of_append_inversion1 in H. auto.
 Qed.
+
+Hint Resolve is_not_generalizable.
+Hint Rewrite is_not_generalizable:RE.
 
 (** gen_ty works that same for a special renaming *)
 Lemma gen_ty_renaming: forall (G : ctx) (rho : ren_subst) (tau : ty) (s: substitution),
@@ -297,9 +317,11 @@ Proof.
   rewrite H1.
   apply free_and_bound_are_disjoints.
   rewrite <- H1.
-  apply sublist_reflexivity.
-  apply nil_is_sublist.
+  auto.
 Qed.
+
+Hint Resolve gen_ty_renaming.
+Hint Rewrite gen_ty_renaming:RE.
 
 Lemma gen_ty_aux_in_subst_ctx : forall (tau: ty) (G : ctx) (s : substitution) (l : list id),
     (are_disjoints (dom s) (gen_ty_vars tau G)) ->
@@ -350,7 +372,10 @@ Proof.
     simpl in H0. apply disjoint_list_and_append_inversion1 in H0. auto.
 Qed.
 
-Lemma gen_ty_in_subst_ctx: forall (G : ctx) (s : substitution) (tau : ty),
+Hint Resolve gen_ty_aux_in_subst_ctx.
+Hint Rewrite gen_ty_aux_in_subst_ctx:RE.
+
+Lemma gen_ty_in_subst_ctx : forall (G : ctx) (s : substitution) (tau : ty),
     (are_disjoints (FV_subst s) (gen_ty_vars tau G)) ->
     (apply_subst_schm s (gen_ty tau G)) =
     (gen_ty (apply_subst s tau) (apply_subst_ctx s G)).
@@ -365,6 +390,9 @@ Proof.
   apply disjoint_list_and_append_inversion2 in H.
   auto.
 Qed.
+
+Hint Resolve gen_ty_in_subst_ctx.
+Hint Rewrite gen_ty_in_subst_ctx:RE.
 
 Lemma gen_alpha4_bis : forall (G : ctx) (rho : ren_subst) (tau : ty),
     is_rename_subst rho -> dom_ren rho = gen_ty_vars tau G ->
@@ -381,5 +409,7 @@ Proof.
   apply free_and_bound_are_disjoints.
   rewrite <- H0.
   apply sublist_reflexivity.
-  apply nil_is_sublist.
 Qed.
+
+Hint Resolve gen_alpha4_bis.
+Hint Rewrite gen_alpha4_bis:RE.

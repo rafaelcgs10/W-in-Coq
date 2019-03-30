@@ -38,6 +38,7 @@ Proof.
 Qed.
 
 Hint Resolve in_list_id_or_append.
+Hint Rewrite in_list_id_or_append:RE.
 
 Lemma in_list_id_or_append_inversion : forall x l1 l2,
     in_list_id x (l1 ++ l2) = true ->
@@ -55,6 +56,7 @@ Proof.
 Qed.
 
 Hint Resolve in_list_id_or_append_inversion.
+Hint Rewrite in_list_id_or_append_inversion:RE.
 
 Lemma in_list_id_cons_true : forall x l a,
     in_list_id x l = true -> in_list_id x (a::l) = true.
@@ -64,6 +66,7 @@ Proof.
 Qed.
 
 Hint Resolve in_list_id_cons_true.
+Hint Rewrite in_list_id_cons_true:RE.
 
 Lemma in_list_id_cons_false : forall x l a,
     in_list_id x (a::l) = false -> in_list_id x l = false.
@@ -76,6 +79,7 @@ Lemma in_list_id_cons_false : forall x l a,
 Qed.
 
 Hint Resolve in_list_id_cons_false.
+Hint Rewrite in_list_id_cons_false:RE.
 
 Lemma in_list_id_append_comm_true :
   forall x l1 l2, in_list_id x (l1 ++ l2) = true ->
@@ -88,6 +92,7 @@ Proof.
 Qed.
 
 Hint Resolve in_list_id_append_comm_true.
+Hint Rewrite in_list_id_append_comm_true:RE.
 
 Lemma in_list_id_append1 :
   forall x l1 l2, in_list_id x l1 = true ->
@@ -100,6 +105,7 @@ Proof.
 Qed.
 
 Hint Resolve in_list_id_append1.
+Hint Rewrite in_list_id_append1:RE.
 
 Lemma in_list_id_append2 :
   forall x l1 l2, in_list_id x l2 = true ->
@@ -112,6 +118,7 @@ Proof.
 Qed.
 
 Hint Resolve in_list_id_append2.
+Hint Rewrite in_list_id_append2:RE.
 
 Lemma in_list_id_and_append : forall x l1 l2,
     in_list_id x l1 = false /\ in_list_id x l2 = false ->
@@ -127,6 +134,7 @@ Proof.
 Qed.
 
 Hint Resolve in_list_id_and_append.
+Hint Rewrite in_list_id_and_append:RE.
 
 Lemma in_list_id_and_append_inversion : forall x l1 l2,
     in_list_id x (l1 ++ l2) = false ->
@@ -139,6 +147,7 @@ Proof.
 Qed.
 
 Hint Resolve in_list_id_and_append_inversion.
+Hint Rewrite in_list_id_and_append_inversion:RE.
 
 Lemma in_list_id_append_comm_false :
   forall x l1 l2, in_list_id x (l1 ++ l2) = false ->
@@ -151,10 +160,11 @@ Proof.
 Qed.
 
 Hint Resolve in_list_id_append_comm_false.
+Hint Rewrite in_list_id_append_comm_false:RE.
 
 Lemma in_list_id_append_inversion1 :
-  forall x l1 l2, (in_list_id x (l1 ++ l2) = false ->
-              in_list_id x l1 = false).
+  forall x l1 l2, in_list_id x (l1 ++ l2) = false ->
+              in_list_id x l1 = false.
 Proof.
   intros.
   induction l1.
@@ -163,10 +173,11 @@ Proof.
 Qed.
 
 Hint Resolve in_list_id_append_inversion1.
+Hint Rewrite in_list_id_append_inversion1:RE.
 
 Lemma in_list_id_append_inversion2 :
-  forall x l1 l2, (in_list_id x (l1 ++ l2) = false ->
-              in_list_id x l2 = false).
+  forall x l1 l2, in_list_id x (l1 ++ l2) = false ->
+              in_list_id x l2 = false.
 Proof.
   induction l1.
   - intros. simpl in H. auto.
@@ -176,6 +187,7 @@ Proof.
 Qed.
 
 Hint Resolve in_list_id_append_inversion2.
+Hint Rewrite in_list_id_append_inversion2:RE.
 
 (** index of a id is in a list *)
 
@@ -184,8 +196,6 @@ Fixpoint index_list_id_aux (count i : id) (l : list id) : option id :=
   | nil => None
   | x::l' => if eq_id_dec x i then Some count else index_list_id_aux (S count) i l'
   end.
-
-Hint Resolve index_list_id_aux.
 
 Definition index_list_id (i:id) (l:list id) := index_list_id_aux 0 i l.
   
@@ -252,6 +262,7 @@ Proof.
 Qed.
 
 Hint Resolve max_list_ids'_eq.
+Hint Rewrite max_list_ids'_eq:RE.
 
 Lemma max_list_ids'_false : forall  x l x0 P,  max_list_ids' l x = exist _ x0 P -> x0 < x -> False.
 Proof.
@@ -307,6 +318,7 @@ Proof.
 Qed.
 
 Hint Resolve apply_subst_dom_false.
+Hint Rewrite apply_subst_dom_false:RE.
 
 Lemma not_in_img: forall (s: substitution) (st x: id),
     st <> x -> 
@@ -335,3 +347,4 @@ Proof.
 Qed.
 
 Hint Resolve not_in_img.
+Hint Rewrite not_in_img:RE.

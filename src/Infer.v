@@ -19,42 +19,6 @@ Require Import SimpleTypes.
 Require Import Subst.
 Require Import MyLtacs.
 
-Ltac inversionExist :=
-  match goal with
-    | [ H : exist _ _ _ = exist _ _ _ |- _] => inversion H; clear H
-    | [ H : existT _ _ _ = existT _ _ _ |- _] => inversion H; clear H
-  end.                                                        
-
-Ltac crush :=
-  match goal with
-    | [ H : _ /\ _ |- _] => destruct H
-    | [ H : _ \/ _ |- _] => destruct H
-    | [ x : (_ * _)%type |- _ ] => let t := fresh "t" in destruct x as [x t]
-    | [ H : (_,_) = (_,_) |- _] => inverts* H
-    | [ H : option _ |- _] => destruct H
-    | [ H : Some _ = Some _ |- _] => inverts* H
-    | [ H : Some _ = None |- _] => congruence
-    | [ H : None = Some _ |- _] => congruence
-    | [ H : ex _ |- _] => destruct H
-    | [ H : sig _ |- _] => destruct H
-    | [ H : sigT _ |- _] => destruct H
-    | [ H :  let _ := _ in _  |- _] => simpl in H
-    | [ H : context[fst (_, _)] |- _] => simpl in H
-    | [ H : context[snd (_, _)] |- _] => simpl in H
-  end.
-
-Definition BLOCK := True.
-
-Ltac repeat_until_block tac :=
-  lazymatch goal with
-  | [ |- BLOCK -> _ ] => intros _
-  | [ |- _ ] => tac (); repeat_until_block tac
-  end.
-
-Ltac crushAssumptions := (repeat (simpl; crush)) ; try inversionExist; try splits;
-                         eauto; try (subst; reflexivity); try autorewrite with subst using eauto;
-                         try (subst; omega); sort.
-
 Fixpoint max_gen_vars (sigma : schm) : nat :=
   match sigma with
   | sc_con _ => 0

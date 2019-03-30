@@ -14,11 +14,7 @@ Require Import MyLtacs.
 (** A operation for substitute all the ocurrences of variable x in t2 by t1. *)
 Definition substitution := list (id * ty).
 
-Fixpoint find_subst (s : substitution) (i : id) : option ty :=
-  match s with
-    | nil => None
-    | (v,t') :: s' => if (eq_id_dec v i) then Some t' else find_subst s' i
-  end.
+(** find_subst is in MyLtacs because I'm lazy!*)
 
 Fixpoint apply_subst (s : substitution) (t : ty) : ty :=
   match t with
@@ -47,7 +43,7 @@ Proof.
 Qed.
 
 Hint Resolve apply_subst_id.
-Hint Rewrite apply_subst_id : subst.
+Hint Rewrite apply_subst_id:RE.
 
 Lemma apply_subst_con : forall s n, apply_subst s (con n) = con n.
 Proof.
@@ -55,7 +51,7 @@ Proof.
 Qed.
 
 Hint Resolve apply_subst_con.
-Hint Rewrite apply_subst_con : subst.
+Hint Rewrite apply_subst_con:RE.
 
 Lemma apply_subst_arrow : forall s l r, apply_subst s (arrow l r) = arrow (apply_subst s l) (apply_subst s r).
 Proof.
@@ -63,7 +59,7 @@ Proof.
 Qed.
 
 Hint Resolve apply_subst_arrow.
-Hint Rewrite apply_subst_arrow : subst.
+Hint Rewrite apply_subst_arrow:RE.
 
 (** ** Substitution composition **)
 Fixpoint in_subst_b (i : id) (s : substitution) : bool :=
@@ -85,7 +81,7 @@ Proof.
 Qed.
 
 Hint Resolve apply_subst_nil.
-Hint Rewrite apply_subst_nil : subst.
+Hint Rewrite apply_subst_nil:RE.
 
 Lemma apply_subst_list_nil : forall s, apply_subst_list s nil = s.
 Proof.
@@ -95,18 +91,27 @@ Proof.
 Qed.
 
 Hint Resolve apply_subst_list_nil.
-Hint Rewrite apply_subst_list_nil : subst.
+Hint Rewrite apply_subst_list_nil:RE.
 
 Definition compose_subst (s1 s2 : substitution) :=
       apply_subst_list s1 s2 ++ s2.
 
-Lemma compose_subst_nil_l : forall s2, compose_subst nil s2 = s2.
+Lemma compose_subst_nil_l : forall s, compose_subst nil s = s.
 Proof.
-  intros; induction s2; mysimp.
+  intros; induction s; mysimp.
 Qed.
 
 Hint Resolve compose_subst_nil_l.
-Hint Rewrite compose_subst_nil_l : subst.
+Hint Rewrite compose_subst_nil_l:RE.
+
+Lemma compose_subst_nil_r : forall s, compose_subst s nil = s.
+Proof.
+  induction s; unfold compose_subst in *; crush.
+Qed.
+
+Hint Resolve compose_subst_nil_r.
+Hint Rewrite compose_subst_nil_r:RE.
+
 
 (** ** Some Obvious Facts About Composition **)
 
@@ -116,20 +121,15 @@ Proof.
 Qed.
 
 Hint Resolve apply_compose_subst_nil_l.
-Hint Rewrite apply_compose_subst_nil_l : subst.
+Hint Rewrite apply_compose_subst_nil_l:RE.
 
 Lemma apply_compose_subst_nil_r : forall s t, apply_subst (compose_subst s nil) t = apply_subst s t.
 Proof.
-  intros; mysimp; induction s; autorewrite with subst using congruence.
-  induction t; mysimp.
-  repeat rewrite apply_subst_arrow in IHs.
-  inversion IHs.
-  fequals;
-  auto.
+  intros; mysimp; induction s; autorewrite with RE using congruence.
 Qed.
 
 Hint Resolve apply_compose_subst_nil_r.
-Hint Rewrite apply_compose_subst_nil_r : subst.
+Hint Rewrite apply_compose_subst_nil_r:RE.
 
 Lemma apply_subst_fold : forall s, (forall i, match find_subst s i with | Some t' => t' | None => var i end = apply_subst s (var i)).
 Proof.
@@ -147,7 +147,7 @@ Qed.
 
 Lemma apply_compose_equiv : forall s1 s2 t, apply_subst (compose_subst s1 s2) t = apply_subst s2 (apply_subst s1 t).
 Proof.
-  induction s1; intros; mysimp. repeat rewrite apply_compose_subst_nil_l.  autorewrite with subst using congruence.
+  induction s1; intros; mysimp. repeat rewrite apply_compose_subst_nil_l.  autorewrite with RE using congruence.
   induction t; mysimp; simpl in *; eauto.
   repeat rewrite apply_subst_fold.
   erewrite <- IHs1.
@@ -155,6 +155,9 @@ Proof.
   unfold compose_subst. reflexivity.
   fequals.
 Qed.
+
+Hint Resolve apply_compose_equiv.
+Hint Rewrite apply_compose_equiv:RE.
 
 Definition FV_subst (s: substitution) := ((dom s) ++ (img_ids s)).
 

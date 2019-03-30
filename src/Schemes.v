@@ -50,7 +50,7 @@ Proof.
 Qed.
 
 Hint Resolve apply_subst_schm_id.
-Hint Rewrite apply_subst_schm_id : subst.
+Hint Rewrite apply_subst_schm_id:RE.
 
 Lemma apply_subst_schm_con : forall s n, apply_subst_schm s (sc_con n) = sc_con n.
 Proof.
@@ -58,7 +58,7 @@ Proof.
 Qed.
 
 Hint Resolve apply_subst_schm_con.
-Hint Rewrite apply_subst_schm_con : subst.
+Hint Rewrite apply_subst_schm_con:RE.
 
 Lemma apply_subst_schm_arrow : forall s l r, apply_subst_schm s (sc_arrow l r) = sc_arrow (apply_subst_schm s l) (apply_subst_schm s r).
 Proof.
@@ -66,7 +66,7 @@ Proof.
 Qed.
 
 Hint Resolve apply_subst_schm_arrow.
-Hint Rewrite apply_subst_schm_arrow : subst.
+Hint Rewrite apply_subst_schm_arrow:RE.
 
 Lemma apply_subst_schm_gen : forall s n, apply_subst_schm s (sc_gen n) = sc_gen n.
 Proof.
@@ -75,15 +75,7 @@ Qed.
 
 
 Hint Resolve apply_subst_schm_gen.
-Hint Rewrite apply_subst_schm_gen : subst.
-
-(*
-Lemma apply_subst_schm_end : forall s i t t',
-    apply_subst_schm (s ++ (i,t) :: nil) t' = sub_schm t i (apply_subst_schm s t').
-Proof.
-  induction s ; mysimp.
-Qed.
-*)
+Hint Rewrite apply_subst_schm_gen:RE.
 
 Lemma apply_subst_schm_arrow_inversion1 : forall s sigma1 sigma2,
     apply_subst_schm s (sc_arrow sigma1 sigma2) = sc_arrow sigma1 sigma2 ->
@@ -97,6 +89,9 @@ Proof.
   reflexivity.
 Qed.
 
+Hint Resolve apply_subst_schm_arrow_inversion1.
+Hint Rewrite apply_subst_schm_arrow_inversion1:RE.
+
 Lemma apply_subst_schm_arrow_inversion2 : forall s sigma1 sigma2,
     apply_subst_schm s (sc_arrow sigma1 sigma2) = sc_arrow sigma1 sigma2 ->
     apply_subst_schm s sigma2 = sigma2.
@@ -109,7 +104,8 @@ Proof.
   reflexivity.
 Qed.
 
-Hint Resolve apply_subst_schm_arrow_inversion1 apply_subst_schm_arrow_inversion2.
+Hint Resolve apply_subst_schm_arrow_inversion2.
+Hint Rewrite apply_subst_schm_arrow_inversion2:RE.
 
 Lemma apply_subst_schm_nil : forall sigma, apply_subst_schm nil sigma = sigma.
 Proof.
@@ -155,6 +151,7 @@ Proof.
 Qed.
 
 Hint Resolve apply_inst_subst_con.
+Hint Rewrite apply_inst_subst_con:RE.
 
 Lemma apply_inst_subst_var : forall (i : id) (is : inst_subst),
     apply_inst_subst is (sc_var i) = Some_schm (var i).
@@ -163,6 +160,7 @@ Proof.
 Qed.
 
 Hint Resolve apply_inst_subst_var.
+Hint Rewrite apply_inst_subst_var:RE.
 
 Lemma ty_to_subst_single : forall (tau t : ty) (i : id),
     apply_subst_schm ((i, t)::nil) (ty_to_schm tau) = ty_to_schm (apply_subst ((i, t)::nil) tau).
@@ -175,6 +173,7 @@ Proof.
 Qed.
 
 Hint Resolve ty_to_subst_single.
+Hint Rewrite ty_to_subst_single:RE.
 
 Lemma ty_to_subst_schm : forall (s : substitution) (tau : ty),
     apply_subst_schm s (ty_to_schm tau) = ty_to_schm (apply_subst s tau).
@@ -190,6 +189,7 @@ Proof.
 Qed.
 
 Hint Resolve ty_to_subst_schm.
+Hint Rewrite ty_to_subst_schm:RE.
 
 Definition is_schm_instance (tau : ty) (sigma : schm) :=
     exists is: inst_subst, (apply_inst_subst is sigma) = (Some_schm tau).
@@ -210,6 +210,7 @@ Proof.
 Qed.
 
 Hint Resolve apply_inst_subst_con_inversion.
+Hint Rewrite apply_inst_subst_con_inversion:RE.
 
 Lemma apply_inst_ty_to_schm : forall (tau : ty) (is : inst_subst),
     apply_inst_subst is (ty_to_schm tau) = Some_schm tau.
@@ -222,6 +223,7 @@ Proof.
 Qed.
 
 Hint Resolve apply_inst_ty_to_schm.
+Hint Rewrite apply_inst_ty_to_schm:RE.
 
 Lemma subst_inst_subst_type_var : forall (is : inst_subst) (s: substitution) (i : id),
     (apply_inst_subst is (sc_var i)) = (Some_schm (var i)) ->
@@ -246,6 +248,7 @@ Proof.
 Qed.
 
 Hint Resolve subst_inst_subst_type_var.
+Hint Rewrite subst_inst_subst_type_var:RE.
 
 Lemma apply_inst_subst_gen_nth : forall (is : inst_subst) (i : id) (tau : ty),
     apply_inst_subst is (sc_gen i) = Some_schm tau -> nth_error is i = Some tau.
@@ -258,6 +261,7 @@ Proof.
 Qed.
 
 Hint Resolve apply_inst_subst_gen_nth.
+Hint Rewrite apply_inst_subst_gen_nth:RE.
 
 Lemma nth_error_map_apply_subst : forall (is : inst_subst) (s : substitution) (i : id) (tau : ty),
     nth_error is i = Some tau ->
@@ -269,6 +273,7 @@ Proof.
 Qed.
 
 Hint Resolve nth_error_map_apply_subst.
+Hint Rewrite nth_error_map_apply_subst:RE.
 
 Lemma map_apply_subst_gen : forall (tau : ty) (s : substitution) (is : inst_subst) (i : id),
     apply_inst_subst is (sc_gen i) = Some_schm tau ->
@@ -284,6 +289,7 @@ Proof.
 Qed.
 
 Hint Resolve map_apply_subst_gen.
+Hint Rewrite map_apply_subst_gen:RE.
 
 Lemma exist_arrow_apply_inst_arrow : forall (is : inst_subst) (sigma1 sigma2 : schm) (tau : ty),
     apply_inst_subst is (sc_arrow sigma1 sigma2) = Some_schm tau -> exists tau1 tau2, tau = arrow tau1 tau2.
@@ -300,6 +306,7 @@ Proof.
 Qed.
 
 Hint Resolve exist_arrow_apply_inst_arrow.
+Hint Rewrite exist_arrow_apply_inst_arrow:RE.
 
 Lemma and_arrow_apply_inst_arrow : forall (sigma1 sigma2 : schm) (tau tau' : ty) (is : inst_subst),
     apply_inst_subst is (sc_arrow sigma1 sigma2) = Some_schm (arrow tau tau') ->
@@ -316,6 +323,7 @@ Proof.
 Qed.
 
 Hint Resolve and_arrow_apply_inst_arrow.
+Hint Rewrite and_arrow_apply_inst_arrow:RE.
 
 Lemma subst_inst_subst_type:
   forall (sigma : schm) (s: substitution) (is : inst_subst) (tau : ty),
@@ -362,6 +370,7 @@ Proof.
 Qed.
 
 Hint Resolve subst_inst_subst_type.
+Hint Rewrite subst_inst_subst_type:RE.
 
 (** * Free variables of schemes *)
 
@@ -381,11 +390,11 @@ Proof.
 Qed.
 
 Hint Resolve FV_type_scheme_type_to_type_scheme.
+Hint Rewrite FV_type_scheme_type_to_type_scheme:RE.
 
 Lemma not_in_FV_type_scheme : forall  (s: substitution) (sigma : schm) (st: id) ,
-    (in_list_id st (img_ids s)) = false ->
-    (in_list_id st (FV_schm sigma))=false ->
-    (in_list_id st (FV_schm (apply_subst_schm s sigma)))=false.
+    in_list_id st (img_ids s) = false -> in_list_id st (FV_schm sigma) = false ->
+    in_list_id st (FV_schm (apply_subst_schm s sigma)) = false.
 Proof.
   intros.
    induction sigma.
@@ -414,6 +423,7 @@ Proof.
 Qed.      
 
 Hint Resolve not_in_FV_type_scheme.
+Hint Rewrite not_in_FV_type_scheme:RE.
 
 (** Identity condition for apply_subst_schm *)
 Lemma subst_schm_when_dom_s_disjoint_with_FV_schm : forall (s: substitution) (sigma: schm),
@@ -435,6 +445,7 @@ Proof.
 Qed.  
 
 Hint Resolve subst_schm_when_dom_s_disjoint_with_FV_schm.
+Hint Rewrite subst_schm_when_dom_s_disjoint_with_FV_schm:RE.
 
 Lemma apply_schm_compose_equiv : forall s1 s2 sigma, apply_subst_schm (compose_subst s1 s2) sigma =
                                                 apply_subst_schm s2 (apply_subst_schm s1 sigma).
@@ -447,6 +458,7 @@ Proof.
 Qed.
 
 Hint Resolve apply_schm_compose_equiv.
+Hint Rewrite apply_schm_compose_equiv:RE.
 
 Fixpoint compute_inst_subst (st : id) (n : nat) : list ty :=
   match n with
@@ -464,6 +476,7 @@ Proof.
 Qed.
 
 Hint Resolve nth_error_nil.
+Hint Rewrite nth_error_nil:RE.
 
 Lemma nth_error_compute_inst_Some : forall i k j, i < k -> nth_error (compute_inst_subst j k) i = Some (var (i + j)).
 Proof.
@@ -482,6 +495,7 @@ Proof.
 Qed.
 
 Hint Resolve nth_error_compute_inst_Some.
+Hint Rewrite nth_error_compute_inst_Some:RE.
 
 Lemma nth_error_compute_inst_None' : forall i j, nth_error (compute_inst_subst j i) i = None.
 Proof.
@@ -491,6 +505,7 @@ Proof.
 Qed.
 
 Hint Resolve nth_error_compute_inst_None'.
+Hint Rewrite nth_error_compute_inst_None':RE.
 
 Lemma nth_error_None_None_cons : forall i (l : list ty) a, nth_error (a :: l) i = None -> nth_error l i = None.
 Proof.
@@ -502,6 +517,7 @@ Proof.
 Qed.
 
 Hint Resolve nth_error_None_None_cons.
+Hint Rewrite nth_error_None_None_cons:RE.
 
 Lemma nth_error_None_None : forall (l : list ty) i, nth_error l i = None -> nth_error l (S i) = None.
 Proof.
@@ -514,6 +530,7 @@ Proof.
 Qed.
 
 Hint Resolve nth_error_None_None.
+Hint Rewrite nth_error_None_None:RE.
 
 Lemma nth_error_None_None_S : forall k i j, nth_error (compute_inst_subst j k) i = None -> nth_error (compute_inst_subst (S j) k) i = None.
 Proof.
@@ -523,6 +540,7 @@ Proof.
 Qed.
 
 Hint Resolve nth_error_None_None_S.
+Hint Rewrite nth_error_None_None_S:RE.
 
 Lemma nth_error_compute_inst_None : forall i k j, k < i -> nth_error (compute_inst_subst j k) i = None.
 Proof.
@@ -538,3 +556,4 @@ Proof.
 Qed.
 
 Hint Resolve nth_error_compute_inst_None.
+Hint Rewrite nth_error_compute_inst_None:RE.

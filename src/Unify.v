@@ -42,30 +42,14 @@ Fixpoint member (C : varctxt) (i : id) : Prop :=
 
 Lemma member_app : forall c c' i, member c i -> member (c++c') i.
 Proof.
-  induction c.
-  - intros. simpl in *.
-    contradiction.
-  - intros.
-    simpl in *.
-    destruct (eq_id_dec a i).
-    auto.
-    apply IHc.
-    auto.
+  induction c; crush.
 Qed.
 
 Hint Resolve member_app.
 
 Lemma member_app2 : forall c c' i, member c' i -> member (c++c') i.
 Proof.
-  induction c.
-  - intros. simpl in *.
-    auto.
-  - intros.
-    apply IHc in H.
-    simpl in *.
-    cases (eq_id_dec a i).
-    auto.
-    auto.
+  induction c; crush.
 Qed.
 
 Hint Resolve member_app2.
@@ -91,49 +75,25 @@ Defined.
 Lemma member_app_or : forall c c' i, member (c++c') i -> member c i \/ member c' i.
 Proof.
   intros.
-  induction c.
-  - simpl in *.
-    right.
-    auto.
-  -  simpl in *.
-     cases (eq_id_dec a i).
-     +  left. auto.
-     + apply IHc in H.
-       auto.
+  induction c; crush.
 Qed.
 
 Hint Resolve member_app_or.
 
 Lemma member_or_app : forall c c' i, member c i \/ member c' i <-> member (c++c') i.
 Proof.
-  split.
-  intros.
-  destruct H.
-  apply  member_app.
-  auto.
-  destruct c.
-  simpl.
-  auto.
-  simpl.
-  cases (eq_id_dec i0 i).
-  auto.
-  apply member_app2.
-  auto.
-  intros.
-  apply member_app_or in H.
-  auto.
+  split; crush.
 Qed.
+
+Hint Resolve member_or_app.
 
 Lemma member_app_comm : forall c c' i, member (c'++c) i -> member (c++c') i.
 Proof.
   intros.
-  apply member_or_app in H.
-  destruct H.
-  apply member_or_app.
-  right. auto.
-  apply member_or_app.
-  left. auto.
-Qed.  
+  apply member_or_app in H; crush.
+Qed.
+
+Hint Resolve member_app_comm.
 
 (** * Well Formedness Definitions *)
 
@@ -151,75 +111,24 @@ Fixpoint wf_ty (C : varctxt) (t : ty) : Prop :=
 Lemma wf_ty_cons : forall c a t, wf_ty c t -> wf_ty (a::c) t.
 Proof.
   intros.
-  induction t.
-  - simpl in *.
-    destruct (eq_id_dec a i).
-    auto.
-    auto.
-  - auto.
-  - simpl in *.
-    destruct H.
-    split.
-    apply IHt1.
-    auto.
-    apply IHt2.
-    auto.
+  induction t; crush.
 Qed.
+
+Hint Resolve wf_ty_cons.
 
 Lemma wf_ty_app : forall c' c t, wf_ty c t -> wf_ty (c++c') t.
 Proof.
-  induction c.
-  - intros.
-    induction t.
-    + simpl in *.
-      contradiction.
-    + auto.
-    + simpl in *.
-      split.
-      destruct H.
-      auto.
-      destruct H.
-      auto.
-  - intros.
-    induction t.
-    + simpl in *.
-      destruct (eq_id_dec a i).
-      auto.
-      apply member_app.
-      auto.
-    + auto.
-    + simpl in *.
-      split.
-      destruct H.
-      apply IHt1.
-      auto.
-      apply IHt2.
-      destruct H.
-      auto.
+  induction c; induction t; crush.
 Qed.
+
+Hint Resolve wf_ty_app.
       
 Lemma wf_ty_app_comm : forall c c' t, wf_ty (c++c') t -> wf_ty (c'++c) t.
 Proof.
-  induction c'.
-  - intros.
-    simpl in *.
-    rewrite <- app_nil_end in H.
-    auto.
-  - intros.
-    induction t.
-    + apply member_app_comm in H.
-      simpl in *.
-      destruct (eq_id_dec a i).
-      auto.
-      auto.
-    + auto.
-    + simpl in *.
-      destruct H.
-      split.
-      apply IHt1.
-      auto.
-      apply IHt2.
-      auto.
+  induction c'; crush.
+  induction t; crush.
+  apply member_app_comm in H.
+  crush.
 Qed.
 
 Definition wf_tys (C : varctxt) (t1 t2 : ty)  : Prop := wf_ty C t1 /\ wf_ty C t2.
@@ -296,6 +205,14 @@ Fixpoint remove (v : id) (ctx : varctxt) : varctxt :=
     | y :: ys => if eq_id_dec y v then remove v ys else y :: (remove v ys)
   end.
 
+Lemma remove_nil : forall i, remove i [] = [].
+Proof.
+  crush.
+Qed.
+
+Hint Resolve remove_nil.
+Hint Rewrite remove_nil.
+
 (** Suppose that a type t is well formed with respect to a variable context ctx and
     the variable x is free in t,
     if we substitute x for u and u is well formed with respecto to ctx - {x},
@@ -304,27 +221,19 @@ Fixpoint remove (v : id) (ctx : varctxt) : varctxt :=
 
 Lemma subst_remove' : forall x t ctx, member ctx t -> x <> t -> member (remove x ctx) t.
 Proof.
-  induction ctx ; mysimp.
+  induction ctx ; crush.
 Qed.
 
-(* begin hide *)
-
 Hint Resolve subst_remove'.
-
-(* end hide *)
 
 Lemma subst_remove : forall t x ctx, wf_ty ctx t -> member ctx x ->
                                      forall u, wf_ty (remove x ctx) u ->
                                                wf_ty (remove x ctx) (apply_subst ((x, u)::nil) t).
 Proof.
-  induction t ; simpl ; intros ; mysimp.
+  induction t ; crush.
 Qed.
 
-(* begin hide *)
-
 Hint Resolve subst_remove.
-
-(* end hide *)
 
 (** Removing a list of names from a given variable context. *)
 
@@ -333,6 +242,25 @@ Fixpoint minus (C : varctxt) (xs : list id) : varctxt :=
     | nil => C
     | x :: xs => remove x (minus C xs)
   end.
+
+Lemma minus_nil1 : forall l, minus nil l = nil.
+Proof.
+  intros.
+  induction l; mysimp.
+  rewrite IHl. reflexivity.
+Qed.
+    
+Hint Resolve minus_nil1.
+Hint Rewrite minus_nil1:RE.
+
+Lemma minus_nil2 : forall l, minus l nil = l.
+Proof.
+  intros.
+  reflexivity.
+Qed.
+
+Hint Resolve minus_nil2.
+Hint Rewrite minus_nil2:RE.
 
 (** Definition of a  well formed substitution. A substitution is well formed,
     if form each pair (v,t), where v is a variable and t a type, we have that
@@ -347,172 +275,127 @@ Fixpoint wf_subst (C : varctxt) (s : substitution) : Prop :=
 
 Lemma remove_comm : forall x y C, remove x (remove y C) = remove y (remove x C).
 Proof.
-  induction C ; mysimp.
+  induction C ; crush.
 Qed.
 
 Hint Resolve remove_comm.
+Hint Rewrite remove_comm:RELOOP.
 
 Lemma minus_remove : forall C2 C1 x, minus (remove x C1) C2 = remove x (minus C1 C2).
 Proof.
-  induction C2 ; mysimp ; intros ; rewrite IHC2 ; auto.
+  induction C2; crush.
 Qed.
+
+Hint Resolve minus_remove.
+Hint Rewrite minus_remove:RE.
 
 Lemma minus_arrow : forall (C : varctxt) s v t, minus C (dom (s ++ (v,t) :: nil)) = remove v (minus C (dom s)).
 Proof.
-  induction s ; mysimp ; intros ; mysimp ; rewrite IHs ; auto.
+  induction s ; crush. 
 Qed.
 
+Hint Resolve minus_arrow.
+Hint Rewrite minus_arrow:RE.
 
 Lemma member_remove_false : forall i C, member (remove i C) i -> False.
 Proof.
-  intros.
-  induction C;
-    mysimp.
-  simpl in H.
-  cases (eq_id_dec a i). auto.
-  simpl in H. cases (eq_id_dec a i); intuition.
+  induction C; crush.
 Qed.
+
+Hint Resolve member_remove_false.
 
 Lemma wf_ty_var : forall i C, member C i <-> wf_ty C (var i).
 Proof.
-  split.
-  intros.
-  induction C.
-  inversion H.
-  simpl in *.
-  mysimp.
-  intros.
-  induction C.
-  inversion H.
-  simpl in *.
-  mysimp.
+  split;
+  induction C; crush.
 Qed.
+
+Hint Resolve wf_ty_var.
 
 Lemma wf_ty_var_false : forall i C, wf_ty (remove i C) (var i) -> False.
 Proof.
-  intros.
-  induction C; mysimp.
-  simpl in H.
-  cases (eq_id_dec a i).
-  auto.
-  simpl in H.
-  cases (eq_id_dec a i); intuition.
+  induction C; crush.
 Qed.
-  
   
 Lemma subst_remove_single : forall a C t t0, wf_ty (remove a C) t -> wf_ty C t -> wf_ty C t0 ->
                                      wf_ty (remove a C) (apply_subst ((a, t0)::nil) t).
 Proof.
-  intros.
-  induction t.
-  simpl in *. cases (eq_id_dec a i).
-  subst. apply member_remove_false in H. contradiction.
-  apply wf_ty_var.
-  assumption.
-  mysimp.
-  simpl in *.
-  destruct H, H0.
-  split;
-  auto.
+  induction t; crush.
+  apply member_remove_false in H. contradiction.
 Qed.
+
+Hint Resolve subst_remove_single.
 
 Lemma member_diff_inversion : forall a i0 C, a <> i0 -> member (a :: C) i0 -> member C i0.
 Proof.
-  intros.
-  simpl in *.
-  destruct (eq_id_dec a i0); intuition.
+  crush.
 Qed.
+
+Hint Resolve member_diff_inversion.
 
 Lemma wf_ty_cons_inversion : forall t i C, wf_ty C t -> wf_ty (i::C) t.
 Proof.
-  intros.
-  induction t; simpl in *.
-  destruct (eq_id_dec i i0); auto.
-  auto.
-  destruct H.
-  split;
-  auto.
+  crush.
 Qed. 
+
+Hint Resolve wf_ty_cons_inversion.
 
 Lemma member_remove_inversion : forall i i0 C, member (remove i C) i0 -> member C i0.
 Proof.
-  intros.
-  destruct (eq_id_dec i i0); auto.
-  subst. apply member_remove_false in H. contradiction.
-  simpl in H.
-  induction C. auto.
-  simpl in *.
-  destruct (eq_id_dec a i0).
-  auto.
-  destruct (eq_id_dec a i).
-  auto.
-  eapply member_diff_inversion in H; eauto.
+  induction C;
+  crush.
 Qed.
 
 Hint Resolve member_diff_inversion member_remove_inversion.
 
 Lemma wf_ty_remove_inversion : forall i C t, wf_ty (remove i C) t -> wf_ty C t.
 Proof.
-  intros.
-  induction t;
-  simpl in *; auto.
-  apply member_remove_inversion in H. assumption.
-  destruct H.
-  splits; auto.
+  induction t; crush.
 Qed.
 
 Hint Resolve wf_ty_remove_inversion.
 
 Lemma member_remove_remove_comm : forall C i j k, member (remove i (remove j C)) k -> member (remove j (remove i C)) k.
 Proof.
-  induction C; intros; mysimp; simpl in *; eauto.
-  destruct (eq_id_dec i j); intuition; simpl in *.
-  destruct (eq_id_dec i i); intuition; simpl in *.
-  destruct (eq_id_dec j j); intuition; simpl in *.
-  destruct (eq_id_dec a j); intuition; simpl in *.
-  destruct (eq_id_dec a i); intuition; simpl in *.
-  destruct (eq_id_dec a k); intuition; simpl in *.
+  induction C; crush.
 Qed.
 
 Hint Resolve member_remove_remove_comm.
 
+Lemma member_minus_remove : forall a C i0 i, member (minus (remove i0 C) a) i -> member (remove i0 (minus C a)) i.
+Proof.
+  induction a; crush.
+  specialize IHa with (C := remove a C).
+  rewrite minus_remove in IHa.
+  apply IHa.
+  rewrite remove_comm.
+  rewrite minus_remove.
+  auto.
+Qed.
+
+Hint Resolve member_minus_remove.
+
 Lemma wf_ty_remove_remove_comm : forall i j C t, wf_ty (remove i (remove j C)) t -> wf_ty (remove j (remove i C)) t.
 Proof.
-  intros.
-  induction t;
-  simpl in *; auto.
-  destruct H.
-  splits; eauto.
+  induction t; crush.
 Qed.
 
 Hint Resolve wf_ty_remove_remove_comm.
 
 Lemma wf_subst_remove_inversion : forall s i C, wf_subst (remove i C) s -> wf_subst C s.
 Proof.
-  induction s; intros;
-    simpl in *; eauto.
-  destruct a. destructs H. splits; eauto.
-  rewrite remove_comm in H0.
-  eauto.
+  induction s; crush.
   rewrite minus_remove in H1.
   eauto.
-  specialize IHs with (C := remove i0 C) (i := i).
-  apply IHs.
   rewrite remove_comm in H2.
-  assumption.
+  eauto.
 Qed.
 
 Hint Resolve wf_subst_remove_inversion.
 
 Lemma compose_subst_nil_r : forall s, compose_subst s nil = s.
 Proof.
-  intros.
-  induction s; mysimp.
-  unfold compose_subst in *.
-  repeat rewrite app_nil_l in *.
-  simpl.
-  rewrite apply_subst_nil.
-  rewrite IHs. reflexivity.
+  induction s; crush.
 Qed.
 
 (** * Lemmas *)
@@ -709,23 +592,6 @@ Proof.
 Defined.
 
 Definition ids_eliminated (s : substitution) (t1 : ty) : list id := (minus (ids_ty t1) (ids_ty (apply_subst s t1))).
-
-Lemma minus_nil1 : forall l, minus nil l = nil.
-Proof.
-  intros.
-  induction l; mysimp.
-  rewrite IHl. reflexivity.
-Qed.
-    
-Hint Resolve minus_nil1.
-
-Lemma minus_nil2 : forall l, minus l nil = l.
-Proof.
-  intros.
-  reflexivity.
-Qed.
-
-Hint Resolve minus_nil2.
 
 Lemma arrowcons (A:Type) : forall (s1 s2:list A) x, s1 ++ x::s2 = (s1 ++ x::nil) ++ s2.
   intros ; rewrite app_ass ; auto.
@@ -1511,12 +1377,13 @@ refine (fix ids_ty_dep (tau : ty) : {t : list id | wf_ty t tau} :=
                                  end
                 end
   | _ => exist _ nil _
-  end);
-  mysimp.
-  apply wf_ty_app.
-  auto.
+  end).
+  crush.
+  crush.
+  simpl. 
+  splits; eauto.
   apply wf_ty_app_comm.
-  apply wf_ty_app.
+  apply wf_ty_app;
   auto.
 Qed.
 

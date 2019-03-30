@@ -24,6 +24,7 @@ Proof.
   auto; intuition.
 Qed.
 
+Hint Resolve are_disjoints_cons_inversion.
 
 Lemma are_disjoints_cons_l : forall a l1 l2, are_disjoints (a::l1) l2 -> are_disjoints l1 l2.
 Proof.
@@ -37,6 +38,7 @@ Proof.
   auto.
 Qed.
 
+Hint Resolve are_disjoints_cons_l.
 
 Lemma are_disjoints_cons_diff : forall  a b l1 l2, are_disjoints (a::l1) (b::l2) -> a <> b.
 Proof.
@@ -47,6 +49,8 @@ Proof.
   rewrite H0 in H.
   destruct (eq_id_dec b b); intuition.
 Qed.
+
+Hint Resolve are_disjoints_cons_diff.
 
 Lemma are_disjoints_cons : forall l1 l2 x y, are_disjoints l1 l2 -> y <> x ->
                                         in_list_id x l2 = false ->
@@ -71,7 +75,9 @@ Proof.
     * apply H. assumption.
 Qed.
 
-Lemma disjoint_inversion2: forall (l l': (list id)) (x: id),
+Hint Resolve are_disjoints_cons.
+
+Lemma disjoint_inversion2 : forall (l l': (list id)) (x: id),
     are_disjoints l l' -> in_list_id x l' = true -> in_list_id x l = false.
 Proof.
   intros.
@@ -93,7 +99,10 @@ Proof.
   inversion H2.
 Qed.
 
-Lemma disjoint_list_and_append_inversion1: forall (l l1 l2 : list id),
+Hint Resolve disjoint_inversion2.
+Hint Rewrite disjoint_inversion2:RE.
+
+Lemma disjoint_list_and_append_inversion1 : forall (l l1 l2 : list id),
     (are_disjoints l (l1++l2) ) -> (are_disjoints l l1).
 Proof.
   intros.
@@ -104,7 +113,9 @@ Proof.
   apply H0.
 Qed.
 
-Lemma disjoint_list_and_append_inversion2: forall (l l1 l2 : list id),
+Hint Resolve disjoint_list_and_append_inversion1.
+
+Lemma disjoint_list_and_append_inversion2 : forall (l l1 l2 : list id),
     (are_disjoints l (l1++l2) ) -> (are_disjoints l l2).
 Proof.
   intros.
@@ -115,7 +126,9 @@ Proof.
   assumption.
 Qed.
 
-Lemma disjoint_list_and_append_inversion3: forall (l l1 l2 : (list id)),
+Hint Resolve disjoint_list_and_append_inversion2.
+
+Lemma disjoint_list_and_append_inversion3 : forall (l l1 l2 : (list id)),
     (are_disjoints l (l1++l2) ) -> (are_disjoints l l1) /\ (are_disjoints l l2).
 Proof.
   intros.
@@ -125,3 +138,5 @@ Proof.
   eapply disjoint_list_and_append_inversion2.
   apply H.
 Qed.
+
+Hint Resolve disjoint_list_and_append_inversion3.

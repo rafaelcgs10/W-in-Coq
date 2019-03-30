@@ -250,14 +250,14 @@ Lemma new_tv_compose_subst_type : forall (s s1 s2 : substitution) (st : id) (t :
 Admitted.
 
 Hint Resolve new_tv_compose_subst_type.
-Hint Rewrite new_tv_compose_subst_type : subst.
+Hint Rewrite new_tv_compose_subst_type:RE.
 
 Lemma add_subst_new_tv_ty : forall (s : substitution) (st : id) (tau1 tau2 : ty),
     new_tv_ty tau1 st -> apply_subst ((st, tau2)::s) tau1 = apply_subst s tau1.
   Admitted.
 
 Hint Resolve add_subst_new_tv_ty.
-Hint Rewrite add_subst_new_tv_ty : subst.
+Hint Rewrite add_subst_new_tv_ty:RE.
 
 Lemma new_tv_gen_ty: forall (t : ty) (G : ctx) (st : id), new_tv_ty t st -> new_tv_ctx G st -> new_tv_schm (gen_ty t G) st.
   Admitted.
