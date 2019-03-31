@@ -79,7 +79,19 @@ Lemma assoc_subst_exists : forall (G : ctx) (i : id) (s : substitution) (sigma :
     in_ctx i (apply_subst_ctx s G) = Some sigma ->
     {sigma' : schm | in_ctx i G = Some sigma' /\ sigma = apply_subst_schm s sigma'}.
 Proof.
-Admitted.
+  refine (fix assoc_subst_exists G i s sigma :
+            in_ctx i (apply_subst_ctx s G) = Some sigma ->
+            {sigma' : schm | in_ctx i G = Some sigma' /\ sigma = apply_subst_schm s sigma'} :=
+            (fun PP => match G as G0 return G = G0 -> {sigma' : schm | in_ctx i G = Some sigma' /\ sigma = apply_subst_schm s sigma'} with
+            | nil => fun L => exist _ _ _
+            | ((j, sigma')::G') => fun L =>  if (eq_id_dec i j) then exist _ sigma' _ else
+                                       match assoc_subst_exists G' i s sigma _ with
+                                       | exist _ sigma'' _ => exist _ sigma'' _
+                                       end
+                    end _)  );
+  crush.
+  Unshelve. auto.
+Qed.
 
 Hint Resolve assoc_subst_exists.
 
