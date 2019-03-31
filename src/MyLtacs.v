@@ -77,7 +77,7 @@ Ltac rewriteHyp :=
   end.
 
 Ltac rewriterP := repeat (rewriteHyp; autorewrite with RE in *).
-Ltac rewriter := rewriterP; eauto.
+Ltac rewriter := autorewrite with RE in *; rewriterP; eauto.
 
-Ltac crush := intros; (repeat (simpl in *; eauto; try crush' ; try inversionExist; try splits; try contradiction ));
-              try (subst; omega); try rewriter; simpl in *; eauto; autorewrite with RELOOP using congruence; sort.
+Ltac crush := intros; mysimp; (repeat (simpl in *; eauto; try crush' ; try inversionExist; try splits; try contradiction ));
+                simpl in *; try (subst; omega); rewriter; autorewrite with RELOOP using congruence; eauto.

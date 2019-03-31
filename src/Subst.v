@@ -166,3 +166,4 @@ Fixpoint id_in_subst (i : id) (s : substitution) : option ty :=
     | nil => None
     | (i', tau)::s' => if eq_id_dec i i' then Some tau else id_in_subst i s'
   end.
+

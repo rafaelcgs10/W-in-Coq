@@ -197,6 +197,7 @@ Definition occurs_dec : forall v t, {occurs v t} +  {~ occurs v t}.
                   end
             end) ; mysimp ; intuition.
 Defined.
+
 (** Removing a variable from a variable context *)
 
 Fixpoint remove (v : id) (ctx : varctxt) : varctxt :=
@@ -365,12 +366,6 @@ Hint Resolve member_remove_remove_comm.
 Lemma member_minus_remove : forall a C i0 i, member (minus (remove i0 C) a) i -> member (remove i0 (minus C a)) i.
 Proof.
   induction a; crush.
-  specialize IHa with (C := remove a C).
-  rewrite minus_remove in IHa.
-  apply IHa.
-  rewrite remove_comm.
-  rewrite minus_remove.
-  auto.
 Qed.
 
 Hint Resolve member_minus_remove.
@@ -385,8 +380,6 @@ Hint Resolve wf_ty_remove_remove_comm.
 Lemma wf_subst_remove_inversion : forall s i C, wf_subst (remove i C) s -> wf_subst C s.
 Proof.
   induction s; crush.
-  rewrite minus_remove in H1.
-  eauto.
   rewrite remove_comm in H2.
   eauto.
 Qed.
@@ -470,6 +463,7 @@ Proof.
 Qed.
 
 Hint Resolve subst_occurs.
+Hint Rewrite subst_occurs:RE.
 
 (** * Specification of the Unification Algorithm *)
 
@@ -575,13 +569,21 @@ Proof.
   reflexivity.
 Defined.
 
+Hint Resolve constraints_mk_inversion.
+Hint Rewrite constraints_mk_inversion:RE.
+
+Hint Resolve left_lex.
+Hint Resolve right_lex.
+
 Lemma arrow_lt_constraints1: forall C l1 l2 r1 r2,
     constraints_lt (mk_constraints C l1 l2) (mk_constraints C (arrow l1 r1) (arrow l2 r2)).
 Proof.
-  intros ; apply right_lex ; auto.
-  simpl.
-  omega.
-Defined.
+  intros.
+  apply right_lex ; auto.
+  simpl. omega.
+Qed.
+
+Hint Resolve arrow_lt_constraints1.
 
 Lemma arrow_lt_constraints2: forall C l1 l2 r1 r2,
     constraints_lt (mk_constraints C r1 r2) (mk_constraints C (arrow l1 r1) (arrow l2 r2)).
@@ -590,6 +592,8 @@ Proof.
   simpl.
   omega.
 Defined.
+
+Hint Resolve arrow_lt_constraints2.
 
 Definition ids_eliminated (s : substitution) (t1 : ty) : list id := (minus (ids_ty t1) (ids_ty (apply_subst s t1))).
 
@@ -994,7 +998,7 @@ Lemma aux'' : forall  (b a: list id) i, length b < length a -> length (remove i 
   omega.
 Qed.
 
-Lemma aux : forall s C i, member C i -> length (minus C (i::s)) < length C.
+Lemma member_len_minus_lt : forall s C i, member C i -> length (minus C (i::s)) < length C.
 Proof.
   induction s; intros.
   - simpl in *. apply remove_varctxt_length. auto. 
@@ -1006,6 +1010,8 @@ Proof.
       assumption.
     + rewrite remove_comm. eapply aux''. auto.
 Qed.
+
+Hint Resolve member_len_minus_lt. 
 
 Lemma lala : forall s C i, member (minus C (dom s)) i -> find_subst s i = None.
 Proof.
@@ -1153,6 +1159,17 @@ Qed.
 
 Hint Resolve in_list_id_new_tv_tv_lt.
 
+Lemma occurs_not_apply_subst_single : forall i t, ~ occurs i t -> apply_subst [(i, t)] t = t.
+Proof.
+  induction t; intros;
+  mysimp.
+  erewrite subst_occurs; eauto.
+Qed.
+
+Hint Resolve occurs_not_apply_subst_single.
+Hint Rewrite occurs_not_apply_subst_single:RE.
+
+
 Program Fixpoint unify' (l : constraints) {wf constraints_lt l} : unify_type l :=
   fun wfl => match get_tys l with
   | (var i, t) => match occurs_dec i t with
@@ -1183,123 +1200,68 @@ Program Fixpoint unify' (l : constraints) {wf constraints_lt l} : unify_type l :
   | (con  _, arrow _ _) => inright _
   end.
 Next Obligation.
-splits; mysimp.
-unfold unifier. reflexivity.
-intros.
-exists s'.
-rewrite compose_subst_nil_l.
-intros. reflexivity.
+splits; crush.
 Defined.
 Next Obligation.
 unfold wf_constraints in wfl.
 rewrite <- Heq_anonymous0 in wfl.
 simpl in wfl.
 destruct wfl.
-splits; mysimp.
 unfold unifier.
-mysimp;
-intros;
-destruct H2;
-econstructor;
-intros. 
-econstructor.
-intros. simpl in H3.
-destruct H2; auto.
-inversion H2. 
-destruct (eq_id_dec i x).
-subst. auto.
-subst.
-eauto.
-intros.
+splits; crush.
 exists s'.
 intros.
-repeat rewrite apply_subst_fold.
-destruct (eq_id_dec i v).
-unfold unifier in H2.
-subst.
+crush.
+Unshelve.
 assumption.
-repeat rewrite apply_subst_fold.
-reflexivity.
 Defined.
 Next Obligation.
-  intros; splits; intros; mysimp.
-  reflexivity. 
-  exists s'.
-  rewrite compose_subst_nil_l.
-  intros. reflexivity.
+  crush.
 Defined.
 Next Obligation.
 unfold wf_constraints in wfl.
 rewrite <- Heq_anonymous0 in wfl.
 simpl in wfl.
 destruct wfl.
-splits; mysimp.
-unfold unifier. mysimp.
-erewrite subst_occurs; auto.
-intros.
-econstructor. intros.
-destruct H3; auto.
-simpl in H4.
-destruct (eq_id_dec i x).
-subst.
-inversion H5. 
-subst. auto.
-eauto.
-intros.
+unfold unifier.
+splits;
+crush.
 exists s'.
-intros.
-unfold unifier in H3.
-repeat rewrite apply_subst_fold.
-destruct (eq_id_dec i v).
-subst.
-rewrite <- H3.
-reflexivity.
-repeat rewrite apply_subst_fold.
-reflexivity.
+crush.
+Unshelve. assumption.
 Defined.
 Next Obligation.
-  splits; mysimp; try reflexivity.
-  intros.
+  splits; crush.
   exists s'.
-  rewrite compose_subst_nil_l.
-  reflexivity.
+  crush.
 Defined.
 Next Obligation.
 unfold wf_constraints in wfl.
 rewrite <- Heq_anonymous in wfl.
 simpl in wfl.
 destruct wfl.
-destruct H.
-destruct H0.
-erewrite constraints_mk_inversion with (C := get_ctxt l).
+erewrite constraints_mk_inversion with (C := get_ctxt l); eauto.
 repeat rewrite <- Heq_anonymous.
-simpl.
-eapply arrow_lt_constraints1.
-symmetry. apply Heq_anonymous.
-reflexivity.
+crush.
 Defined.
 Next Obligation.
 unfold wf_constraints in *.
-rewrite <- Heq_anonymous in wfl.
-simpl in *.
+rewrite <- Heq_anonymous in *.
 destruct wfl.
-destruct H, H0.
-split; auto.
+crush.
 Defined.
 Next Obligation.
   clear e Heq_anonymous unify'.
+  clear n.
   erewrite constraints_mk_inversion with (C := get_ctxt l); eauto.
   destruct wfl.
   repeat rewrite <- Heq_anonymous0 in *.
-  simpl in *.
-  destruct H, H0.
-  destruct s1.
-  - repeat rewrite apply_subst_nil.
-    simpl. eapply arrow_lt_constraints2.
-  - apply left_lex ; auto.
-    destruct p.
-    simpl in w. destructs w.
-    apply aux; auto.
+  induction s1; simpl in *.
+  apply right_lex ; eauto.
+  crush. omega.
+  apply left_lex ; eauto.
+  destruct a; crush.
+  apply member_len_minus_lt. eauto.
 Defined.
 Next Obligation.
   simpl.
@@ -1308,10 +1270,7 @@ Next Obligation.
   repeat rewrite <- Heq_anonymous0 in wfl.
   simpl in wfl.
   destruct wfl.
-  simpl.
-  destruct H, H0.
-  splits;
-  eapply substs_remove; eauto.
+  crush.
 Defined.
 Next Obligation.
   eauto.
@@ -1319,12 +1278,8 @@ Defined.
 Next Obligation.
   clear Heq_anonymous Heq_anonymous0 Heq_anonymous1.
   unfold unifier in *.
-  splits; simpl.
-  - repeat rewrite apply_compose_equiv.
-    repeat rewrite apply_subst_arrow.
-    fequals.
-  - eapply wf_subst_arrowend; auto.
-  - intros. destruct H. inversion H. subst. inversion H0. subst.
+  splits; crush.
+  - inversion H. inversion H0. subst.
     eapply new_tv_compose_subst; eauto. eapply n; eauto.
     splits; eauto. 
   - intros.
