@@ -1258,7 +1258,8 @@ Next Obligation.
   repeat rewrite <- Heq_anonymous0 in *.
   induction s1; simpl in *.
   apply right_lex ; eauto.
-  crush. omega.
+  repeat rewrite apply_subst_nil.
+  simpl. omega.
   apply left_lex ; eauto.
   destruct a; crush.
   apply member_len_minus_lt. eauto.

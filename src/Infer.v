@@ -65,10 +65,7 @@ Program Definition schm_inst_dep (sigma : schm) :
 Next Obligation.
   simpl in *.
   destruct (apply_inst_subst_hoare (compute_inst_subst x (max_gen_vars sigma)) sigma >>= _).
-  crushAssumptions.
-  intros.
-  subst.
-  eapply new_tv_schm_to_new_tv_ty; eauto.
+  crush.
 Defined.
 
 Program Definition look_dep (x : id) (G : ctx) :
@@ -77,15 +74,6 @@ Program Definition look_dep (x : id) (G : ctx) :
   | Some sig => ret sig
   | None => failT _
   end.
-
-(*
-Lemma not_in_domain_compute : forall (sg : list ty) (x st : id), x < st ->
- id_in_subst x (compute_subst st sg) = None.
-Admitted.
-
-Hint Resolve not_in_domain_compute.
-Hint Rewrite not_in_domain_compute.
-*)
 
 Lemma assoc_subst_exists : forall (G : ctx) (i : id) (s : substitution) (sigma : schm),
     in_ctx i (apply_subst_ctx s G) = Some sigma ->
@@ -292,14 +280,10 @@ Next Obligation. (* Case: properties used in var_t *)
   intros; unfold top; auto.
 Defined.
 Next Obligation.  (* Case: soundness and completeness of var_t *)
-  edestruct (look_dep x G >>= _).
-  crushAssumptions;
-  subst;
+  edestruct (look_dep x G >>= _);
+  crush;
   rename x into st0, x2 into st1;
-  rename x1 into tau, x3 into tau'.
-  - omega.
-  - eauto.
-  - subst. rewrite apply_subst_ctx_nil. eauto.
+  rename x0 into tau', x1 into tau.
   - (* Case: var_t soundness *)
     econstructor; eauto. 
     rewrite apply_subst_ctx_nil. eauto.
@@ -308,25 +292,25 @@ Next Obligation.  (* Case: soundness and completeness of var_t *)
   - subst.
     unfold completeness.
     intros.
-    inversion H0.
+    inversion H1.
     subst.
-    inversion H6.
+    inversion H7.
     rename x into is_s.
-    destruct (assoc_subst_exists G st0 phi sigma H3) as [sigma' H3'].
-    destruct H3' as [H31  H32].
-    destruct H6.
+    destruct (assoc_subst_exists G st0 phi sigma H5) as [sigma' H5'].
+    destruct H5' as [H51  H52].
+    destruct H7.
     exists (compose_subst (compute_subst st1 is_s) phi).
     splits.
-    + eapply t_is_app_T_aux with (p := max_gen_vars sigma').
-      * eapply new_tv_ctx_implies_new_tv_schm. 
-       apply H31. auto.
+    + eapply t_is_app_T_aux with (p := max_gen_vars sigma'). 
+      * eapply new_tv_ctx_implies_new_tv_schm; 
+        crush.
       * reflexivity.
-      * rewrite H2 in H31.
-        inversion H31. subst.
+      * rewrite H2 in H51.
+        inversion H51. subst.
         assumption.
       * sort.
-        rewrite H2 in H31.
-        inversion H31.
+        rewrite H2 in H51.
+        inversion H51.
         subst.
         assumption.
     + intros.
@@ -344,63 +328,54 @@ Next Obligation.
   Admitted.
 Next Obligation. (* Case: lam soundness  *)
   simpl.
-  destruct (W_hoare e' (((x, sc_var x0)) :: G) >>= _).
-  simpl.
-  crushAssumptions; clear W_hoare;
+  destruct (W_hoare e' (((x, sc_var x0)) :: G) >>= _);
+  crush; clear W_hoare;
   rename x0 into st0, t1 into s, x1 into tau_r, t into st1.
-  - subst. omega.
-  - subst. assumption.
-  - subst.
-    destruct (find_subst s st0).
+  - destruct (find_subst s st0).
     + rename t into tau_l.
       econstructor; eauto.
-      inversion H5.
+      inversion H4.
       subst.
       eauto.
     + econstructor; eauto.
-  - subst.
-    destruct (find_subst s st0);
-     inversion H5; assumption.
-  - subst.
-    econstructor.
+  - econstructor.
     simpl in H0.
     assert (sc_var st0 = ty_to_schm (var st0)). auto.
     cases (find_subst s st0);
     simpl;
     auto.
-  - subst.
-      unfold completeness. 
-      intros.
-      inversion_clear H1.
-      fold (apply_subst s (var st0)).
-      cut (exists s' : substitution,
-              tau'0 = apply_subst s' tau_r /\
-              (forall x' : id, x' < S st0 ->  apply_subst (((st0, tau):: phi)) (var x') = apply_subst s' (apply_subst s (var x'))) ) .
-      intros.
-      destruct H1; auto.
-      destruct H1; auto.
-      rename x0 into s'.
-      exists s'.
-      split.
-      * rewrite apply_subst_arrow.
-        rewrite H1 at 1.
-        specialize H8 with (x' := st0).
-        simpl in *.
-        destruct (eq_id_dec st0 st0); intuition.
-        destruct (find_subst s st0);
-        fequals; eauto.
-      * intros;
-        rewrite <- H8; eauto.
-        erewrite add_subst_rewrite_for_unmodified_stamp; auto; try omega.
-      * unfold completeness in H7.
-        specialize H7 with (phi := (st0, tau)::phi).
-        edestruct H7.
-        assert (sc_var st0 = ty_to_schm (var st0)); auto.
-        erewrite <- add_subst_add_ctx in H2. 
-        apply H2.
-        assumption.
-        exists x0.
-        assumption.
+  - unfold completeness. 
+    intros.
+    inversion_clear H2.
+    fold (apply_subst s (var st0)).
+    cut (exists s' : substitution,
+            tau'0 = apply_subst s' tau_r /\
+            (forall x' : id, x' < S st0 ->  apply_subst (((st0, tau):: phi)) (var x') = apply_subst s' (apply_subst s (var x'))) ) .
+    intros.
+    destruct H2; auto.
+    destruct H2; auto.
+    rename x0 into s'.
+    exists s'.
+    split.
+    * rewrite apply_subst_arrow.
+      rewrite H2 at 1.
+      specialize H8 with (x' := st0).
+      simpl in *.
+      destruct (eq_id_dec st0 st0); intuition.
+      destruct (find_subst s st0);
+      fequals; eauto.
+    * intros;
+      rewrite <- H8; eauto.
+      erewrite add_subst_rewrite_for_unmodified_stamp; auto; try omega.
+    * unfold completeness in H6.
+      specialize H6 with (phi := (st0, tau)::phi).
+      edestruct H6.
+      assert (sc_var st0 = ty_to_schm (var st0)); auto.
+      erewrite <- add_subst_add_ctx in H7. 
+      eauto.
+      eauto.
+      exists x0.
+      assumption.
 Defined.
 Next Obligation. 
   unfold top.
@@ -411,38 +386,36 @@ Next Obligation.
 Defined.
 Next Obligation.
   destruct (W_hoare l G  >>= _).
-  crushAssumptions;
+  crush;
   clear W_hoare;
-  rename H17 into MGU;
+  rename H7 into MGU, H13 into MGU', H15 into MGU'';
   rename x4 into alpha, x into st0, x1 into st1;
-  rename x6 into mu, t1 into s1, t2 into s2;
+  rename x3 into mu, t1 into s1, t2 into s2;
   rename H6 into COMP_L, H12 into COMP_R;
   rename x2 into tauL, x0 into tauLR.
-  - omega.
-  - subst.
+  - apply new_tv_compose_subst; eauto.
     apply new_tv_compose_subst; eauto.
-    apply new_tv_compose_subst; eauto.
-    eapply H18.
+    eapply MGU'.
     splits; eauto.
     econstructor; eauto.
   - fold (apply_subst mu (var alpha)).
     subst.
     apply new_tv_s_ty; eauto.
-    apply H18; eauto.
+    apply MGU'; eauto.
     splits; eauto.
     econstructor; eauto.
   - subst.
     eapply new_tv_s_ctx; eauto.
     apply new_tv_compose_subst; eauto.
     apply new_tv_compose_subst; eauto.
-    eapply H18.
+    eapply MGU'.
     splits; eauto.
     econstructor; eauto.
   - fold (apply_subst mu (var alpha)) in *.
     subst.
     repeat rewrite apply_subst_ctx_compose.
     apply app_ht with (tau := apply_subst mu tauL); eauto.
-    rewrite <- H19;
+    rewrite <- MGU'';
     eauto.
   - subst.
     unfold completeness. intros.
@@ -499,17 +472,15 @@ Next Obligation.
 Defined.
 Next Obligation.
   destruct (W_hoare e1 G >>= _).
-  crushAssumptions; subst;
+  crush;
   clear W_hoare;
-  rename H12 into SOUND_e2, H5 into SOUND_e1;
-  rename H6 into COMP_e1, H13 into COMP_e2;
+  rename H11 into SOUND_e2, H5 into SOUND_e1;
+  rename H6 into COMP_e1, H12 into COMP_e2;
   rename x into st0, t into st3;
   rename x3 into tau_e2, t2 into s2, x2 into st2;
-  rename x1 into tau_e1, t1 into s1, x0 into st1.
-  - omega.
-  - eauto.
-  - auto.
-  - eapply new_tv_s_ctx; eauto.
+  rename x1 into tau_e1, t1 into s1, x0 into st1;
+  eauto.
+  - eapply new_tv_s_ctx; eauto. 
   -
     pose proof exists_renaming_not_concerned_with2 (gen_ty_vars tau_e1 (apply_subst_ctx s1 G))
          (FV_ctx (apply_subst_ctx s1 G)) (FV_subst s2)  as renaming.
@@ -530,12 +501,11 @@ Next Obligation.
     assumption.
     rewrite dom_rename_to_subst.
     rewrite H6.
-    apply free_and_bound_are_disjoints.
-    rewrite apply_subst_ctx_compose.
-    rewrite <- gen_ty_in_subst_ctx.
-    rewrite <- subst_add_type_scheme.
+    apply free_and_bound_are_disjoints; eauto.
+    rewrite apply_subst_ctx_compose; eauto.
+    rewrite <- gen_ty_in_subst_ctx; eauto.
+    rewrite <- subst_add_type_scheme; eauto.
     rewrite <- gen_alpha4_bis; auto.
-    auto.
   - intro. intros.
     rename H5 into SOUND_let.
     inversion_clear SOUND_let.
