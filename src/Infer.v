@@ -4,6 +4,7 @@ Require Import Sublist.
 Require Import Context.
 Require Import ListIds.
 Require Import Schemes.
+Require Import SubstSchm.
 Require Import Rename.
 Require Import Disjoints.
 Require Import Program.
@@ -95,13 +96,127 @@ Qed.
 
 Hint Resolve assoc_subst_exists.
 
+Lemma apply_subst_app : forall (s1 s2 : substitution) (st : id),
+    find_subst s1 st = None -> apply_subst (s1 ++ s2) (var st) = apply_subst s2 (var st).
+Proof.
+  induction s1;
+  crush.
+Qed.
+
+Hint Resolve apply_subst_app.
+Hint Rewrite apply_subst_app:RE.
+
+Lemma not_in_domain_compute : forall (is_s : inst_subst) (st0 st1 : id),
+    st0 < st1 -> find_subst (compute_subst st1 is_s) st0 = None.
+Proof.
+  induction is_s; crush.
+Qed.
+
+Hint Resolve not_in_domain_compute.
+Hint Rewrite not_in_domain_compute:RE.
+
+Lemma apply_app_compute_subst : forall (is_s : inst_subst) (s : substitution) (st0 st1 : id),
+       st0 < st1 -> apply_subst ((compute_subst st1 is_s) ++ s) (var st0) = apply_subst s (var st0).
+Proof.
+  induction is_s;
+  crush.
+Qed.
+
+Hint Resolve apply_app_compute_subst.
+Hint Rewrite apply_app_compute_subst:RE.
+
+Lemma apply_subst_inst_to_ty_to_schm : forall (is_s : inst_subst) (tau : ty),
+    apply_inst_subst is_s (ty_to_schm tau) = Some_schm tau.
+Proof.
+  induction tau; crush.
+Qed.
+
+Hint Resolve apply_subst_inst_to_ty_to_schm.
+Hint Rewrite apply_subst_inst_to_ty_to_schm:RE.
+
+Lemma assoc_stamp_in_subst_app2 : forall (s1 s2 : substitution) (st : id) (tau : ty),
+ find_subst s1 st = Some tau -> find_subst (s1 ++ s2) st = Some tau.
+Proof.
+  intros. induction s1; crush.
+Qed.
+
+Hint Resolve assoc_stamp_in_subst_app2.
+Hint Rewrite assoc_stamp_in_subst_app2:RE.
+
+Lemma apply_app : forall (s1 s2 : substitution) (st : id) (tau : ty),
+    find_subst s1 st = Some tau -> apply_subst (s1 ++ s2) (var st) = tau.
+Proof.
+  induction s1; crush.
+Qed.
+
+Hint Resolve apply_app.
+Hint Rewrite apply_app:RE.
+
+Lemma compute_subst_cons_rwt : forall (st : id) (tau : ty) (sg : inst_subst),
+    compute_subst st (tau :: sg) = (st, tau) :: compute_subst (S st) sg.
+auto.
+Qed.
+
+Hint Resolve compute_subst_cons_rwt.
+Hint Rewrite compute_subst_cons_rwt:RE.
+
+Lemma find_subst_id_compute : forall (i : id) (is_s : inst_subst) (st : id) (tau : ty),
+    nth_error is_s i = Some tau -> find_subst (compute_subst st is_s) ((st + i)) = Some tau.
+Proof.
+  induction i; crush.
+  destruct is_s; crush.
+  destruct is_s. crush.
+  rewrite compute_subst_cons_rwt.
+  crush.
+  rewrite <- Nat.add_succ_comm.
+  erewrite IHi; eauto.
+Qed.
+
+Hint Resolve find_subst_id_compute.
+Hint Rewrite find_subst_id_compute:RE.
+
 Lemma t_is_app_T_aux : forall (sigma : schm) (tau tau' : ty) (s : substitution) (p : nat) (st : id) (x : list ty),
     new_tv_schm sigma st -> max_gen_vars sigma <= p ->
     apply_inst_subst (compute_inst_subst st p) sigma = Some_schm tau ->
     apply_inst_subst x (apply_subst_schm s sigma) = Some_schm tau' ->
-    tau' = apply_subst (compose_subst (compute_subst st x) s) tau.
+    tau' = apply_subst ((compute_subst st x) ++ s) tau.
 Proof.
-  Admitted.
+  induction sigma.
+  - intros.
+    inversion H. subst.
+    simpl in H1. inversion H1.
+    simpl in H2. fold (apply_subst s (var i)) in H2.
+    rewrite apply_subst_inst_to_ty_to_schm in H2.
+    inversion H2.
+    rewrite apply_app_compute_subst; eauto.
+   - crush. 
+   - intros. 
+     simpl in *.
+     rewrite nth_error_compute_inst_Some in *; eauto.
+     inversion H1. inversion H. subst.
+     cases (nth_error x i).
+     inversion H2. subst. clear H2 H1.
+     erewrite apply_app; eauto.
+     rewrite Nat.add_comm.
+     eapply find_subst_id_compute; eauto.
+     inversion H2.
+   - intros. 
+     inversion H. subst.
+     simpl in H0. rewrite apply_subst_schm_arrow in H2.
+     edestruct (exist_arrow_apply_inst_arrow (compute_inst_subst st p)); eauto.
+     destruct H3.
+     edestruct (exist_arrow_apply_inst_arrow x); eauto.
+     destruct H4. subst.
+     apply and_arrow_apply_inst_arrow in H1.
+     destruct H1.
+     apply and_arrow_apply_inst_arrow in H2.
+     destruct H2.
+     simpl.
+     eapply Nat.max_lub_r in H0 as H0r.
+     eapply Nat.max_lub_l in H0 as H0l.
+     erewrite <- IHsigma1; eauto.
+     erewrite <- IHsigma2; eauto.
+Qed.
 
 Hint Resolve t_is_app_T_aux.
 
@@ -125,6 +240,7 @@ Qed.
 Hint Resolve apply_subst_app1.
 Hint Rewrite apply_subst_app1 : subst.
 
+(*
 Lemma apply_app_compute_subst :
  forall (s0 : substitution) (st i : id) (sg : list ty),
     i < st -> apply_subst (compose_subst (compute_subst st sg) s0) (var i) = apply_subst s0 (var i).
@@ -133,6 +249,7 @@ Admitted.
 
 Hint Resolve apply_app_compute_subst.
 Hint Rewrite apply_app_compute_subst : subst.
+*)
 
 (** Gives you a fresh variable *)
 Program Definition fresh : @HoareState id (@top id) id (fun i x f => S i = f /\ i = x) := fun n => exist _ (Some (n, S n)) _.
@@ -241,14 +358,6 @@ Qed.
 
 Hint Resolve new_tv_subst_cons_diff.
 
-(*
-Lemma apply_subst_remove_diff : forall a st s, a <> st -> apply_subst (remove_subst_by_id a s) (var st) = apply_subst s (var st).
-Proof.
-  intros.
-  induction s; mysimp.
-Qed.
-*)
-
 Lemma s_gen_t_more_general_than_gen_s_t : forall (s : substitution) (G : ctx) (tau : ty),
  more_general (apply_subst_schm s (gen_ty tau G)) (gen_ty (apply_subst s tau) (apply_subst_ctx s G)).
 Admitted.
@@ -311,7 +420,7 @@ Next Obligation.  (* Case: soundness and completeness of var_t *)
     destruct (assoc_subst_exists G st0 phi sigma H5) as [sigma' H5'].
     destruct H5' as [H51  H52].
     destruct H7.
-    exists (compose_subst (compute_subst st1 is_s) phi).
+    exists ((compute_subst st1 is_s) ++ phi).
     splits.
     + eapply t_is_app_T_aux with (p := max_gen_vars sigma'). 
       * eapply new_tv_ctx_implies_new_tv_schm; 
