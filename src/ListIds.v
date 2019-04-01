@@ -58,6 +58,22 @@ Qed.
 Hint Resolve in_list_id_or_append_inversion.
 Hint Rewrite in_list_id_or_append_inversion:RE.
 
+Lemma in_list_id_or_append_inversion_midle : forall x l1 l2 l3 l4,
+    in_list_id x (l1 ++ l2 ++ l3 ++ l4) = true ->
+    in_list_id x (l1 ++ l2 ++ l4) = true \/ in_list_id x (l1 ++ l3 ++ l4) = true.
+Proof.
+  intros.
+  induction l1.
+  - simpl in *.
+    apply in_list_id_or_append_inversion in H.
+    destruct H; eauto.
+  - simpl in *.
+    destruct (eq_id_dec a x); eauto.
+Qed.
+
+Hint Resolve in_list_id_or_append_inversion_midle.
+Hint Rewrite in_list_id_or_append_inversion_midle:RE.
+
 Lemma in_list_id_cons_true : forall x l a,
     in_list_id x l = true -> in_list_id x (a::l) = true.
 Proof.
@@ -82,17 +98,50 @@ Hint Resolve in_list_id_cons_false.
 Hint Rewrite in_list_id_cons_false:RE.
 
 Lemma in_list_id_append_comm_true :
-  forall x l1 l2, in_list_id x (l1 ++ l2) = true ->
+  forall x l1 l2, in_list_id x (l1 ++ l2) = true <->
              in_list_id x (l2 ++ l1) = true.
 Proof.
   intros.
-  apply in_list_id_or_append.
-  apply in_list_id_or_append_inversion in H.
+  split; intros;
+  apply in_list_id_or_append;
+  apply in_list_id_or_append_inversion in H;
   destruct H; mysimp.
 Qed.
 
 Hint Resolve in_list_id_append_comm_true.
-Hint Rewrite in_list_id_append_comm_true:RE.
+Hint Rewrite in_list_id_append_comm_true:RELOOP.
+
+Lemma in_list_id_append_comm_true2 :
+  forall x l1 l2 l3, in_list_id x (l1 ++ l2 ++ l3) = true ->
+             in_list_id x (l1 ++ l3 ++ l2) = true.
+Proof.
+  intros.
+  apply in_list_id_or_append_inversion in H.
+  destruct H.
+  eauto.
+  apply in_list_id_append_comm_true in H.
+  eauto.
+Qed.
+
+Hint Resolve in_list_id_append_comm_true2.
+Hint Rewrite in_list_id_append_comm_true2:RE.
+
+Lemma in_list_id_append_comm_true3 :
+  forall x l1 l2 l3, in_list_id x (l1 ++ l2 ++ l3) = true ->
+             in_list_id x (l2 ++ l1 ++ l3) = true.
+Proof.
+  intros.
+  apply in_list_id_or_append_inversion in H.
+  destruct H.
+  eauto.
+  apply in_list_id_append_comm_true2.
+  rewrite app_assoc.
+  apply in_list_id_append_comm_true.
+  eauto.
+Qed.
+
+Hint Resolve in_list_id_append_comm_true3.
+Hint Rewrite in_list_id_append_comm_true3:RE.
 
 Lemma in_list_id_append1 :
   forall x l1 l2, in_list_id x l1 = true ->

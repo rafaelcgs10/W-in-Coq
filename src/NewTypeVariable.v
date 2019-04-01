@@ -50,11 +50,243 @@ Inductive new_tv_subst : substitution -> id -> Prop :=
 
 Hint Constructors new_tv_subst.
 
+Lemma FV_subst_compose : forall s1 s2, FV_subst (compose_subst s1 s2) = FV_subst ((apply_subst_list s1 s2) ++ s2).
+Proof.
+  induction s1; crush.
+Qed.
+
+Lemma arrowcons (A:Type) : forall (s1 s2:list A) x, s1 ++ x::s2 = (s1 ++ x::nil) ++ s2.
+  intros ; rewrite app_ass ; auto.
+Qed.
+
+Hint Resolve arrowcons.
+Hint Rewrite arrowcons:RELOOP.
+
+Lemma new_ty_to_cons_new_tv_subst : forall tau i a s, a < i -> new_tv_ty tau i -> new_tv_subst s i -> new_tv_subst ((a, tau) :: s) i.
+Proof.
+  induction tau; intros; simpl in *. 
+  inversion H0. subst.
+  inversion H1.
+  econstructor. intros.
+  subst.
+  simpl in H6. 
+  destruct (eq_id_dec a x). subst.
+  assumption.
+  simpl in H6. 
+  apply in_list_id_append_comm_true in H6.
+  unfold img_ids in H6. simpl in H6. destruct (eq_id_dec i x).
+  subst. assumption. fold (img_ids s) in H6.
+  apply in_list_id_append_comm_true in H6.
+  fold (FV_subst s) in H6. auto.
+  econstructor. intros.
+  simpl in H2.
+  destruct (eq_id_dec a x). subst.
+  assumption.
+  apply in_list_id_append_comm_true in H2.
+  unfold img_ids in H2. simpl in H2. 
+  fold (img_ids s) in H2.
+  apply in_list_id_append_comm_true in H2.
+  fold (FV_subst s) in H2. 
+  inversion H1. auto.
+  inversion H0. subst.
+  econstructor. intros.
+  crush.
+  apply in_list_id_append_comm_true in H2.
+  unfold img_ids in H2. simpl in H2. 
+  fold (img_ids s) in H2.
+  assert (new_tv_subst ((a, tau1) :: s) i). auto.
+  assert (new_tv_subst ((a, tau2) :: s) i). auto.
+  inversion H3. subst.
+  inversion H5. subst.
+  specialize H7 with (x:=x).
+  specialize H8 with (x:=x).
+  simpl in *. destruct (eq_id_dec a x); eauto.
+  unfold img_ids in *. simpl in *.
+  fold (img_ids s) in *.
+  apply in_list_id_append_comm_true in H2.
+  rewrite <- app_assoc in H2.
+  rewrite app_assoc in H2.
+  apply in_list_id_append_comm_true2 in H2.
+  rewrite app_assoc in H2.
+  apply in_list_id_or_append_inversion in H2.
+  destruct H2.
+  rewrite <- app_assoc in H2.
+  auto.
+  auto.
+Qed.
+
+Hint Resolve new_ty_to_cons_new_tv_subst.
+
+Lemma new_tv_s_ty : forall (st : id) (s : substitution) (tau : ty),
+    new_tv_ty tau st -> new_tv_subst s st -> new_tv_ty (apply_subst s tau) st.
+Admitted.
+
+Hint Resolve new_tv_s_ty.
+
+Lemma in_list_id_FV_subst_inversion : forall a tau s i,
+    new_tv_subst ((a, tau) :: s) i -> new_tv_subst s i.
+Proof.
+  intros.
+  econstructor. intros.
+  inverts* H. apply H1.
+  unfold FV_subst in *.
+  unfold img_ids in *.
+  specialize H1 with (x:=x).
+  induction tau.
+  simpl in *. destruct (eq_id_dec a x). eauto.
+  rewrite arrowcons.
+  rewrite <- app_assoc.
+  apply in_list_id_append_comm_true3.
+  simpl. destruct (eq_id_dec i0 x); eauto.
+  crush.
+  crush.
+Qed.
+
+Hint Resolve in_list_id_FV_subst_inversion.
+
+Lemma in_list_id_FV_subst_arrow_and_inversion : forall a tau1 tau2 s i,
+    new_tv_subst ((a, arrow tau1 tau2) :: s) i -> new_tv_subst ((a, tau1)::s) i /\ new_tv_subst ((a, tau2)::s) i.
+Proof.
+  intros.
+  inverts* H.
+  split.
+  - econstructor.
+    intros. apply H0. 
+    unfold FV_subst in *.
+    unfold img_ids in *.
+    simpl (concat (map ids_ty (img ((a, arrow tau1 tau2) :: s)))).
+    simpl (dom ((a, arrow tau1 tau2) :: s)).
+    simpl (dom ((a, tau1) :: s)) in H.
+    simpl (concat (map ids_ty (img ((a, tau1) :: s)))) in H.
+    rewrite <- app_assoc.
+    apply in_list_id_append_comm_true3 in H.
+    apply in_list_id_append_comm_true3.
+    apply in_list_id_or_append_inversion in H.
+    destruct H.
+    apply in_list_id_append1; eauto.
+    apply in_list_id_append2; eauto.
+  - econstructor.
+    intros. apply H0. 
+    unfold FV_subst in *.
+    unfold img_ids in *.
+    simpl (concat (map ids_ty (img ((a, arrow tau1 tau2) :: s)))).
+    simpl (dom ((a, arrow tau1 tau2) :: s)).
+    simpl (dom ((a, tau2) :: s)) in H.
+    simpl (concat (map ids_ty (img ((a, tau2) :: s)))) in H.
+    apply in_list_id_append_comm_true3 in H.
+    apply in_list_id_append_comm_true3.
+    apply in_list_id_or_append_inversion in H.
+    destruct H.
+    apply in_list_id_append1; eauto.
+    apply in_list_id_append2; eauto.
+Qed.
+
+Hint Resolve in_list_id_FV_subst_arrow_and_inversion.
+    
+Lemma new_tv_subst_cons_new_tv_ty : forall tau s i a, new_tv_subst ((a, tau) :: s) i -> new_tv_ty tau i.
+Proof.
+  induction tau; crush.
+  econstructor.
+  inversion H. subst.
+  apply H0. 
+  unfold FV_subst.
+  unfold img_ids.
+  eapply in_list_id_append_comm_true.
+  crush.
+  apply in_list_id_FV_subst_arrow_and_inversion in H as H'.
+  destruct H'.
+  eauto.
+Qed.
+
+Hint Resolve new_tv_subst_cons_new_tv_ty.
+ 
+Hint Resolve new_tv_subst_cons_new_tv_ty.
+
+Lemma new_tv_subst_list : forall (s1 s2 : substitution) (i : id),
+                             new_tv_subst s1 i ->
+                             new_tv_subst s2 i ->
+                             new_tv_subst (apply_subst_list s1 s2) i.
+Proof.
+  induction s1; crush.
+  inversion H. subst.
+  specialize H1 with (x:=a).
+  simpl in H1.
+  crush.
+  apply new_ty_to_cons_new_tv_subst; eauto.
+Qed.
+
+Hint Resolve new_tv_subst_list.
+
+Lemma dom_apply_subst_list : forall s1 s2, dom (apply_subst_list s1 s2) = dom s1.
+Proof.
+  induction s1; crush.
+Qed.
+
+Hint Resolve dom_apply_subst_list.
+Hint Rewrite dom_apply_subst_list:RE.
+
+Lemma dom_dist : forall s1 s2 : substitution, dom (s1 ++ s2) = dom s1 ++ dom s2.
+Proof.
+  induction s1; crush.
+Qed.
+
+Hint Resolve dom_dist.
+Hint Rewrite dom_dist:RE.
+
+Lemma img_dist : forall s1 s2 : substitution, img (s1 ++ s2) = img s1 ++ img s2.
+Proof.
+  induction s1; crush.
+Qed.
+
+Hint Resolve img_dist.
+Hint Rewrite img_dist:RE.
+
+Lemma img_ids_dist : forall s1 s2 : substitution, img_ids (s1 ++ s2) = img_ids s1 ++ img_ids s2.
+Proof.
+  unfold img_ids.
+  intros.
+  rewrite <- concat_app.
+  rewrite img_dist. 
+  rewrite map_app.
+  reflexivity.
+Qed.
+
+Hint Resolve img_ids_dist.
+Hint Rewrite img_ids_dist:RE.
+  
 Lemma new_tv_compose_subst : forall (s1 s2 : substitution) (i : id),
                              new_tv_subst s1 i ->
                              new_tv_subst s2 i ->
                              new_tv_subst (compose_subst s1 s2) i.
-Admitted.
+Proof.
+  induction s1, s2; crush.
+  inversion H. inversion H0. subst.
+  unfold compose_subst.
+  econstructor.
+  intros.
+  unfold FV_subst in *.
+  repeat rewrite dom_dist in H2.
+  repeat rewrite img_ids_dist in H2.
+  repeat rewrite dom_apply_subst_list in H2.
+  repeat rewrite app_assoc in H2.
+  assert (in_list_id x (img_ids ((p, t) :: s2) ++ (dom ((p, t) :: s2)) ++
+          ((dom ((a, t0) :: s1) ++ img_ids (apply_subst_list ((a, t0) :: s1) ((p, t) :: s2))))) = true).
+  { rewrite app_assoc. apply in_list_id_append_comm_true3.
+    rewrite <- app_assoc. rewrite app_assoc. apply in_list_id_append_comm_true3.
+    rewrite <- app_assoc. apply in_list_id_append_comm_true3.
+    rewrite app_assoc. apply in_list_id_append_comm_true2.
+    rewrite app_assoc. auto. }
+  apply in_list_id_append_comm_true3 in H3.
+  rewrite app_assoc in H3.
+  apply in_list_id_or_append_inversion in H3.
+  destruct H3.
+  auto.
+  pose proof (new_tv_subst_list  H H0).
+  inversion H5. subst.
+  unfold FV_subst in H6.
+  repeat rewrite dom_apply_subst_list in H6.
+  auto.
+Qed.
 
 Hint Resolve new_tv_compose_subst.
 
@@ -103,12 +335,6 @@ Lemma new_tv_s_id : forall (st st' : id) (s : substitution),
 Admitted.
 
 Hint Resolve new_tv_s_id.
-
-Lemma new_tv_s_ty : forall (st : id) (s : substitution) (tau : ty),
-    new_tv_ty tau st -> new_tv_subst s st -> new_tv_ty (apply_subst s tau) st.
-Admitted.
-
-Hint Resolve new_tv_s_ty.
 
 Lemma new_tv_var_id : forall st1 st2 : id, st1 < st2 -> new_tv_ty (var st1) st2.
 Admitted.

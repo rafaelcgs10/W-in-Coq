@@ -270,16 +270,6 @@ Fixpoint sizeTerm e : nat :=
   | _ => 0
   end.
 
-(*
-Lemma remove_subst_diff : forall i j s, i <> j -> find_subst (remove_subst_by_id i s) j = find_subst s j. 
-Proof.
-  intros.
-  induction s; mysimp.
-Qed.
-
-Hint Resolve remove_subst_diff.
-*)
-  
 Program Definition unify (tau1 tau2 : ty) :
   @HoareState id (@top id) substitution (fun i mu f => i = f /\
                                       (forall s', apply_subst s' tau1 = apply_subst s' tau2 ->
