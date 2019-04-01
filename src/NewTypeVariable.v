@@ -4,6 +4,7 @@ Require Import SimpleTypes.
 Require Import Gen.
 Require Import Omega.
 Require Import Schemes.
+Require Import SubstSchm.
 Require Import List.
 Require Import MyLtacs.
 Require Import Subst.

@@ -1,6 +1,7 @@
 Set Implicit Arguments.
 
 Require Import Schemes.
+Require Import SubstSchm.
 Require Import Gen.
 Require Import List.
 Require Import ListIds.

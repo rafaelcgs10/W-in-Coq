@@ -3,6 +3,7 @@ Set Implicit Arguments.
 Require Import LibTactics.
 Require Import Arith.Arith_base List Omega.
 Require Import SimpleTypes.
+Require Import Schemes.
 
 (* This is here just for lazyness *)
 Fixpoint find_subst (s : list (id * ty)) (i : id) : option ty :=
@@ -53,6 +54,7 @@ Ltac crush' :=
     | [ H : option _ |- _] => destruct H
     | [ H : Some _ = Some _ |- _] => inverts* H
     | [ H : Some _ = None |- _] => congruence
+    | [ H : Some_schm  _ = Some_schm _ |- _] => inverts* H
     | [ H : None = Some _ |- _] => congruence
     | [ H : true = false |- _] => inversion H
     | [ H : false = true |- _] => inversion H
@@ -79,5 +81,5 @@ Ltac rewriteHyp :=
 Ltac rewriterP := repeat (rewriteHyp; autorewrite with RE in *).
 Ltac rewriter := autorewrite with RE in *; rewriterP; eauto; fail.
 
-Ltac crush := repeat (intros; simpl in *; try crush'; subst; eauto); eauto; try contradiction; repeat inversionExist; try splits; 
+Ltac crush := eauto; repeat (intros; simpl in *; try crush'; subst; eauto); eauto; try contradiction; repeat inversionExist; try splits; 
                 simpl in *; try (subst; omega); try rewriter; autorewrite with RELOOP using congruence; eauto.

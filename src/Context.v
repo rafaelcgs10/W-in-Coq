@@ -7,6 +7,7 @@ Require Import SimpleTypes.
 Require Import MyLtacs.
 Require Import Disjoints.
 Require Import Schemes.
+Require Import SubstSchm.
 Require Import Arith.Arith_base.
 Require Import List.
 

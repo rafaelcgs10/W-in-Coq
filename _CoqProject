@@ -1,15 +1,16 @@
 -R src FormalDamas 
    src/LibTactics.v
    src/SimpleTypes.v
-   src/Subst.v
+   src/Schemes.v
    src/MyLtacs.v
+   src/Subst.v
    src/Unify.v
    src/ListIds.v
    src/HoareMonad.v
    src/Sublist.v
    src/Context.v
    src/Disjoints.v
-   src/Schemes.v
+   src/SubstSchm.v
    src/Rename.v
    src/Gen.v
    src/Typing.v

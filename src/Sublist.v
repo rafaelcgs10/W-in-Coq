@@ -4,6 +4,7 @@ Require Import LibTactics.
 Require Import ListIds.
 Require Import Context.
 Require Import Schemes.
+Require Import SubstSchm.
 Require Import SimpleTypes.
 Require Import Subst.
 Require Import MyLtacs.

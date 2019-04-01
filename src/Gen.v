@@ -3,6 +3,7 @@ Require Import Sublist.
 Require Import Context.
 Require Import ListIds.
 Require Import Schemes.
+Require Import SubstSchm.
 Require Import Rename.
 Require Import Disjoints.
 Require Import Arith.Arith_base.
