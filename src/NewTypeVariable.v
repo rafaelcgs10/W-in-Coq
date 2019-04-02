@@ -117,13 +117,7 @@ Qed.
 
 Hint Resolve new_ty_to_cons_new_tv_subst.
 
-Lemma new_tv_s_ty : forall (st : id) (s : substitution) (tau : ty),
-    new_tv_ty tau st -> new_tv_subst s st -> new_tv_ty (apply_subst s tau) st.
-Admitted.
-
-Hint Resolve new_tv_s_ty.
-
-Lemma in_list_id_FV_subst_inversion : forall a tau s i,
+Lemma in_list_id_subst_inversion : forall a tau s i,
     new_tv_subst ((a, tau) :: s) i -> new_tv_subst s i.
 Proof.
   intros.
@@ -142,7 +136,7 @@ Proof.
   crush.
 Qed.
 
-Hint Resolve in_list_id_FV_subst_inversion.
+Hint Resolve in_list_id_subst_inversion.
 
 Lemma in_list_id_FV_subst_arrow_and_inversion : forall a tau1 tau2 s i,
     new_tv_subst ((a, arrow tau1 tau2) :: s) i -> new_tv_subst ((a, tau1)::s) i /\ new_tv_subst ((a, tau2)::s) i.
@@ -199,8 +193,69 @@ Proof.
 Qed.
 
 Hint Resolve new_tv_subst_cons_new_tv_ty.
+
+Lemma new_tv_s_id : forall (st st' : id) (s : substitution),
+    new_tv_subst s st -> st' < st -> new_tv_ty (apply_subst s (var st')) st.
+Proof.
+  induction s; crush.
+Qed.
+
+Hint Resolve new_tv_s_id.
  
-Hint Resolve new_tv_subst_cons_new_tv_ty.
+Lemma new_tv_s_ty : forall (st : id) (s : substitution) (tau : ty),
+    new_tv_ty tau st -> new_tv_subst s st -> new_tv_ty (apply_subst s tau) st.
+  induction tau; intros.
+  inversion H; subst. info_eauto.
+  inverts* H.
+  crush.
+  inverts* H.
+  simpl.
+  econstructor; eauto.
+Qed.
+
+Hint Resolve new_tv_s_ty.
+
+Lemma new_tv_ty_to_schm : forall tau st, new_tv_schm (ty_to_schm tau) st <-> new_tv_ty tau st.
+Proof.
+  intros. split.
+  induction tau; simpl in *; try inversion H; try econstructor; eauto.
+  inverts* H.
+  inverts* H.
+  inverts* H.
+  intros.
+  induction tau; simpl in *; try inversion H; try econstructor; eauto.
+Qed.
+
+Hint Resolve new_tv_ty_to_schm.
+
+Lemma new_tv_schm_s_id : forall  (s : substitution) (st st' : id),
+    new_tv_subst s st -> st' < st -> new_tv_schm (apply_subst_schm s (sc_var st')) st.
+Proof.
+  intros.
+  induction s. crush.
+  destruct a.
+  apply new_tv_subst_cons_new_tv_ty in H as H'.
+  apply in_list_id_subst_inversion in H as H''.
+  crush.
+  apply new_tv_ty_to_schm.
+  auto.
+Qed.
+
+Hint Resolve new_tv_schm_s_id.
+
+Lemma new_tv_s_schm : forall (st : id) (s : substitution) (sigma : schm),
+    new_tv_schm sigma st -> new_tv_subst s st -> new_tv_schm (apply_subst_schm s sigma) st.
+  induction sigma; intros.
+  inverts* H.
+  crush.
+  simpl.
+  auto.
+  inverts* H.
+  simpl.
+  econstructor; eauto.
+Qed.
+
+Hint Resolve new_tv_s_schm.
 
 Lemma new_tv_subst_list : forall (s1 s2 : substitution) (i : id),
                              new_tv_subst s1 i ->
@@ -330,14 +385,11 @@ Qed.
 
 Hint Resolve new_tv_schm_to_new_tv_ty.
 
-Lemma new_tv_s_id : forall (st st' : id) (s : substitution),
-    new_tv_subst s st -> st' < st -> new_tv_ty (apply_subst s (var st')) st.
-Admitted.
-
-Hint Resolve new_tv_s_id.
-
 Lemma new_tv_var_id : forall st1 st2 : id, st1 < st2 -> new_tv_ty (var st1) st2.
-Admitted.
+Proof.
+  intros.
+  eauto.
+Qed.
 
 Hint Resolve new_tv_var_id.
 
@@ -380,17 +432,12 @@ Qed.
 
 Hint Resolve new_tv_ctx_plus.
 
-Lemma new_tv_ty_to_schm : forall tau st, new_tv_schm (ty_to_schm tau) st -> new_tv_ty tau st.
-Proof.
-  intros.
-  induction tau; simpl in *; try inversion H; try econstructor; eauto.
-Qed.
-
-Hint Resolve new_tv_ty_to_schm.
-
 Lemma new_tv_s_ctx : forall (st : id) (s : substitution) (G : ctx),
     new_tv_ctx G st -> new_tv_subst s st -> new_tv_ctx (apply_subst_ctx s G) st.
-Admitted.
+Proof.
+  induction G; crush.
+  inverts* H.
+Qed.
 
 Hint Resolve new_tv_s_ctx.
 
@@ -414,30 +461,56 @@ Hint Resolve new_tv_ctx_Succ.
 Lemma new_tv_ctx_implies_new_tv_schm : forall (G : ctx) (sigma : schm) (st x : id),
     in_ctx x G = Some sigma -> new_tv_ctx G st -> new_tv_schm sigma st.
 Proof.
-  Admitted.
+  induction G; crush.
+  inverts* H0.
+  inverts* H0.
+Qed.
 
 Hint Resolve new_tv_ctx_implies_new_tv_schm.
 
-Lemma new_tv_ctx_trans : forall st st' G, new_tv_ctx G st -> st <= st' -> new_tv_ctx G st'.
-Admitted.
-
-Hint Resolve new_tv_ctx_trans.
-
-Lemma new_tv_schm_trans : forall st st' G, new_tv_ctx G st -> st <= st' -> new_tv_ctx G st'.
-Admitted.
+Lemma new_tv_schm_trans : forall st st' sigma, new_tv_schm sigma st -> st <= st' -> new_tv_schm sigma st'.
+Proof.
+  induction sigma; crush.
+  inversion H.
+  econstructor; crush. 
+  inverts* H.
+Qed.
 
 Hint Resolve new_tv_schm_trans.
 
+Lemma new_tv_ctx_trans : forall st st' G, new_tv_ctx G st -> st <= st' -> new_tv_ctx G st'.
+Proof.
+  induction G; crush.
+  apply Nat.lt_eq_cases in H0.
+  destruct H0; crush.
+  inverts* H.
+  apply Nat.lt_le_incl in H0.
+  econstructor; eauto.
+Qed.
+
+Hint Resolve new_tv_ctx_trans.
+
 Lemma new_tv_subst_trans : forall (s : substitution) (i1 i2 : id),
   new_tv_subst s i1 -> i1 <= i2 -> new_tv_subst s i2.
-Admitted.
+Proof.
+  induction s; crush.
+  inverts* H.
+  econstructor.
+  intros.
+  specialize H1 with (x:=x).
+  assert (x < i1).
+  { auto. }
+  omega.
+Qed.
 
 Hint Resolve new_tv_subst_trans.
 
 Lemma new_tv_ty_trans_le : forall (tau : ty) (st1 st2 : id), new_tv_ty tau st1 -> st1 <= st2 -> new_tv_ty tau st2.
 Proof.
-  intros.
-  Admitted.
+  induction tau; crush.
+  inverts* H.
+  inverts* H.
+Qed.
 
 Hint Resolve new_tv_ty_trans_le.
 
@@ -457,7 +530,13 @@ Hint Resolve new_tv_schm_apply_subst.
 
 Lemma new_tv_ctx_apply_subst_ctx : forall st tau s G, new_tv_ctx G st -> apply_subst_ctx ((st, tau) :: s) G = apply_subst_ctx s G.
 Proof.
-  Admitted.
+  induction G; crush.
+  inverts* H.
+  rewrite IHG; eauto.
+  fequals.
+  fequals.
+  eauto.
+Qed.
 
 Hint Resolve new_tv_ctx_apply_subst_ctx.
 
@@ -481,7 +560,18 @@ Hint Rewrite new_tv_compose_subst_type:RE.
 
 Lemma add_subst_new_tv_ty : forall (s : substitution) (st : id) (tau1 tau2 : ty),
     new_tv_ty tau1 st -> apply_subst ((st, tau2)::s) tau1 = apply_subst s tau1.
-  Admitted.
+Proof.
+  induction s; crush. 
+  rewrite apply_subst_nil.
+  induction tau1; crush.
+  inverts* H; intuition. 
+  inverts* H.
+  fequals; eauto.
+  induction tau1; crush;
+  inverts* H; intuition. 
+  inverts* H.
+  fequals; eauto.
+Qed.
 
 Hint Resolve add_subst_new_tv_ty.
 Hint Rewrite add_subst_new_tv_ty:RE.
