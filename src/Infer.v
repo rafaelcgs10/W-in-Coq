@@ -436,7 +436,7 @@ Next Obligation. (* Case: lam soundness  *)
       econstructor; eauto.
       inversion H4.
       subst.
-      eauto.
+      eapply new_tv_ty_to_schm; eauto.
     + econstructor; eauto.
   - econstructor.
     simpl in H0.
@@ -633,5 +633,6 @@ Next Obligation.
     eapply s_gen_t_more_general_than_gen_s_t.
     rewrite <- PRINC_e11.
     erewrite <- new_tv_compose_subst_ctx; eauto.
+    Unshelve. eauto. eauto.
 Defined.
 

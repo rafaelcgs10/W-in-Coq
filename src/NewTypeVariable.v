@@ -622,7 +622,31 @@ Qed.
 Hint Resolve add_subst_new_tv_ty.
 Hint Rewrite add_subst_new_tv_ty:RE.
 
-Lemma new_tv_gen_ty: forall (t : ty) (G : ctx) (st : id), new_tv_ty t st -> new_tv_ctx G st -> new_tv_schm (gen_ty t G) st.
-  Admitted.
+Lemma new_tv_ctx_inversion : forall G tau st i, new_tv_ctx ((i, tau) :: G) st ->
+                                         new_tv_ctx G st.
+Proof.
+  induction G; crush.
+  inverts* H.
+Qed.
+
+Hint Resolve new_tv_ctx_inversion.
+
+Lemma new_tv_gen_aux_ty: forall (tau : ty) (G : ctx) (st : id) l, new_tv_ty tau st -> new_tv_ctx G st -> new_tv_schm (fst (gen_ty_aux tau G l)) st.
+Proof.
+  induction tau; crush.
+  cases (in_list_id i (FV_ctx G)); crush.
+  cases (index_list_id i l); crush.
+  inverts* H.
+  eapply IHtau1 with (G:= G) (l:=l) in H3; eauto.
+  cases (gen_ty_aux tau1 G l); crush.
+  eapply IHtau2 with (G:= G) (l:=l0) in H5; eauto.
+  cases (gen_ty_aux tau2 G l0); crush.
+Qed.
+
+Hint Resolve new_tv_gen_aux_ty.
+
+Lemma new_tv_gen_ty: forall (tau : ty) (G : ctx) (st : id), new_tv_ty tau st -> new_tv_ctx G st -> new_tv_schm (gen_ty tau G) st.
+  induction tau; unfold gen_ty; crush.
+Qed. 
 
 Hint Resolve new_tv_gen_ty.
