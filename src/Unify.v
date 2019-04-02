@@ -436,16 +436,6 @@ Qed.
 
 Hint Resolve arrow_subst_eq.
 
-(** ** Extensionality Lemmas For Substitutions *)
-
-Lemma ext_subst_var_ty : forall s s', (forall v, apply_subst s (var v) = apply_subst s' (var v)) ->
-                                       forall t, apply_subst s t = apply_subst s' t.
-Proof.
-  intros ; induction t ; mysimp ; try (do 2 rewrite apply_subst_arrow) ;
-     simpl in * ; auto ; try (do 2 rewrite apply_subst_con) ; auto.
-    try (rewrite IHt1 ; auto). try (rewrite IHt2 ; auto).
-Qed.
-
 (*
 Lemma ext_subst_ty_var : forall s s', (forall t, apply_subst s t = apply_subst s' t) ->
                                       forall v, apply_subst s (var v) = apply_subst s' (var v).

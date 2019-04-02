@@ -240,17 +240,6 @@ Qed.
 Hint Resolve apply_subst_app1.
 Hint Rewrite apply_subst_app1 : subst.
 
-(*
-Lemma apply_app_compute_subst :
- forall (s0 : substitution) (st i : id) (sg : list ty),
-    i < st -> apply_subst (compose_subst (compute_subst st sg) s0) (var i) = apply_subst s0 (var i).
-Proof.
-Admitted.
-
-Hint Resolve apply_app_compute_subst.
-Hint Rewrite apply_app_compute_subst : subst.
-*)
-
 (** Gives you a fresh variable *)
 Program Definition fresh : @HoareState id (@top id) id (fun i x f => S i = f /\ i = x) := fun n => exist _ (Some (n, S n)) _.
 

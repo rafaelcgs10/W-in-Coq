@@ -159,6 +159,16 @@ Qed.
 Hint Resolve apply_compose_equiv.
 Hint Rewrite apply_compose_equiv:RE.
 
+(** ** Extensionality Lemmas For Substitutions *)
+
+Lemma ext_subst_var_ty : forall s s', (forall v, apply_subst s (var v) = apply_subst s' (var v)) ->
+                                       forall t, apply_subst s t = apply_subst s' t.
+Proof.
+  intros ; induction t ; mysimp ; try (do 2 rewrite apply_subst_arrow) ;
+     simpl in * ; auto ; try (do 2 rewrite apply_subst_con) ; auto.
+    try (rewrite IHt1 ; auto). try (rewrite IHt2 ; auto).
+Qed.
+
 Definition FV_subst (s: substitution) := ((dom s) ++ (img_ids s)).
 
 Fixpoint id_in_subst (i : id) (s : substitution) : option ty :=

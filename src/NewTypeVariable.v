@@ -4,6 +4,7 @@ Require Import SimpleTypes.
 Require Import Gen.
 Require Import Omega.
 Require Import Schemes.
+Require Import Context.
 Require Import SubstSchm.
 Require Import List.
 Require Import MyLtacs.
@@ -205,7 +206,7 @@ Hint Resolve new_tv_s_id.
 Lemma new_tv_s_ty : forall (st : id) (s : substitution) (tau : ty),
     new_tv_ty tau st -> new_tv_subst s st -> new_tv_ty (apply_subst s tau) st.
   induction tau; intros.
-  inversion H; subst. info_eauto.
+  inversion H; subst. eauto.
   inverts* H.
   crush.
   inverts* H.
@@ -407,8 +408,46 @@ Hint Resolve new_tv_ty_ids.
 Lemma new_tv_compose_subst_ctx : forall (s s1 s2 : substitution) (st : id) (G : ctx),
        (forall x : id, x < st -> apply_subst s (var x) = apply_subst s2 (apply_subst s1 (var x))) ->
        new_tv_ctx G st -> apply_subst_ctx s G = apply_subst_ctx s2 (apply_subst_ctx s1 G).
-Admitted.
-
+Proof.
+  induction G. crush.
+  intros.
+  destruct a.
+  inverts* H0.
+  rename s0 into sigma.
+  induction sigma.
+  - inverts* H6.
+    apply H in H1 as H1'.
+    assert (apply_subst_ctx s ((i, sc_var i0) :: G) =
+            ((i, ty_to_schm (apply_subst s (var i0)))::(apply_subst_ctx s G)) ).
+    { reflexivity. }       
+    rewrite H0.
+    erewrite IHG; eauto.
+    erewrite H; eauto.
+    assert (apply_subst_ctx s2 (apply_subst_ctx s1 ((i, sc_var i0) :: G)) =
+            ((i, (apply_subst_schm s2 (apply_subst_schm s1 (sc_var i0))))::(apply_subst_ctx s2 (apply_subst_ctx s1 G))) ).
+    { reflexivity. }
+    rewrite H2.
+    assert ((apply_subst_schm s1 (sc_var i0)) =
+            ty_to_schm (apply_subst s1 (var i0))).
+    { reflexivity. }
+    rewrite H3.
+    rewrite ty_to_subst_schm.
+    reflexivity.
+    - crush.
+    - crush.
+    - inverts* H6.
+      simpl.
+      fequals; eauto.
+      fequals; eauto.
+      fequals; eauto.
+      apply IHsigma1 in H2.
+      repeat rewrite <- apply_subst_ctx_eq in H2.
+      inversion H2; eauto.
+      apply IHsigma2 in H4.
+      repeat rewrite <- apply_subst_ctx_eq in H4.
+      inversion H4; eauto.
+Qed.
+    
 Lemma new_tv_schm_plus : forall sigma st st', new_tv_schm sigma st -> new_tv_schm sigma (st + st').
 Proof.
   induction sigma; intros; try econstructor; eauto.
