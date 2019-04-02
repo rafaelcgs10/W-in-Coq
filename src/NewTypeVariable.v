@@ -589,10 +589,17 @@ Qed.
   
 Hint Resolve add_subst_add_ctx.
 
-Lemma new_tv_compose_subst_type : forall (s s1 s2 : substitution) (st : id) (t : ty),
+Lemma new_tv_compose_subst_type : forall (s s1 s2 : substitution) (st : id) (tau : ty),
  (forall i : id, i < st -> apply_subst s (var i) = apply_subst s2 (apply_subst s1 (var i))) ->
- new_tv_ty t st -> apply_subst s t = apply_subst s2 (apply_subst s1 t).
-Admitted.
+ new_tv_ty tau st -> apply_subst s tau = apply_subst s2 (apply_subst s1 tau).
+  induction tau.
+  - crush.
+  - crush.
+  - intros.
+    simpl.
+    inverts* H0.
+    fequals; eauto.
+Qed.
 
 Hint Resolve new_tv_compose_subst_type.
 Hint Rewrite new_tv_compose_subst_type:RE.
