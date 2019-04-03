@@ -18,7 +18,7 @@ Fixpoint gen_ty_aux (tau : ty) (G : ctx) (l : list id) : schm * list id :=
   match tau with
   | var i => if in_list_id i (FV_ctx G) then (sc_var i, l) else
               match index_list_id i l with
-              | None => (sc_gen (List.length l), (i::l))
+              | None => (sc_gen (List.length l), (l ++ i::nil))
               | Some j => (sc_gen j, l)
               end
   | con i => (sc_con i, l)
@@ -253,7 +253,10 @@ Proof.
       erewrite <- index_rename; auto.
       cases (index_list_id i l).
       reflexivity.
-      rewrite map_length.
+      repeat rewrite map_length.
+      simpl.
+      fequals; eauto.
+      rewrite map_app.
       reflexivity.
   - intros.
     simpl.

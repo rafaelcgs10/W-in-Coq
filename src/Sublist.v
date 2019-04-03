@@ -96,18 +96,37 @@ Qed.
 
 Hint Resolve sublist_of_append_inversion2.
 
+Lemma in_list_id_cons_to_app : forall l i st, in_list_id st (l ++ i :: nil) = true ->
+                                         in_list_id st (i::l) = true.
+Proof.
+  intros.
+  induction l; crush.
+Qed.
+
+Hint Resolve in_list_id_cons_to_app.
+
 Lemma sublist_cons_inv : forall (l l': (list id)) (i: id),
-    (is_sublist_id l l') -> (in_list_id i l') = true -> (is_sublist_id (i::l) l').
+    (is_sublist_id l l') -> (in_list_id i l') = true -> (is_sublist_id (l ++ i::nil) l').
 Proof.
   intros.
   econstructor.
   intros.
-  inversion H.
+  inverts* H.
+  apply in_list_id_cons_to_app in H1.
   simpl in H1.
-  destruct (eq_id_dec i st); subst; auto; intuition.
+  crush.
 Qed.
 
 Hint Resolve sublist_cons_inv.
+
+Lemma sublist_inv1 : forall (l1 l2 : list id) (st : id), is_sublist_id l1 l2 ->
+                                                    in_list_id st l1 = true ->
+                                                    in_list_id st l2 = true.
+intros.
+inversion_clear H; auto.
+Qed.
+
+Hint Resolve sublist_inv1.
 
 Lemma sublist_cons : forall (l l0: (list id)) (a: id),
     (is_sublist_id (a::l0) l) -> (is_sublist_id l0 l).
@@ -202,3 +221,28 @@ Proof.
 Qed.
 
 Hint Resolve sublist_FV_ctx.
+
+Lemma in_union_list_id : forall (l1 l2 : list id) (st : id),
+    in_list_id st (union_list_id l1 l2) = true ->
+    in_list_id st l1 = true \/ in_list_id st l2 = true.
+Proof.
+ induction l1; crush.
+ destruct (in_list_id a l2). eauto.
+ simpl in H.
+ crush.
+Qed.
+
+Hint Resolve in_union_list_id.
+
+Lemma sublist_of_2_app : forall l l' l1 l2 : list id,
+    is_sublist_id l1 l ->
+    is_sublist_id l2 l' ->
+    is_sublist_id (l1 ++ l2) (l ++ l').
+Proof.
+  intros.
+  econstructor. intros.
+  eauto.
+Qed.
+
+Hint Resolve sublist_of_2_app.
+  

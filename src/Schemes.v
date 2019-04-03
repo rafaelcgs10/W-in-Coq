@@ -45,3 +45,11 @@ Fixpoint FV_schm (sigma : schm) : list id :=
   | _ => nil
   end.
 
+Fixpoint max_gen_vars (sigma : schm) : nat :=
+  match sigma with
+  | sc_con _ => 0
+  | sc_var _ => 0
+  | sc_gen i => S i
+  | sc_arrow s1 s2 => max (max_gen_vars s1) (max_gen_vars s2)
+  end.
+

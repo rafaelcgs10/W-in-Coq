@@ -20,14 +20,6 @@ Require Import SimpleTypes.
 Require Import Subst.
 Require Import MyLtacs.
 
-Fixpoint max_gen_vars (sigma : schm) : nat :=
-  match sigma with
-  | sc_con _ => 0
-  | sc_var _ => 0
-  | sc_gen i => S i
-  | sc_arrow s1 s2 => max (max_gen_vars s1) (max_gen_vars s2)
-  end.
-
 Fixpoint compute_generic_subst (st : id) (n : nat) : list ty  * id:=
   match n with
   | 0 => (nil, st)

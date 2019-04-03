@@ -1144,7 +1144,6 @@ Proof.
   Unshelve. inversion H.
   inversion H.
   inversion H.
-  apply i.
 Qed.
 
 Hint Resolve in_list_id_new_tv_tv_lt.
