@@ -52,6 +52,19 @@ Qed.
 Hint Resolve gen_ty_vars_arrow.
 Hint Rewrite gen_ty_vars_arrow:RE.
 
+Lemma fst_gen_aux_arrow_rewrite : forall (tau tau' : ty) (G : ctx) (l : list id),
+    fst (gen_ty_aux (arrow tau tau') G l) = sc_arrow (fst (gen_ty_aux tau G l))
+                                            (fst (gen_ty_aux tau' G (snd (gen_ty_aux tau G l)))).
+Proof.
+  intros; crush.
+  destruct (gen_ty_aux tau G l); crush.
+  destruct (gen_ty_aux tau' G l0 ); crush.
+Qed.
+
+Hint Resolve fst_gen_aux_arrow_rewrite.
+Hint Rewrite fst_gen_aux_arrow_rewrite:RE.
+
+
 (** Snd gen_ty_aux distributes over arrow *)
 Lemma snd_gen_ty_aux_arrow_rewrite : forall (tau tau': ty) (G : ctx) (l: list id),
     (snd (gen_ty_aux (arrow tau tau') G l)) =
@@ -144,14 +157,8 @@ Lemma is_sublist_gen_vars2 : forall (rho: ren_subst) (G: ctx) (t: ty),
       simpl. destruct (in_list_id i (FV_ctx G)); try contradiction.
       apply nil_is_sublist.
       inversion Eq.
-      eapply disjoint_inversion2; auto.
-      intro. intros.
-      pose proof (sublist_cons_inv x H2 H3).
-      inversion H4.
-      apply H0.
-      apply H5.
+      eapply disjoint_inversion2. apply H0. 
       mysimp.
-      auto.
     + inversion H2. inversion H. subst.
       specialize H3 with (st:=i).
       simpl in H3. destruct (eq_id_dec i i); intuition.

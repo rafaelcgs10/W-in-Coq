@@ -140,3 +140,11 @@ Proof.
 Qed.
 
 Hint Resolve disjoint_list_and_append_inversion3.
+
+Lemma disjoints_nill1 : forall C, are_disjoints C nil.
+Proof.
+  induction C; 
+  unfold are_disjoints; eauto.
+Qed.
+
+Hint Resolve disjoints_nill1.

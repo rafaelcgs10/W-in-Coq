@@ -316,6 +316,29 @@ Qed.
 Hint Resolve length_app_cons.
 Hint Rewrite length_app_cons:RE.
 
+Lemma Snd_gen_aux_with_app3 : forall (G : ctx) (tau : ty) (l : list id),
+    exists l', snd (gen_ty_aux tau G l) = l ++ l' /\ are_disjoints (FV_ctx G) l'.
+Admitted.
+
+Hint Resolve Snd_gen_aux_with_app3.
+
+Lemma disjoint_Snd_gen_aux : forall (G : ctx) (l : list id) (tau : ty),
+    are_disjoints (FV_ctx G) l -> are_disjoints (FV_ctx G) (snd (gen_ty_aux tau G l)).
+intros.
+elim (Snd_gen_aux_with_app3 G tau l).
+intros l' Hyp; elim Hyp; clear Hyp; intros; rewrite H0.
+eauto.
+Qed.
+
+Hint Resolve disjoint_Snd_gen_aux.
+
+Lemma is_prefixe2_gen_aux : forall (l L : list id) (tau : ty) (G : ctx),
+    is_prefixe_free2 (FV_ctx G) (snd (gen_ty_aux tau G l)) L ->
+    is_prefixe_free2 (FV_ctx G) l L.
+Admitted.
+
+Hint Resolve is_prefixe2_gen_aux.
+
 Lemma more_general_gen_type_aux : forall (G1 G2 : ctx) (tau1 tau2 : ty) (phi : substitution)
                                     (l2 l1 L P : list id) (is_s : inst_subst),
     more_general_ctx G1 G2 -> are_disjoints (FV_ctx G2) l2 ->
@@ -363,17 +386,63 @@ Proof.
      rewrite ty_from_id_list_app; simpl.
      rewrite <- length_ty_from_id_list; eauto.
      crush.
+  - crush. 
   - 
+    do 11 intro; intros more_gen_hyp disjoint1 disjoint2.
+    rewrite fst_gen_aux_arrow_rewrite; intro.
+    destruct (@exist_arrow_apply_inst_arrow2  
+              (fst (gen_ty_aux t G2 l2)) (fst (gen_ty_aux t0 G2 (snd (gen_ty_aux t G2 l2))))
+              tau2 is_s H1).
+    intros.
+    destruct H2.
+    destructs H2.
+    rewrite <- H7.
+    rewrite snd_gen_ty_aux_arrow_rewrite in *.
+    repeat rewrite fst_gen_aux_arrow_rewrite.
+    simpl.
+    rewrite (@H x phi l2 l1 L P is_s); eauto.
+    rewrite (@H0 x0 phi (snd (@gen_ty_aux t G2 l2)) (snd (@gen_ty_aux t G1 l1)) L P is_s); eauto.
+Qed.
+
+Hint Resolve more_general_gen_type_aux.
+
+Lemma product_list_exists : forall (tau : ty) (G : ctx) (is_s : inst_subst),
+    max_gen_vars (gen_ty tau G) <= length is_s ->
+    {s : substitution | product_list (snd (gen_ty_aux tau G nil)) is_s = Some s}.
+Proof.
+unfold gen_ty in |- *; intros.
+Admitted.
+
+Lemma is_instance_le_max : forall (sigma : schm) (tau : ty) (is_s : inst_subst),
+    apply_inst_subst is_s sigma = Some_schm tau -> max_gen_vars sigma <= length is_s.
+Admitted.
+
+Hint Resolve is_instance_le_max.
+
+Lemma is_prefixe_reflexivity : forall C L : list id, is_prefixe_free2 C L L.
+intros C L.
+econstructor.
+exists (nil: list id).
+ split; auto.
+ apply app_nil_end.
+Qed.
+
+Hint Resolve is_prefixe_reflexivity.
 
 Lemma more_general_gen_ty : forall (G1 G2 : ctx) (t : ty),
     more_general_ctx G1 G2 -> more_general (gen_ty t G1) (gen_ty t G2).
 Proof.
   intros.
   econstructor. intros.
-  inversion_clear H0.
-  destruct H1.
-  
-Admitted.
+  inverts* H0.
+  unfold gen_ty in |- *; intros.
+  destruct (product_list_exists t G2 x); eauto.
+  unfold is_schm_instance.
+  exists (map_extend_subst_type (ty_from_id_list (snd (gen_ty_aux t G1 nil))) x0).
+  rewrite (@more_general_gen_type_aux G1 G2 t tau x0 nil nil
+    (snd (gen_ty_aux t G2 nil)) (snd (gen_ty_aux t G1 nil)) x)
+ ; eauto.
+Qed.
 
 Hint Resolve more_general_gen_ty.
 

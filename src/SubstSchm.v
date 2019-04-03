@@ -291,6 +291,21 @@ Qed.
 Hint Resolve and_arrow_apply_inst_arrow.
 Hint Rewrite and_arrow_apply_inst_arrow:RE.
 
+Lemma exist_arrow_apply_inst_arrow2 : forall (sigma1 sigma2 : schm) (tau : ty) (is : inst_subst),
+    apply_inst_subst is (sc_arrow sigma1 sigma2) = Some_schm tau ->
+    exists tau1 tau2, (apply_inst_subst is sigma1 = Some_schm tau1) /\ (apply_inst_subst is sigma2 = Some_schm tau2) /\
+                 arrow tau1 tau2 = tau.
+Proof.
+  intros.
+  simpl in H.
+    destruct (apply_inst_subst is sigma1); crush.
+    destruct (apply_inst_subst is sigma2); crush.
+    inversion H.
+    inversion H.
+Qed.
+
+Hint Resolve exist_arrow_apply_inst_arrow2.
+
 Lemma subst_inst_subst_type:
   forall (sigma : schm) (s: substitution) (is : inst_subst) (tau : ty),
     (apply_inst_subst is sigma) = (Some_schm tau) ->
