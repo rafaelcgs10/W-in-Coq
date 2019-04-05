@@ -51,7 +51,9 @@ Fixpoint ty_from_id_list (l : list id) : list ty :=
 
 Lemma ty_from_id_list_app : forall l1 l2 : list id,
     ty_from_id_list (l1 ++ l2) = ty_from_id_list l1 ++ ty_from_id_list l2.
-Admitted.
+Proof.
+  induction l1; crush.
+Qed.
 
 Hint Resolve ty_from_id_list_app.
 Hint Rewrite ty_from_id_list_app:RE.
@@ -64,7 +66,9 @@ Fixpoint map_extend_subst_type (l : list ty) (s2 : substitution) :=
 
 Lemma map_extend_app : forall (s : substitution) (l1 l2 : list ty),
     map_extend_subst_type (l1 ++ l2) s = map_extend_subst_type l1 s ++ map_extend_subst_type l2 s.
-Admitted.
+Proof.
+  induction l1; crush.
+Qed.
 
 Hint Resolve map_extend_app.
 Hint Rewrite map_extend_app:RE.
@@ -183,26 +187,166 @@ Qed.
 Hint Resolve sc_var_more_general_than_sigma.
 Hint Rewrite sc_var_more_general_than_sigma:RE.
 
+Lemma var_is_not_instance_of_arrow : forall (sigma1 sigma2 : schm) (i : id),
+    ~ is_schm_instance (var i) (sc_arrow sigma1 sigma2).
+Proof.
+  intros. intro.
+  inverts* H.
+  apply exist_arrow_apply_inst_arrow2 in H0.
+  destruct H0 as [tau1 [tau2 H]].
+  destruct H.
+  destruct H0.
+  inverts* H1.
+Qed.
+
+Hint Resolve var_is_not_instance_of_arrow.
+
+Lemma con_is_not_instance_of_arrow : forall (sigma1 sigma2 : schm) (i : id),
+    ~ is_schm_instance (con i) (sc_arrow sigma1 sigma2).
+Proof.
+  intros. intro.
+  inverts* H.
+  apply exist_arrow_apply_inst_arrow2 in H0.
+  destruct H0 as [tau1 [tau2 H]].
+  destruct H.
+  destruct H0.
+  inverts* H1.
+Qed.
+
+Hint Resolve con_is_not_instance_of_arrow.
+
 Lemma arrow_sigma_more_general_than_arrow : forall sigma sigma1 sigma2 : schm,
     (forall tau : ty, is_schm_instance tau sigma -> is_schm_instance tau (sc_arrow sigma1 sigma2)) ->
     {sig_sig : schm * schm | sigma = sc_arrow (fst sig_sig) (snd sig_sig)}.
 Proof.
-  Admitted.
+  induction sigma. 
+  - cut (is_schm_instance (find_generic_instance (sc_var i) (con i)) (sc_var i)); auto.
+    intros.
+    cut (is_schm_instance (find_generic_instance (sc_var i) (con i)) (sc_arrow sigma1 sigma2)); auto.
+    intros.
+    simpl in *.
+    absurd (is_schm_instance (var i) (sc_arrow sigma1 sigma2)); auto.
+  - intros.
+    assert (is_schm_instance (con i) (sc_con i)).
+    exists (nil:inst_subst). reflexivity.
+    apply H in H0. 
+    apply con_is_not_instance_of_arrow in H0.
+    contradiction.
+  - intros.
+    cut (is_schm_instance (find_generic_instance (sc_gen i) (con i)) (sc_gen i)); auto.
+    intros.
+    cut (is_schm_instance (find_generic_instance (sc_gen i) (con i)) (sc_arrow sigma1 sigma2)); auto.
+    intros.
+    absurd (is_schm_instance (con i) (sc_arrow sigma1 sigma2)); info_auto.
+  - intros.
+    exists (sigma1, sigma2). reflexivity.
+Qed.
 
 Hint Resolve arrow_sigma_more_general_than_arrow.
 Hint Resolve arrow_sigma_more_general_than_arrow:RE.
 
+Lemma length_map : forall (s : substitution) (l : list ty),
+    length (map_extend_subst_type l s) = length l.
+Admitted.
+
+Hint Resolve length_map.
+Hint Rewrite length_map:RE.
+
+Lemma length_app : forall (A : Set) (l1 l2 : list A), length (l1 ++ l2) = length l1 + length l2.
+Proof.
+  induction l1; crush.
+Qed.
+ 
+Hint Resolve length_app.
+
+Lemma length_make_constant_gen_subst : forall (n : nat) (t : ty), length (make_constant_gen_subst n t) = n.
+  induction n; crush.
+Qed.
+
+Hint Resolve length_make_constant_gen_subst.
+
+Lemma apply_subst_gen_succeeds : forall (sigma : schm) (is_s : inst_subst),
+    max_gen_vars sigma <= length is_s -> exists tau, apply_inst_subst is_s sigma = Some_schm tau.
+Admitted.
+
+Hint Resolve apply_subst_gen_succeeds.
+
+Lemma apply_gen_subst_sg_app : forall (sigma : schm) (is_s l : inst_subst),
+    max_gen_vars sigma <= length is_s -> apply_inst_subst (is_s ++ l) sigma = apply_inst_subst is_s sigma.
+Admitted.
+
+Hint Resolve apply_gen_subst_sg_app.
+
+Lemma is_gen_instance_le_max : forall (sigma : schm) (tau : ty) (is_s : inst_subst),
+    apply_inst_subst is_s sigma = Some_schm tau -> max_gen_vars sigma <= length is_s.
+Admitted.
+
+Hint Resolve is_gen_instance_le_max.
+
 Lemma more_general_arrow_inversion1 : forall sigma1 sigma2 sigma1' sigma2' : schm,
     more_general (sc_arrow sigma1 sigma2) (sc_arrow sigma1' sigma2') ->
     more_general sigma1 sigma1'.
-Admitted.
+Proof.
+  intros.
+  inverts* H.
+  econstructor.
+  intros.
+  inverts* H.
+  destruct (apply_subst_gen_succeeds sigma2' (x ++ make_constant_gen_subst (max_gen_vars sigma2') (con 0))).
+  rewrite length_app.
+  rewrite length_make_constant_gen_subst.
+  auto with *.
+  cut (is_schm_instance (arrow tau x0) (sc_arrow sigma1 sigma2)).
+  intros.
+  inverts* H2.
+  exists x1.
+  apply exist_arrow_apply_inst_arrow2 in H3 as H3'.
+  destruct H3' as [tau1 [tau2 H3']].
+  destructs H3'.
+  inverts* H5.
+  apply H0.
+  exists (x ++ make_constant_gen_subst (max_gen_vars sigma2') (con 0)).
+  simpl.
+  erewrite apply_gen_subst_sg_app; eauto.
+  rewrite H1.
+  rewrite H.
+  reflexivity.
+Qed.
 
 Hint Resolve more_general_arrow_inversion1.
 
 Lemma more_general_arrow_inversion2 : forall sigma1 sigma2 sigma1' sigma2' : schm,
     more_general (sc_arrow sigma1 sigma2) (sc_arrow sigma1' sigma2') ->
     more_general sigma2 sigma2'.
-Admitted.
+Proof.
+  intros.
+  inverts* H.
+  econstructor.
+  intros.
+  inverts* H.
+  destruct (apply_subst_gen_succeeds sigma1' (x ++ make_constant_gen_subst (max_gen_vars sigma1') (con 0))).
+  rewrite length_app.
+  rewrite length_make_constant_gen_subst.
+  auto with *.
+  cut (is_schm_instance (arrow x0 tau) (sc_arrow sigma1 sigma2)).
+  intros.
+  inverts* H2.
+  exists x1.
+  apply exist_arrow_apply_inst_arrow2 in H3 as H3'.
+  destruct H3' as [tau1 [tau2 H3']].
+  destructs H3'.
+  inversion H5. 
+  rewrite H7 in *.
+  rewrite H8 in *.
+  apply H4.
+  apply H0.
+  exists (x ++ make_constant_gen_subst (max_gen_vars sigma1') (con 0)).
+  simpl.
+  erewrite apply_gen_subst_sg_app with (sigma:=sigma2'); eauto.
+  rewrite H.
+  rewrite H1.
+  reflexivity.
+Qed.
 
 Hint Resolve more_general_arrow_inversion2.
 
@@ -378,13 +522,6 @@ Admitted.
 
 Hint Resolve index_list_id_nth.
 Hint Rewrite index_list_id_nth:RE.
-
-Lemma length_map : forall (s : substitution) (l : list ty),
-    length (map_extend_subst_type l s) = length l.
-Admitted.
-
-Hint Resolve length_map.
-Hint Rewrite length_map:RE.
 
 Lemma length_ty_from_id_list : forall l : list id, length (ty_from_id_list l) = length l.
 Admitted.
@@ -591,7 +728,9 @@ Hint Resolve more_general_ctx_refl.
 Lemma is_not_generalizable_aux : forall (G : ctx) (tau : ty) (l : list id),
     is_sublist_id (ids_ty tau) (FV_ctx G) ->
     gen_ty_aux tau G l = (ty_to_schm tau, l).
-Admitted.
+Proof.
+  induction tau; crush.
+Qed.
 
 Hint Resolve is_not_generalizable_aux.
 
