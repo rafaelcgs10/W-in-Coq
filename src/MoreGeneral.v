@@ -270,9 +270,20 @@ Admitted.
 
 Hint Resolve index_list_id_cons.
 
+Lemma Snd_gen_aux_with_app3 : forall (G : ctx) (tau : ty) (l : list id),
+    exists l', snd (gen_ty_aux tau G l) = l ++ l' /\ are_disjoints (FV_ctx G) l'.
+Admitted.
+
+Hint Resolve Snd_gen_aux_with_app3.
+
+
 Lemma disjoint_Snd_gen_aux : forall (G : ctx) (l : list id) (tau : ty),
     are_disjoints (FV_ctx G) l -> are_disjoints (FV_ctx G) (snd (gen_ty_aux tau G l)).
-Admitted.
+intros.
+elim (Snd_gen_aux_with_app3 G tau l).
+intros l' Hyp; elim Hyp; clear Hyp; intros; rewrite H0.
+eauto.
+Qed.
 
 Hint Resolve disjoint_Snd_gen_aux.
 
@@ -412,29 +423,6 @@ Qed.
 
 Hint Resolve length_app_cons.
 Hint Rewrite length_app_cons:RE.
-
-Lemma Snd_gen_aux_with_app3 : forall (G : ctx) (tau : ty) (l : list id),
-    exists l', snd (gen_ty_aux tau G l) = l ++ l' /\ are_disjoints (FV_ctx G) l'.
-Admitted.
-
-Hint Resolve Snd_gen_aux_with_app3.
-
-Lemma disjoint_Snd_gen_aux : forall (G : ctx) (l : list id) (tau : ty),
-    are_disjoints (FV_ctx G) l -> are_disjoints (FV_ctx G) (snd (gen_ty_aux tau G l)).
-intros.
-elim (Snd_gen_aux_with_app3 G tau l).
-intros l' Hyp; elim Hyp; clear Hyp; intros; rewrite H0.
-eauto.
-Qed.
-
-Hint Resolve disjoint_Snd_gen_aux.
-
-Lemma is_prefixe2_gen_aux : forall (l L : list id) (tau : ty) (G : ctx),
-    is_prefixe_free2 (FV_ctx G) (snd (gen_ty_aux tau G l)) L ->
-    is_prefixe_free2 (FV_ctx G) l L.
-Admitted.
-
-Hint Resolve is_prefixe2_gen_aux.
 
 Lemma more_general_gen_type_aux : forall (G1 G2 : ctx) (tau1 tau2 : ty) (phi : substitution)
                                     (l2 l1 L P : list id) (is_s : inst_subst),
@@ -657,11 +645,8 @@ Proof.
         erewrite nth_map; eauto.
         rewrite apply_compose_equiv.
         erewrite inst_subst_to_subst_aux_4 with (l := l2); eauto.
-        rewrite ty_from_id_list_app.
-        simpl.
-        erewrite <- length_ty_from_id_list; eauto.
         rewrite length_map2.
-        rewrite length_app_cons. eauto.
+        eauto.
   - crush.
   - do 8 intro; intros disjoint1 disjoint2.
     rewrite apply_subst_arrow.
