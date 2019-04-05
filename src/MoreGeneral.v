@@ -503,6 +503,12 @@ Qed.
 
 Hint Resolve more_general_ctx_refl.
 
+Lemma is_not_generalizable_aux : forall (G : ctx) (tau : ty) (l : list id),
+    is_sublist_id (ids_ty tau) (FV_ctx G) ->
+    gen_ty_aux tau G l = (ty_to_schm tau, l).
+Admitted.
+
+Hint Resolve is_not_generalizable_aux.
 
 Lemma s_gen_aux_7 : forall (G : ctx) (tau1 tau2 : ty) (phi s : substitution)
                       (l1 l2 L P : list id) (is_s : inst_subst),
@@ -514,9 +520,84 @@ Lemma s_gen_aux_7 : forall (G : ctx) (tau1 tau2 : ty) (phi s : substitution)
     is_prefixe_free2 (FV_ctx G) (snd (gen_ty_aux tau1 G l1)) P ->
     apply_inst_subst (map_extend_subst_type (ty_from_id_list P) (compose_subst s phi))
                      (apply_subst_schm s (fst (gen_ty_aux tau1 G l1))) = Some_schm tau2.
+Proof.
+  induction tau1.
+  - do 8 intro; simpl in |- *.
+    intros disjoint1 disjoint2.
+    repeat fold (apply_subst s (var i)) in *.
+    cases (in_list_id i (FV_ctx G)).
+    + simpl.
+      repeat fold (apply_subst s (var i)) in *.
+      erewrite is_not_generalizable_aux; eauto.
+      crush.
+    + do 3 intro.
+      cases (index_list_id i l1).
+      * intros. inverts* H2. destruct H3.
+        simpl.
+        destruct a. subst.
+        rewrite ty_from_id_list_app.
+        rewrite map_extend_app; eauto.
+        rewrite nth_app; eauto.
+        erewrite nth_map; eauto.
+        rewrite apply_compose_equiv.
+        erewrite inst_subst_to_subst_aux_4.
+        reflexivity.
+        apply disjoint2.
+        eauto.
+        eauto.
+        eauto.
+        rewrite length_map.
+        rewrite length_ty_from_id_list.
+        eauto.
+      * intros.
+        inverts* H2.
+        destruct H3. destruct a.
+        subst.
+        rewrite ty_from_id_list_app; eauto.
+        rewrite map_extend_app; eauto.
+        simpl.
+        rewrite nth_app; eauto.
+        erewrite nth_map; eauto.
+        rewrite apply_compose_equiv.
+        erewrite inst_subst_to_subst_aux_4 with (l := l2); eauto.
+        rewrite ty_from_id_list_app.
+        simpl.
+        erewrite <- length_ty_from_id_list; eauto.
+        rewrite length_map2.
+        rewrite length_app_cons. eauto.
+  - crush.
+  - do 8 intro; intros disjoint1 disjoint2.
+    rewrite apply_subst_arrow.
+    rewrite fst_gen_aux_arrow_rewrite.
+    intro.
+    apply exist_arrow_apply_inst_arrow2 in H as H'.
+    destruct H' as [tau1 [tau3 H3]].
+    destructs H3.
+    subst.
+    repeat rewrite snd_gen_ty_aux_arrow_rewrite.
+    intros prex prod.
+    rewrite fst_gen_aux_arrow_rewrite.
+    rewrite apply_subst_schm_arrow.
+    intros.
+    simpl.
+    erewrite (@IHtau1_1 tau1 phi s l1 l2 L P is_s); eauto.
+    erewrite (@IHtau1_2 tau3 phi s) with (l2:= (snd (gen_ty_aux (apply_subst s tau1_1) (apply_subst_ctx s G) l2))); eauto.
+Qed.
 
+Hint Resolve s_gen_aux_7.
 
 Lemma s_gen_t_more_general_than_gen_s_t : forall (s : substitution) (G : ctx) (tau : ty),
  more_general (apply_subst_schm s (gen_ty tau G)) (gen_ty (apply_subst s tau) (apply_subst_ctx s G)).
-Admitted.
+Proof.
+  intros.
+  econstructor.
+  intros.
+  inverts* H.
+  unfold gen_ty in *.
+  destruct (product_list_exists (apply_subst s tau) (apply_subst_ctx s G) x); eauto.
+  unfold is_schm_instance.
+  exists (map_extend_subst_type (ty_from_id_list (snd (gen_ty_aux tau G nil))) (compose_subst s x0)).
+  crush.
+Qed.
 
+Hint Resolve s_gen_t_more_general_than_gen_s_t.
