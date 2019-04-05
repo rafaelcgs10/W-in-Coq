@@ -245,14 +245,111 @@ Admitted.
 Hint Resolve nth_app.
 Hint Rewrite nth_app:RE.
 
+Lemma domain_product : forall (l : list id) (is_s : inst_subst) (phi : substitution),
+    product_list l is_s = Some phi -> dom phi = l.
+Admitted.
+
+Lemma image_by_product2 : forall (l : list id) (is_s : inst_subst) (st : id) 
+                            (n0 : id) (phi : substitution) (tau : ty),
+    index_list_id st l = Some n0 ->
+    product_list l is_s = Some phi ->
+    nth_error is_s n0 = Some tau -> apply_subst phi (var st) = tau.
+Admitted.
+
+Hint Resolve image_by_product2.
+
+Lemma index_list_id_app : forall (l1 l2 : list id) (n : id) (i : id),
+ index_list_id i l1 = Some n -> index_list_id i (l1 ++ l2) = Some n.
+Admitted.
+
+Hint Resolve index_list_id_app.
+
+Lemma index_list_id_cons : forall (l : list id) (i : id),
+    index_list_id i l = None -> index_list_id i (l ++ i::nil) = Some (length l).
+Admitted.
+
+Hint Resolve index_list_id_cons.
+
+Lemma disjoint_Snd_gen_aux : forall (G : ctx) (l : list id) (tau : ty),
+    are_disjoints (FV_ctx G) l -> are_disjoints (FV_ctx G) (snd (gen_ty_aux tau G l)).
+Admitted.
+
+Hint Resolve disjoint_Snd_gen_aux.
+
+Lemma is_prefixe2_gen_aux : forall (l L : list id) (tau : ty) (G : ctx),
+    is_prefixe_free2 (FV_ctx G) (snd (gen_ty_aux tau G l)) L ->
+    is_prefixe_free2 (FV_ctx G) l L.
+Admitted.
+
+Hint Resolve is_prefixe2_gen_aux.
+
 Lemma inst_subst_to_subst_aux_4 : forall (G : ctx) (tau1 tau2 : ty) (l L : list id)
                                    (is_s : list ty) (phi : substitution),
     are_disjoints (FV_ctx G) l ->
     apply_inst_subst is_s (fst (gen_ty_aux tau1 G l)) = Some_schm tau2 ->
     is_prefixe_free2 (FV_ctx G) (snd (gen_ty_aux tau1 G l)) L ->
     product_list L is_s = Some phi -> apply_subst phi tau1 = tau2.
-Admitted.
-
+Proof.
+  induction tau1.
+  - do 7 intro; simpl in |- *.
+    cases (in_list_id i (FV_ctx G)).
+    + intros.
+      simpl in *.
+      rewrite Eq in H0. simpl in H0.
+      inverts* H0.
+      fold (apply_subst phi (var i)).
+      apply apply_subst_dom_false.
+      rewrite (@domain_product L is_s phi); auto.
+      inverts* H1.
+      destruct H0.
+      destruct a.
+      subst.
+      eauto.
+    + simpl in H0.
+      cases (index_list_id i l).
+      intros.
+      rewrite Eq in H0.
+      simpl in H0.
+      fold (apply_subst phi (var i)).
+      cases (nth_error is_s i0).
+      {  
+         simpl in * |-.
+         inverts* H0.
+         eapply (@image_by_product2 L is_s i i0); eauto.
+         inverts* H1.
+         destruct H0.
+         destruct a.
+         subst.
+         auto. }
+      { inverts* H0. }
+        * rewrite Eq in H0.
+          simpl in H0.
+          cases (nth_error is_s (length l)).
+          { simpl in *.
+            intros.
+            fold (apply_subst phi (var i)).
+            eapply (@image_by_product2 L is_s i (length l)); eauto.
+            inverts* H1.
+            destruct H3.
+            destruct a.
+            subst.
+            apply index_list_id_app; eauto.
+            inverts* H0.
+           }
+          { inverts* H0. }
+  - crush.
+  - intros.
+    rewrite fst_gen_aux_arrow_rewrite in H0.
+    apply exist_arrow_apply_inst_arrow2 in H0.
+    destruct H0 as [tau1 [tau3 H0]].
+    destructs H0.
+    subst.
+    simpl.
+    rewrite snd_gen_ty_aux_arrow_rewrite in H1.
+    erewrite (@IHtau1_2 tau3 (snd (gen_ty_aux tau1_1 G l)) L is_s phi); eauto.
+    erewrite (@IHtau1_1 tau1 l L is_s phi); eauto.
+Qed.
+    
 Hint Resolve inst_subst_to_subst_aux_4.
 Hint Rewrite inst_subst_to_subst_aux_4:RE.
 
