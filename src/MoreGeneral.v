@@ -446,12 +446,54 @@ Qed.
 
 Hint Resolve more_general_gen_ty.
 
+Lemma has_type_var_ctx_diff : forall (i j : id) (G : ctx) (tau : ty) (sigma : schm),
+    i <> j -> has_type G (var_t i) tau -> has_type ((j, sigma) :: G) (var_t i) tau.
+Proof.
+  intros.
+  inversion_clear H0.
+ econstructor; crush.
+Qed.
+
+Hint Resolve has_type_var_ctx_diff.
+
 Lemma typing_in_a_more_general_ctx : forall (e : term) (G2 G1 : ctx) (t : ty),
     more_general_ctx G1 G2 -> has_type G2 e t -> has_type G1 e t.
 Proof.
-  (* hard *)
-Admitted.
-
+  induction e.
+  - induction G2. intros.
+    inverts* H0. crush.
+    destruct a.
+    intros.
+    inversion_clear H.
+    destruct (eq_id_dec i0 i).
+    subst.
+    inversion_clear H0.
+    apply var_ht with (sigma:=sigma1); eauto.
+    crush.
+    simpl in H. destruct (eq_id_dec i i); intuition.
+    inverts* H.
+    inverts* H2.
+    apply has_type_var_ctx_diff; eauto.
+    eapply IHG2; eauto.
+    inverts* H0.
+    econstructor; crush.
+  - intros.
+    inverts* H0.
+    econstructor; eauto.
+  - intros.
+    inverts* H0.
+    econstructor.
+    eapply IHe1; eauto.
+    eapply IHe2; eauto.
+    auto.
+  - intros.
+    inverts* H0.
+    econstructor; eauto.
+    eapply IHe; eauto.
+    econstructor; eauto.
+  - skip.
+Qed.
+    
 Hint Resolve typing_in_a_more_general_ctx.
 
 Lemma more_general_ctx_refl : forall G : ctx, more_general_ctx G G.
@@ -460,6 +502,19 @@ intros; elim a; auto.
 Qed.
 
 Hint Resolve more_general_ctx_refl.
+
+
+Lemma s_gen_aux_7 : forall (G : ctx) (tau1 tau2 : ty) (phi s : substitution)
+                      (l1 l2 L P : list id) (is_s : inst_subst),
+    are_disjoints (FV_ctx G) l1 ->
+    are_disjoints (FV_ctx (apply_subst_ctx s G)) l2 ->
+    apply_inst_subst is_s (fst (gen_ty_aux (apply_subst s tau1) (apply_subst_ctx s G) l2)) = Some_schm tau2 ->
+    is_prefixe_free2 (FV_ctx (apply_subst_ctx s G)) (snd (gen_ty_aux (apply_subst s tau1) (apply_subst_ctx s G) l2)) L ->
+    product_list L is_s = Some phi ->
+    is_prefixe_free2 (FV_ctx G) (snd (gen_ty_aux tau1 G l1)) P ->
+    apply_inst_subst (map_extend_subst_type (ty_from_id_list P) (compose_subst s phi))
+                     (apply_subst_schm s (fst (gen_ty_aux tau1 G l1))) = Some_schm tau2.
+
 
 Lemma s_gen_t_more_general_than_gen_s_t : forall (s : substitution) (G : ctx) (tau : ty),
  more_general (apply_subst_schm s (gen_ty tau G)) (gen_ty (apply_subst s tau) (apply_subst_ctx s G)).
