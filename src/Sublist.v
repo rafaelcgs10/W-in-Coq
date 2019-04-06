@@ -222,18 +222,6 @@ Qed.
 
 Hint Resolve sublist_FV_ctx.
 
-Lemma in_union_list_id : forall (l1 l2 : list id) (st : id),
-    in_list_id st (union_list_id l1 l2) = true ->
-    in_list_id st l1 = true \/ in_list_id st l2 = true.
-Proof.
- induction l1; crush.
- destruct (in_list_id a l2). eauto.
- simpl in H.
- crush.
-Qed.
-
-Hint Resolve in_union_list_id.
-
 Lemma sublist_of_2_app : forall l l' l1 l2 : list id,
     is_sublist_id l1 l ->
     is_sublist_id l2 l' ->

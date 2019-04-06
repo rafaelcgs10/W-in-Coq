@@ -398,26 +398,3 @@ Qed.
 Hint Resolve not_in_img.
 Hint Rewrite not_in_img:RE.
 
-Fixpoint union_list_id (l1 l2 : list id) :=
-  match l1, l2 with
-  | nil, l => l
-  |  x::l, l' => if in_list_id x l'
-                then union_list_id l l'
-                else x::union_list_id l l'
-  end.
-
-Lemma union_list_id_inversion1 : forall (l1 l2 : list id) (st : id),
-    in_list_id st l1 = true ->
-    in_list_id st (union_list_id l1 l2) = true.
-Proof.
-  Admitted.
-
-Hint Resolve union_list_id_inversion1.
-
-Lemma union_list_id_inversion2 : forall (l1 l2 : list id) (st : id),
-    in_list_id st l2 = true ->
-    in_list_id st (union_list_id l1 l2) = true.
-Proof.
-  Admitted.
-
-Hint Resolve union_list_id_inversion2.

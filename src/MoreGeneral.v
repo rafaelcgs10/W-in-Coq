@@ -983,7 +983,10 @@ Proof.
     econstructor; eauto.
     eapply IHe; eauto.
     econstructor; eauto.
-  - skip.
+  - intros.
+    inverts* H.
+    inverts* H0.
+    econstructor.
 Qed.
     
 Hint Resolve typing_in_a_more_general_ctx.
