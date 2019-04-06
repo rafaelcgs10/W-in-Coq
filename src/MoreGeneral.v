@@ -1,5 +1,6 @@
 Set Implicit Arguments.
 
+Require Import Omega.
 Require Import Schemes.
 Require Import SubstSchm.
 Require Import Gen.
@@ -247,7 +248,9 @@ Hint Resolve arrow_sigma_more_general_than_arrow:RE.
 
 Lemma length_map : forall (s : substitution) (l : list ty),
     length (map_extend_subst_type l s) = length l.
-Admitted.
+Proof.
+  induction l; crush.
+Qed.
 
 Hint Resolve length_map.
 Hint Rewrite length_map:RE.
@@ -267,19 +270,59 @@ Hint Resolve length_make_constant_gen_subst.
 
 Lemma apply_subst_gen_succeeds : forall (sigma : schm) (is_s : inst_subst),
     max_gen_vars sigma <= length is_s -> exists tau, apply_inst_subst is_s sigma = Some_schm tau.
-Admitted.
+Proof.
+  induction sigma; crush.
+  cases (nth_error is_s i).
+  exists t. reflexivity.
+  apply nth_error_None in Eq.
+  omega.
+  edestruct IHsigma1; eauto.
+  apply Nat.max_lub_l in H.
+  apply H.
+  edestruct IHsigma2; eauto.
+  apply Nat.max_lub_r in H.
+  apply H.
+  rewrite H0.
+  rewrite H1.
+  exists (arrow x x0). reflexivity.
+Qed.
 
 Hint Resolve apply_subst_gen_succeeds.
 
 Lemma apply_gen_subst_sg_app : forall (sigma : schm) (is_s l : inst_subst),
     max_gen_vars sigma <= length is_s -> apply_inst_subst (is_s ++ l) sigma = apply_inst_subst is_s sigma.
-Admitted.
+Proof.
+  induction sigma; crush.
+  cases (nth_error (is_s ++ l) i).
+  erewrite <- nth_error_app1; eauto.
+  rewrite Eq. reflexivity.
+  erewrite <- nth_error_app1; eauto.
+  rewrite Eq. reflexivity.
+  erewrite IHsigma1; eauto.
+  erewrite IHsigma2; eauto.
+  apply Nat.max_lub_r in H.
+  apply H.
+  apply Nat.max_lub_l in H.
+  apply H.
+Qed.
 
 Hint Resolve apply_gen_subst_sg_app.
 
 Lemma is_gen_instance_le_max : forall (sigma : schm) (tau : ty) (is_s : inst_subst),
     apply_inst_subst is_s sigma = Some_schm tau -> max_gen_vars sigma <= length is_s.
-Admitted.
+Proof.
+  induction sigma; crush.
+  cases (nth_error is_s i).
+  inverts* H.
+  assert (nth_error is_s i <> None). { intro. rewrite Eq in H. inversion H. }
+  apply nth_error_Some in H. omega.                                   
+  inversion H.
+  cases (apply_inst_subst is_s sigma1).
+  cases (apply_inst_subst is_s sigma2).
+  apply Nat.max_lub_iff; eauto.
+  inversion H.
+  inversion H.
+Qed.
 
 Hint Resolve is_gen_instance_le_max.
 
@@ -384,49 +427,188 @@ Qed.
 Hint Resolve FV_more_general_ctx.
 
 Lemma nth_app : forall (l l1 : list ty) (n : id), n < length l -> nth_error (l ++ l1) n = nth_error l n.
-Admitted.
+Proof.
+  induction l; crush.
+  induction n; crush.
+  erewrite <- IHl; crush.
+Qed.
 
 Hint Resolve nth_app.
 Hint Rewrite nth_app:RE.
 
 Lemma domain_product : forall (l : list id) (is_s : inst_subst) (phi : substitution),
     product_list l is_s = Some phi -> dom phi = l.
-Admitted.
+Proof.
+  induction l. crush.
+  destruct is_s. crush.
+  intros. 
+  simpl in *.
+  cases (product_list l is_s).
+  inverts* H.
+  simpl.
+  erewrite IHl; eauto.
+  inverts* H.
+Qed.  
+
+Lemma index_list_id_nil : forall st, index_list_id st nil = None.
+Proof.
+  induction st; crush.
+Qed.
+
+Hint Resolve index_list_id_nil.
+Hint Rewrite index_list_id_nil:RE.
+
+Lemma index_aux1 : forall st l k n, index_list_id_aux (S n) st l = Some k -> index_list_id_aux n st l = Some (Nat.pred k).
+Proof.
+  induction l. crush.
+  intros.
+  simpl in *.
+  destruct (eq_id_dec a st).
+  subst.
+  inversion H. subst. reflexivity.
+  apply IHl in H. auto.
+Qed.
+
+Hint Resolve index_aux1.
+
+Lemma index_aux2 : forall st l k n, index_list_id_aux n st l = Some k -> index_list_id_aux (S n) st l = Some (S k).
+Proof.
+  induction l; crush.
+Qed.
+
+Hint Resolve index_aux2.
+
+Lemma index_aux_false : forall l n m i, m < n -> index_list_id_aux n i l = Some m -> False.
+Proof.
+  induction l; crush.
+Qed.
+Hint Resolve index_aux_false.
 
 Lemma image_by_product2 : forall (l : list id) (is_s : inst_subst) (st : id) 
                             (n0 : id) (phi : substitution) (tau : ty),
     index_list_id st l = Some n0 ->
     product_list l is_s = Some phi ->
     nth_error is_s n0 = Some tau -> apply_subst phi (var st) = tau.
-Admitted.
+Proof.
+  induction l; unfold index_list_id. crush.
+  intros.
+  simpl in *.
+  destruct (eq_id_dec a st).
+  inverts* H.
+  destruct is_s.
+  inversion H0.
+  subst.
+  simpl in H1. inverts* H1.
+  cases (product_list l is_s).
+  inverts* H0.
+  crush.
+  inversion H0.
+  destruct is_s.
+  inversion H0.
+  cases (product_list l is_s).
+  inverts* H0.
+  crush.
+  eapply IHl.
+  apply index_aux1 in H.
+  unfold index_list_id. apply H.
+  apply Eq.
+  destruct n0. simpl in *.
+  inverts* H1. destruct is_s.
+  assert (False). { eapply index_aux_false with (n := 1) (m := 0); eauto. } contradiction.
+  assert (False). { eapply index_aux_false with (n := 1) (m := 0); eauto. } contradiction.
+  simpl. eauto.
+  inversion H0.
+Qed.
 
 Hint Resolve image_by_product2.
 
-Lemma index_list_id_app : forall (l1 l2 : list id) (n : id) (i : id),
- index_list_id i l1 = Some n -> index_list_id i (l1 ++ l2) = Some n.
-Admitted.
+Lemma index_lt : forall (l : list id) (st : id) (k : id),
+    index_list_id st l = Some k -> k < length l.
+Proof.
+  induction l. unfold index_list_id in *. crush.
+  unfold index_list_id in *.
+  intros.
+  simpl in H.
+  destruct (eq_id_dec a st).
+  inversion H. subst.
+  simpl. auto with *.
+  apply index_aux1 in H.
+  apply IHl in H.
+  simpl. omega.
+Qed.
 
-Hint Resolve index_list_id_app.
+Hint Resolve index_lt.
+
+Lemma index_list_none_any_k : forall l i k k', index_list_id_aux k i l = None -> index_list_id_aux k' i l = None.
+Proof.
+  induction l; crush.
+Qed.
+
+Hint Resolve index_list_none_any_k.
 
 Lemma index_list_id_cons : forall (l : list id) (i : id),
     index_list_id i l = None -> index_list_id i (l ++ i::nil) = Some (length l).
-Admitted.
+Proof.
+  induction l; unfold index_list_id in *; crush.
+Qed.
 
 Hint Resolve index_list_id_cons.
 
+Lemma index_list_id_aux_app : forall (l1 l2 : list id) (n : id) (i : id) k,
+ index_list_id_aux k i l1 = Some n -> index_list_id_aux k i (l1 ++ l2) = Some n.
+Proof.
+  induction l1; unfold index_list_id in *; crush.
+Qed.
+
+Hint Resolve index_list_id_aux_app.
+
+Lemma index_list_id_app : forall (l1 l2 : list id) (n : id) (i : id),
+ index_list_id i l1 = Some n -> index_list_id i (l1 ++ l2) = Some n.
+Proof.
+  induction l1; unfold index_list_id in *; crush.
+Qed.
+
+Hint Resolve index_list_id_app.
+
 Lemma Snd_gen_aux_with_app3 : forall (G : ctx) (tau : ty) (l : list id),
     exists l', snd (gen_ty_aux tau G l) = l ++ l' /\ are_disjoints (FV_ctx G) l'.
-Admitted.
+Proof.
+  induction tau.
+  - intro. simpl.
+    cases (in_list_id i (FV_ctx G)).
+    exists (nil : list id).
+    crush.
+    cases (index_list_id i l).
+    exists (nil : list id).
+    crush.
+    exists (i::nil : list id).
+    crush.
+  - crush.
+    exists (nil : list id).
+    crush.
+  - intros.
+    rewrite snd_gen_ty_aux_arrow_rewrite.
+    edestruct IHtau1.
+    destruct H.
+    rewrite H.
+    edestruct IHtau2.
+    destruct H1.
+    rewrite H1.
+    exists (x ++ x0).
+    split.
+    rewrite app_assoc. reflexivity.
+    eauto.
+Qed.
 
 Hint Resolve Snd_gen_aux_with_app3.
 
-
 Lemma disjoint_Snd_gen_aux : forall (G : ctx) (l : list id) (tau : ty),
     are_disjoints (FV_ctx G) l -> are_disjoints (FV_ctx G) (snd (gen_ty_aux tau G l)).
-intros.
-elim (Snd_gen_aux_with_app3 G tau l).
-intros l' Hyp; elim Hyp; clear Hyp; intros; rewrite H0.
-eauto.
+Proof.
+  intros.
+  destruct (Snd_gen_aux_with_app3 G tau l).
+  destruct H0. rewrite H0.
+  eauto.
 Qed.
 
 Hint Resolve disjoint_Snd_gen_aux.
@@ -434,7 +616,21 @@ Hint Resolve disjoint_Snd_gen_aux.
 Lemma is_prefixe2_gen_aux : forall (l L : list id) (tau : ty) (G : ctx),
     is_prefixe_free2 (FV_ctx G) (snd (gen_ty_aux tau G l)) L ->
     is_prefixe_free2 (FV_ctx G) l L.
-Admitted.
+Proof.
+  intros.
+  destruct (Snd_gen_aux_with_app3 G tau l).
+  destruct H0.
+  inverts* H.
+  destruct H2.
+  destruct a.
+  econstructor.
+  exists (x ++ x0).
+  split.
+  rewrite app_assoc.
+  rewrite <- H0.
+  rewrite H. reflexivity.
+  eauto.
+Qed.
 
 Hint Resolve is_prefixe2_gen_aux.
 
@@ -511,29 +707,50 @@ Hint Rewrite inst_subst_to_subst_aux_4:RE.
 Lemma nth_map : forall (s : substitution) (x : list ty) (n : id) (tau : ty),
     nth_error x n = Some tau ->
     nth_error (map_extend_subst_type x s) n = Some (apply_subst s tau).
-Admitted.
+Proof.
+  induction x; crush.
+  rewrite nth_error_nil in H.
+  inversion H.
+  induction n; crush.
+Qed.
 
 Hint Resolve nth_map.
 Hint Rewrite nth_map:RE.
 
-Lemma index_list_id_nth : forall (l : list id) (v : id) (k : id),
-    index_list_id v l = Some k -> nth_error (ty_from_id_list l) k = Some (var v).
-Admitted.
+Lemma nth_error_k_not_zero : forall a k l, k <> 0 -> nth_error ((var a)::l) k = nth_error l (pred k).
+Proof.
+  induction k; crush.
+Qed.
+
+
+Hint Resolve nth_error_k_not_zero.
+
+Lemma index_list_id_nth : forall (l : list id) (k : id) (i : id),
+    index_list_id i l = Some k -> nth_error (ty_from_id_list l) k = Some (var i).
+Proof.
+  induction l; unfold index_list_id in *. crush.
+  intros.
+  simpl in *. destruct (eq_id_dec a i).
+  inverts* H. subst. reflexivity.
+  erewrite nth_error_k_not_zero.
+  apply IHl.
+  apply index_aux1 in H.
+  auto.
+  destruct k.
+  apply index_aux_false in H; auto. 
+  auto. 
+Qed.
 
 Hint Resolve index_list_id_nth.
 Hint Rewrite index_list_id_nth:RE.
 
 Lemma length_ty_from_id_list : forall l : list id, length (ty_from_id_list l) = length l.
-Admitted.
+Proof.
+  induction l; crush.
+Qed.
 
 Hint Resolve length_ty_from_id_list.
 Hint Rewrite length_ty_from_id_list:RE.
-
-Lemma index_lt : forall (l : list id) (st : id) (k : id),
-    index_list_id st l = Some k -> k < length l.
-Admitted.
-
-Hint Resolve index_lt.
 
 Lemma nth_app_cons : forall (l : list ty) (tau : ty), nth_error (l ++ tau::nil) (length l) = Some tau.
 simple induction l; auto.
@@ -628,16 +845,69 @@ Qed.
 
 Hint Resolve more_general_gen_type_aux.
 
+Lemma product_for_le_length : forall (l1 : list id) (l2 : list ty),
+    length l1 <= length l2 -> exists s, product_list l1 l2 = Some s.
+Proof.
+  induction l1; crush.
+  destruct l2; crush. 
+  edestruct IHl1; eauto.
+  apply le_S_n in H.
+  apply H.
+  rewrite H0.
+  exists ((a, t)::x).
+  reflexivity.
+Qed.
+
+Hint Resolve product_for_le_length.
+
+Lemma length_Snd_gen_aux : forall (G : ctx) (tau : ty) (l : list id),
+    length (snd (gen_ty_aux tau G l)) = max (length l) (max_gen_vars (fst (gen_ty_aux tau G l))).
+Proof.
+  induction tau; crush.
+  cases (in_list_id i (FV_ctx G)); crush.
+  rewrite Nat.max_0_r. reflexivity.
+  cases (index_list_id i l).
+  simpl.
+  symmetry.
+  apply max_l.
+  change (i0 < length l) in |- *.
+  eapply index_lt; eauto.
+  simpl.
+  rewrite length_app.
+  simpl.
+  symmetry.
+  assert (S (length l) = length l + 1). auto with *.
+  rewrite H.
+  apply max_r. auto with *.
+  rewrite Nat.max_0_r. reflexivity.
+  cases (gen_ty_aux tau1 G l).
+  cases (gen_ty_aux tau2 G l0).
+  simpl.
+  specialize IHtau1 with (l:=l).
+  rewrite Eq in IHtau1.
+  specialize IHtau2 with (l:=l0).
+  rewrite Eq0 in IHtau2.
+  simpl in *.
+  rewrite IHtau1 in IHtau2.
+  rewrite Nat.max_assoc.
+  assumption.
+Qed.
+
 Lemma product_list_exists : forall (tau : ty) (G : ctx) (is_s : inst_subst),
     max_gen_vars (gen_ty tau G) <= length is_s ->
-    {s : substitution | product_list (snd (gen_ty_aux tau G nil)) is_s = Some s}.
+    exists s, product_list (snd (gen_ty_aux tau G nil)) is_s = Some s.
 Proof.
-unfold gen_ty in |- *; intros.
-Admitted.
+  intros.
+  apply product_for_le_length.
+  rewrite length_Snd_gen_aux.
+  crush.
+Qed.
 
 Lemma is_instance_le_max : forall (sigma : schm) (tau : ty) (is_s : inst_subst),
     apply_inst_subst is_s sigma = Some_schm tau -> max_gen_vars sigma <= length is_s.
-Admitted.
+Proof.
+  induction sigma; crush.
+Qed.
 
 Hint Resolve is_instance_le_max.
 
