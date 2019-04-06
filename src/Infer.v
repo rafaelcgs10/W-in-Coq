@@ -329,10 +329,6 @@ Qed.
 
 Hint Resolve new_tv_subst_cons_diff.
 
-Lemma s_gen_t_more_general_than_gen_s_t : forall (s : substitution) (G : ctx) (tau : ty),
- more_general (apply_subst_schm s (gen_ty tau G)) (gen_ty (apply_subst s tau) (apply_subst_ctx s G)).
-Admitted.
-
 Unset Implicit Arguments.
 
 Program Fixpoint W_hoare (e : term) (G : ctx) {struct e} :
@@ -341,9 +337,7 @@ Program Fixpoint W_hoare (e : term) (G : ctx) {struct e} :
                new_tv_ctx (apply_subst_ctx (snd x) G) f /\ has_type (apply_subst_ctx ((snd x)) G) e (fst x) /\ completeness e G (fst x) ((snd x)) i) :=
   match e with
   | const_t x =>
-            sigma <- look_dep x G ;
-            tau_iss <- schm_inst_dep sigma ;
-            ret ((fst tau_iss), nil)
+            ret ((con x), nil)
 
   | var_t x =>
             sigma <- look_dep x G ;
@@ -368,6 +362,15 @@ Program Fixpoint W_hoare (e : term) (G : ctx) {struct e} :
                  tau2_s2 <- W_hoare e2 ((x,gen_ty (fst tau1_s1) (apply_subst_ctx (snd tau1_s1) G) )::(apply_subst_ctx (snd tau1_s1) G))  ;
                  ret (fst tau2_s2, compose_subst (snd tau1_s1) (snd tau2_s2))
   end. 
+Next Obligation. (* Case: properties used in const_t *)
+  intros; unfold top; auto.
+Defined.
+Next Obligation.  (* Case: soundness and completeness of const_t *)
+  crush.
+  econstructor.
+  intro. intros.
+  inverts* H0.
+Defined.
 Next Obligation. (* Case: properties used in var_t *)
   intros; unfold top; auto.
 Defined.
@@ -411,13 +414,11 @@ Next Obligation.  (* Case: soundness and completeness of var_t *)
       reflexivity.
       assumption.
 Defined.
-Next Obligation. (* Case: properties used in const_t *)
-  intros; unfold top; auto.
+Next Obligation. (* Case: properties used in var_t *)
+  splits; intros; unfold top; auto;
+  crush. intros. crush. 
+  destructs H0; eauto.
 Defined.
-Next Obligation. (* Case: soundness and completeness of cons_t *)
-Admitted.
-Next Obligation. 
-  Admitted.
 Next Obligation. (* Case: lam soundness  *)
   simpl.
   destruct (W_hoare e' (((x, sc_var x0)) :: G) >>= _);
@@ -628,3 +629,4 @@ Next Obligation.
     Unshelve. eauto. eauto.
 Defined.
 
+Print Assumptions W_hoare.

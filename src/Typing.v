@@ -27,8 +27,7 @@ Inductive term : Set :=
 (** * Syntax-directed rule system of Damas-Milner *)
 
 Inductive has_type : ctx -> term -> ty -> Prop :=
-| const_ht : forall x G sigma tau, in_ctx x G = Some sigma -> is_schm_instance tau sigma ->
-                            has_type G (const_t x) tau
+| const_ht : forall x G, has_type G (const_t x) (con x)
 | var_ht : forall x G sigma tau, in_ctx x G = Some sigma -> is_schm_instance tau sigma ->
                             has_type G (var_t x) tau
 | lam_ht : forall x G tau tau' e, has_type ((x, ty_to_schm tau) :: G) e tau' ->
@@ -105,19 +104,6 @@ Proof.
   - intros. inversion H.
     subst.
     econstructor.
-    + induction G; simpl in *; mysimp.
-      destruct a.
-      mysimp.
-      apply IHG.
-      econstructor.
-      apply H1.
-      assumption.
-      assumption.
-    + unfold is_schm_instance in *.
-      destruct H3.
-      eapply subst_inst_subst_type in H0.
-      exists (map_apply_subst_ty s x).
-      apply H0.
 Qed.
 
 Hint Resolve has_type_is_stable_under_substitution.
