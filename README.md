@@ -8,3 +8,5 @@ This work is strongly based on Catherine Dubois paper "[Certification of a Type 
 Also, this work uses a modified version of the [unification in Coq](https://github.com/rodrigogribeiro/unification) by Rodrigo Ribeiro. So this is a step closer of a fully working extractable code. More information about his unification in "[A Mechanized Textbook Proof of a Type Unification Algorithm](https://link.springer.com/chapter/10.1007/978-3-319-29473-5_8)".
 
 Note: This is a work in progress!
+
+Tested with coq 8.9.0!
