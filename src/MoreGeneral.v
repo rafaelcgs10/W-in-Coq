@@ -108,21 +108,21 @@ Proof.
     edestruct H1.
 Abort.
 
-Fixpoint find_generic_instance (sigma : schm) (tau : ty) :=
+Fixpoint find_instance (sigma : schm) (tau : ty) :=
   match sigma with
   | sc_con i => con i
   | sc_var i => var i
   | sc_gen st => tau
-  | sc_arrow sigma1 sigma2 => arrow (find_generic_instance sigma1 tau) (find_generic_instance sigma2 tau)
+  | sc_arrow sigma1 sigma2 => arrow (find_instance sigma1 tau) (find_instance sigma2 tau)
   end.
 
-Fixpoint make_constant_gen_subst (n : id) (tau : ty)  :=
+Fixpoint make_constant_inst_subst (n : id) (tau : ty)  :=
   match n with
   | O => nil 
-  | S p => tau :: make_constant_gen_subst p tau
+  | S p => tau :: make_constant_inst_subst p tau
   end.
-Lemma nth_make_constant_gen_subst3 : forall (p n : id) (tau : ty),
-    S n <= p -> nth_error (make_constant_gen_subst p tau) n = Some tau.
+Lemma nth_error_make_constant_inst_subst3 : forall (p n : id) (tau : ty),
+    S n <= p -> nth_error (make_constant_inst_subst p tau) n = Some tau.
 Proof.
   induction p; crush.
   destruct n; crush.
@@ -130,12 +130,12 @@ Proof.
   auto with *.
 Qed.
 
-Hint Resolve nth_make_constant_gen_subst3.
-Hint Rewrite nth_make_constant_gen_subst3:RE.
+Hint Resolve nth_error_make_constant_inst_subst3.
+Hint Rewrite nth_error_make_constant_inst_subst3:RE.
 
-Lemma apply_subst_inst_make_constant_gen_subst : forall (sigma : schm) (tau : ty) (p : id),
+Lemma apply_subst_inst_make_constant_inst_subst : forall (sigma : schm) (tau : ty) (p : id),
     max_gen_vars sigma <= p ->
-    apply_inst_subst (make_constant_gen_subst p tau) sigma = Some_schm (find_generic_instance sigma tau).
+    apply_inst_subst (make_constant_inst_subst p tau) sigma = Some_schm (find_instance sigma tau).
 Proof.
   induction sigma; eauto.
   unfold max_gen_vars.
@@ -153,29 +153,29 @@ Proof.
   auto with *.
 Qed.
 
-Hint Resolve apply_subst_inst_make_constant_gen_subst.
-Hint Resolve apply_subst_inst_make_constant_gen_subst:RE.
+Hint Resolve apply_subst_inst_make_constant_inst_subst.
+Hint Resolve apply_subst_inst_make_constant_inst_subst:RE.
 
-Lemma find_generic_instance_gen_instance_ts : forall (sigma : schm) (tau : ty),
-    is_schm_instance (find_generic_instance sigma tau) sigma.
+Lemma find_some_instance_of_some_sigma : forall (sigma : schm) (tau : ty),
+    is_schm_instance (find_instance sigma tau) sigma.
 Proof.
   intros.
   unfold is_schm_instance.
-  exists (make_constant_gen_subst (max_gen_vars sigma) tau).
+  exists (make_constant_inst_subst (max_gen_vars sigma) tau).
   auto.
 Qed.
 
-Hint Resolve find_generic_instance_gen_instance_ts.
-Hint Rewrite find_generic_instance_gen_instance_ts:RE.
+Hint Resolve find_some_instance_of_some_sigma.
+Hint Rewrite find_some_instance_of_some_sigma:RE.
 
 Lemma sc_var_more_general_than_sigma : forall (sigma : schm) (st : id),
     more_general (sc_var st) sigma -> sigma = sc_var st.
 Proof.
   intros.
   inversion H. subst.
-  cut (is_schm_instance (find_generic_instance sigma (con 0)) sigma); eauto.
+  cut (is_schm_instance (find_instance sigma (con 0)) sigma); eauto.
   intros.
-  cut (is_schm_instance (find_generic_instance sigma (con 0)) (sc_var st)); eauto.
+  cut (is_schm_instance (find_instance sigma (con 0)) (sc_var st)); eauto.
   intros.
   inversion_clear H2.
   destruct sigma; simpl in *.
@@ -221,9 +221,9 @@ Lemma arrow_sigma_more_general_than_arrow : forall sigma sigma1 sigma2 : schm,
     {sig_sig : schm * schm | sigma = sc_arrow (fst sig_sig) (snd sig_sig)}.
 Proof.
   induction sigma. 
-  - cut (is_schm_instance (find_generic_instance (sc_var i) (con i)) (sc_var i)); auto.
+  - cut (is_schm_instance (find_instance (sc_var i) (con i)) (sc_var i)); auto.
     intros.
-    cut (is_schm_instance (find_generic_instance (sc_var i) (con i)) (sc_arrow sigma1 sigma2)); auto.
+    cut (is_schm_instance (find_instance (sc_var i) (con i)) (sc_arrow sigma1 sigma2)); auto.
     intros.
     simpl in *.
     absurd (is_schm_instance (var i) (sc_arrow sigma1 sigma2)); auto.
@@ -234,9 +234,9 @@ Proof.
     apply con_is_not_instance_of_arrow in H0.
     contradiction.
   - intros.
-    cut (is_schm_instance (find_generic_instance (sc_gen i) (con i)) (sc_gen i)); auto.
+    cut (is_schm_instance (find_instance (sc_gen i) (con i)) (sc_gen i)); auto.
     intros.
-    cut (is_schm_instance (find_generic_instance (sc_gen i) (con i)) (sc_arrow sigma1 sigma2)); auto.
+    cut (is_schm_instance (find_instance (sc_gen i) (con i)) (sc_arrow sigma1 sigma2)); auto.
     intros.
     absurd (is_schm_instance (con i) (sc_arrow sigma1 sigma2)); info_auto.
   - intros.
@@ -262,13 +262,13 @@ Qed.
  
 Hint Resolve length_app.
 
-Lemma length_make_constant_gen_subst : forall (n : nat) (t : ty), length (make_constant_gen_subst n t) = n.
+Lemma length_make_constant_inst_subst : forall (n : nat) (t : ty), length (make_constant_inst_subst n t) = n.
   induction n; crush.
 Qed.
 
-Hint Resolve length_make_constant_gen_subst.
+Hint Resolve length_make_constant_inst_subst.
 
-Lemma apply_subst_gen_succeeds : forall (sigma : schm) (is_s : inst_subst),
+Lemma apply_inst_subst_succeeds : forall (sigma : schm) (is_s : inst_subst),
     max_gen_vars sigma <= length is_s -> exists tau, apply_inst_subst is_s sigma = Some_schm tau.
 Proof.
   induction sigma; crush.
@@ -287,9 +287,9 @@ Proof.
   exists (arrow x x0). reflexivity.
 Qed.
 
-Hint Resolve apply_subst_gen_succeeds.
+Hint Resolve apply_inst_subst_succeeds.
 
-Lemma apply_gen_subst_sg_app : forall (sigma : schm) (is_s l : inst_subst),
+Lemma apply_inst_subst_ge_app : forall (sigma : schm) (is_s l : inst_subst),
     max_gen_vars sigma <= length is_s -> apply_inst_subst (is_s ++ l) sigma = apply_inst_subst is_s sigma.
 Proof.
   induction sigma; crush.
@@ -306,9 +306,9 @@ Proof.
   apply H.
 Qed.
 
-Hint Resolve apply_gen_subst_sg_app.
+Hint Resolve apply_inst_subst_ge_app.
 
-Lemma is_gen_instance_le_max : forall (sigma : schm) (tau : ty) (is_s : inst_subst),
+Lemma is_instance_le_max : forall (sigma : schm) (tau : ty) (is_s : inst_subst),
     apply_inst_subst is_s sigma = Some_schm tau -> max_gen_vars sigma <= length is_s.
 Proof.
   induction sigma; crush.
@@ -324,7 +324,7 @@ Proof.
   inversion H.
 Qed.
 
-Hint Resolve is_gen_instance_le_max.
+Hint Resolve is_instance_le_max.
 
 Lemma more_general_arrow_inversion1 : forall sigma1 sigma2 sigma1' sigma2' : schm,
     more_general (sc_arrow sigma1 sigma2) (sc_arrow sigma1' sigma2') ->
@@ -335,9 +335,9 @@ Proof.
   econstructor.
   intros.
   inverts* H.
-  destruct (apply_subst_gen_succeeds sigma2' (x ++ make_constant_gen_subst (max_gen_vars sigma2') (con 0))).
+  destruct (apply_inst_subst_succeeds sigma2' (x ++ make_constant_inst_subst (max_gen_vars sigma2') (con 0))).
   rewrite length_app.
-  rewrite length_make_constant_gen_subst.
+  rewrite length_make_constant_inst_subst.
   auto with *.
   cut (is_schm_instance (arrow tau x0) (sc_arrow sigma1 sigma2)).
   intros.
@@ -348,9 +348,9 @@ Proof.
   destructs H3'.
   inverts* H5.
   apply H0.
-  exists (x ++ make_constant_gen_subst (max_gen_vars sigma2') (con 0)).
+  exists (x ++ make_constant_inst_subst (max_gen_vars sigma2') (con 0)).
   simpl.
-  erewrite apply_gen_subst_sg_app; eauto.
+  erewrite apply_inst_subst_ge_app; eauto.
   rewrite H1.
   rewrite H.
   reflexivity.
@@ -367,9 +367,9 @@ Proof.
   econstructor.
   intros.
   inverts* H.
-  destruct (apply_subst_gen_succeeds sigma1' (x ++ make_constant_gen_subst (max_gen_vars sigma1') (con 0))).
+  destruct (apply_inst_subst_succeeds sigma1' (x ++ make_constant_inst_subst (max_gen_vars sigma1') (con 0))).
   rewrite length_app.
-  rewrite length_make_constant_gen_subst.
+  rewrite length_make_constant_inst_subst.
   auto with *.
   cut (is_schm_instance (arrow x0 tau) (sc_arrow sigma1 sigma2)).
   intros.
@@ -383,9 +383,9 @@ Proof.
   rewrite H8 in *.
   apply H4.
   apply H0.
-  exists (x ++ make_constant_gen_subst (max_gen_vars sigma1') (con 0)).
+  exists (x ++ make_constant_inst_subst (max_gen_vars sigma1') (con 0)).
   simpl.
-  erewrite apply_gen_subst_sg_app with (sigma:=sigma2'); eauto.
+  erewrite apply_inst_subst_ge_app with (sigma:=sigma2'); eauto.
   rewrite H.
   rewrite H1.
   reflexivity.
@@ -426,15 +426,15 @@ Qed.
 
 Hint Resolve FV_more_general_ctx.
 
-Lemma nth_app : forall (l l1 : list ty) (n : id), n < length l -> nth_error (l ++ l1) n = nth_error l n.
+Lemma nth_error_app : forall (l l1 : list ty) (n : id), n < length l -> nth_error (l ++ l1) n = nth_error l n.
 Proof.
   induction l; crush.
   induction n; crush.
   erewrite <- IHl; crush.
 Qed.
 
-Hint Resolve nth_app.
-Hint Rewrite nth_app:RE.
+Hint Resolve nth_error_app.
+Hint Rewrite nth_error_app:RE.
 
 Lemma domain_product : forall (l : list id) (is_s : inst_subst) (phi : substitution),
     product_list l is_s = Some phi -> dom phi = l.
@@ -704,7 +704,7 @@ Qed.
 Hint Resolve inst_subst_to_subst_aux_4.
 Hint Rewrite inst_subst_to_subst_aux_4:RE.
 
-Lemma nth_map : forall (s : substitution) (x : list ty) (n : id) (tau : ty),
+Lemma nth_error_map : forall (s : substitution) (x : list ty) (n : id) (tau : ty),
     nth_error x n = Some tau ->
     nth_error (map_extend_subst_type x s) n = Some (apply_subst s tau).
 Proof.
@@ -714,8 +714,8 @@ Proof.
   induction n; crush.
 Qed.
 
-Hint Resolve nth_map.
-Hint Rewrite nth_map:RE.
+Hint Resolve nth_error_map.
+Hint Rewrite nth_error_map:RE.
 
 Lemma nth_error_k_not_zero : forall a k l, k <> 0 -> nth_error ((var a)::l) k = nth_error l (pred k).
 Proof.
@@ -752,11 +752,11 @@ Qed.
 Hint Resolve length_ty_from_id_list.
 Hint Rewrite length_ty_from_id_list:RE.
 
-Lemma nth_app_cons : forall (l : list ty) (tau : ty), nth_error (l ++ tau::nil) (length l) = Some tau.
+Lemma nth_error_app_cons : forall (l : list ty) (tau : ty), nth_error (l ++ tau::nil) (length l) = Some tau.
 simple induction l; auto.
 Qed.
 
-Hint Resolve nth_app_cons.
+Hint Resolve nth_error_app_cons.
 
 Lemma length_map2 : forall (s : substitution) (l : list id),
     length (map_extend_subst_type (ty_from_id_list l) s) = length l.
@@ -803,8 +803,8 @@ Proof.
      rewrite H2.
      rewrite (ty_from_id_list_app l1 x).
      rewrite (map_extend_app phi (ty_from_id_list l1) (ty_from_id_list x)).
-     rewrite (nth_app (map_extend_subst_type (ty_from_id_list l1) phi) (map_extend_subst_type (ty_from_id_list x) phi)).
-     erewrite (@nth_map phi (ty_from_id_list l1) i0 (var i)).
+     rewrite (nth_error_app (map_extend_subst_type (ty_from_id_list l1) phi) (map_extend_subst_type (ty_from_id_list x) phi)).
+     erewrite (@nth_error_map phi (ty_from_id_list l1) i0 (var i)).
      rewrite (@inst_subst_to_subst_aux_4 G2 (var i) tau2 l2 L is_s phi); eauto.
      eauto.
      crush.
@@ -818,9 +818,9 @@ Proof.
      rewrite H2.
      rewrite (ty_from_id_list_app (l1 ++ i::nil) P2).
      rewrite (map_extend_app phi (ty_from_id_list (l1 ++ i::nil)) (ty_from_id_list P2)).
-     rewrite (nth_app (map_extend_subst_type (ty_from_id_list (l1 ++ i::nil)) phi)
+     rewrite (nth_error_app (map_extend_subst_type (ty_from_id_list (l1 ++ i::nil)) phi)
              (map_extend_subst_type (ty_from_id_list P2) phi)).
-     erewrite (@nth_map phi (ty_from_id_list (l1 ++ i::nil)) (length l1) (var i)).
+     erewrite (@nth_error_map phi (ty_from_id_list (l1 ++ i::nil)) (length l1) (var i)).
      erewrite (@inst_subst_to_subst_aux_4 G2 (var i) tau2 l2 L is_s phi); eauto.
      rewrite ty_from_id_list_app; simpl.
      rewrite <- length_ty_from_id_list; eauto.
@@ -903,13 +903,6 @@ Proof.
   crush.
 Qed.
 
-Lemma is_instance_le_max : forall (sigma : schm) (tau : ty) (is_s : inst_subst),
-    apply_inst_subst is_s sigma = Some_schm tau -> max_gen_vars sigma <= length is_s.
-Proof.
-  induction sigma; crush.
-Qed.
-
-Hint Resolve is_instance_le_max.
 
 Lemma is_prefixe_reflexivity : forall C L : list id, is_prefixe_free2 C L L.
 intros C L.
@@ -1007,7 +1000,7 @@ Qed.
 
 Hint Resolve is_not_generalizable_aux.
 
-Lemma s_gen_aux_7 : forall (G : ctx) (tau1 tau2 : ty) (phi s : substitution)
+Lemma more_general_gen_ty_before_apply_subst_aux : forall (G : ctx) (tau1 tau2 : ty) (phi s : substitution)
                       (l1 l2 L P : list id) (is_s : inst_subst),
     are_disjoints (FV_ctx G) l1 ->
     are_disjoints (FV_ctx (apply_subst_ctx s G)) l2 ->
@@ -1034,8 +1027,8 @@ Proof.
         destruct a. subst.
         rewrite ty_from_id_list_app.
         rewrite map_extend_app; eauto.
-        rewrite nth_app; eauto.
-        erewrite nth_map; eauto.
+        rewrite nth_error_app; eauto.
+        erewrite nth_error_map; eauto.
         rewrite apply_compose_equiv.
         erewrite inst_subst_to_subst_aux_4.
         reflexivity.
@@ -1053,8 +1046,8 @@ Proof.
         rewrite ty_from_id_list_app; eauto.
         rewrite map_extend_app; eauto.
         simpl.
-        rewrite nth_app; eauto.
-        erewrite nth_map; eauto.
+        rewrite nth_error_app; eauto.
+        erewrite nth_error_map; eauto.
         rewrite apply_compose_equiv.
         erewrite inst_subst_to_subst_aux_4 with (l := l2); eauto.
         rewrite length_map2.
@@ -1078,9 +1071,9 @@ Proof.
     erewrite (@IHtau1_2 tau3 phi s) with (l2:= (snd (gen_ty_aux (apply_subst s tau1_1) (apply_subst_ctx s G) l2))); eauto.
 Qed.
 
-Hint Resolve s_gen_aux_7.
+Hint Resolve more_general_gen_ty_before_apply_subst_aux.
 
-Lemma s_gen_t_more_general_than_gen_s_t : forall (s : substitution) (G : ctx) (tau : ty),
+Lemma more_general_gen_ty_before_apply_subst : forall (s : substitution) (G : ctx) (tau : ty),
  more_general (apply_subst_schm s (gen_ty tau G)) (gen_ty (apply_subst s tau) (apply_subst_ctx s G)).
 Proof.
   intros.
@@ -1091,7 +1084,7 @@ Proof.
   destruct (product_list_exists (apply_subst s tau) (apply_subst_ctx s G) x); eauto.
   unfold is_schm_instance.
   exists (map_extend_subst_type (ty_from_id_list (snd (gen_ty_aux tau G nil))) (compose_subst s x0)).
-  crush.
+  eauto.
 Qed.
 
-Hint Resolve s_gen_t_more_general_than_gen_s_t.
+Hint Resolve more_general_gen_ty_before_apply_subst.

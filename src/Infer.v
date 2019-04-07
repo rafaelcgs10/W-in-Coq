@@ -493,7 +493,7 @@ Next Obligation.
     econstructor; eauto.
   - fold (apply_subst mu (var alpha)).
     subst.
-    apply new_tv_s_ty; eauto.
+    apply new_tv_apply_subst_ty; eauto.
     apply MGU'; eauto.
     splits; eauto.
     econstructor; eauto.
@@ -551,7 +551,7 @@ Next Obligation.
       rewrite <- MGU.
       rewrite add_subst_new_tv_ty.
       erewrite <- (new_tv_compose_subst_type psi1 s2 psi2); eauto.
-      apply new_tv_s_ty; auto.
+      apply new_tv_apply_subst_ty; auto.
       eapply new_tv_ty_trans_le; eauto. 
     + eapply COMP_R; eauto.
       erewrite <- new_tv_compose_subst_ctx; eauto.
@@ -623,7 +623,7 @@ Next Obligation.
     eapply typing_in_a_more_general_ctx with
         (G2 := (st0,  (gen_ty (apply_subst psi1 tau_e1) (apply_subst_ctx psi1 (apply_subst_ctx s1 G))))::(apply_subst_ctx psi1 (apply_subst_ctx s1 G))). 
     eapply more_general_ctx_cons. eauto.
-    eapply s_gen_t_more_general_than_gen_s_t.
+    eapply more_general_gen_ty_before_apply_subst.
     rewrite <- PRINC_e11.
     erewrite <- new_tv_compose_subst_ctx; eauto.
     Unshelve. eauto. eauto.

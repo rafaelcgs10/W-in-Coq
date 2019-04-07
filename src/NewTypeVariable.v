@@ -195,15 +195,15 @@ Qed.
 
 Hint Resolve new_tv_subst_cons_new_tv_ty.
 
-Lemma new_tv_s_id : forall (st st' : id) (s : substitution),
+Lemma new_tv_apply_subst_var : forall (st st' : id) (s : substitution),
     new_tv_subst s st -> st' < st -> new_tv_ty (apply_subst s (var st')) st.
 Proof.
   induction s; crush.
 Qed.
 
-Hint Resolve new_tv_s_id.
+Hint Resolve new_tv_apply_subst_var.
  
-Lemma new_tv_s_ty : forall (st : id) (s : substitution) (tau : ty),
+Lemma new_tv_apply_subst_ty : forall (st : id) (s : substitution) (tau : ty),
     new_tv_ty tau st -> new_tv_subst s st -> new_tv_ty (apply_subst s tau) st.
   induction tau; intros.
   inversion H; subst. eauto.
@@ -214,7 +214,7 @@ Lemma new_tv_s_ty : forall (st : id) (s : substitution) (tau : ty),
   econstructor; eauto.
 Qed.
 
-Hint Resolve new_tv_s_ty.
+Hint Resolve new_tv_apply_subst_ty.
 
 Lemma new_tv_ty_to_schm : forall tau st, new_tv_schm (ty_to_schm tau) st <-> new_tv_ty tau st.
 Proof.
@@ -229,7 +229,7 @@ Qed.
 
 Hint Resolve new_tv_ty_to_schm.
 
-Lemma new_tv_schm_s_id : forall  (s : substitution) (st st' : id),
+Lemma new_tv_apply_subst_schm_var : forall  (s : substitution) (st st' : id),
     new_tv_subst s st -> st' < st -> new_tv_schm (apply_subst_schm s (sc_var st')) st.
 Proof.
   intros.
@@ -242,9 +242,9 @@ Proof.
   auto.
 Qed.
 
-Hint Resolve new_tv_schm_s_id.
+Hint Resolve new_tv_apply_subst_schm_var.
 
-Lemma new_tv_s_schm : forall (st : id) (s : substitution) (sigma : schm),
+Lemma new_tv_apply_subst_schm : forall (st : id) (s : substitution) (sigma : schm),
     new_tv_schm sigma st -> new_tv_subst s st -> new_tv_schm (apply_subst_schm s sigma) st.
   induction sigma; intros.
   inverts* H.
@@ -256,7 +256,7 @@ Lemma new_tv_s_schm : forall (st : id) (s : substitution) (sigma : schm),
   econstructor; eauto.
 Qed.
 
-Hint Resolve new_tv_s_schm.
+Hint Resolve new_tv_apply_subst_schm.
 
 Lemma new_tv_subst_list : forall (s1 s2 : substitution) (i : id),
                              new_tv_subst s1 i ->
