@@ -35,23 +35,45 @@ Fixpoint compute_subst (i : id) (l : list ty) : substitution :=
   | t :: l' => (i, t) :: compute_subst (S i) l'
   end.
 
+Inductive SubstFailure :  Prop :=
+| substFail : SubstFailure.
+
+Hint Constructors SubstFailure.
+
+Inductive MissingVar : id ->  Prop :=
+| missingVar : forall i, MissingVar i.
+
+Hint Constructors MissingVar.
+
+Inductive InferFailure : Prop :=
+| SubstFailure' : SubstFailure -> InferFailure
+| UnifyFailure' : forall t1 t2, UnifyFailure t1 t2 -> InferFailure
+| MissingVar' : forall i, MissingVar i -> InferFailure.
+
+Hint Constructors InferFailure.
+
+Unset Implicit Arguments.
+
+Definition Infer := @HoareState id InferFailure.
+Definition get := @get id InferFailure.
+Definition put := @put id InferFailure.
+
 (** Gives a type that is a (new) instance of a scheme *)
 Program Definition apply_inst_subst_hoare (is_s : inst_subst) (sigma : schm):
-  @HoareState id (@top id) ty (fun i r f => i = f /\ apply_inst_subst is_s sigma = Some_schm r) :=
+  @Infer (@top id) ty (fun i r f => i = f /\ apply_inst_subst is_s sigma = Some_schm r) :=
   match apply_inst_subst is_s sigma with
-  | Error_schm => failT _
+  | Error_schm => failT (SubstFailure' substFail) ty
   | Some_schm tau => ret tau 
   end .
-
       
 Program Definition schm_inst_dep (sigma : schm) :
-  @HoareState id (@top id) (ty * inst_subst)
+  @Infer (@top id) (ty * inst_subst)
               (fun i r f => f = i + (max_gen_vars sigma) /\ apply_inst_subst (snd r) sigma = Some_schm (fst r) /\
               compute_inst_subst i (max_gen_vars sigma) = (snd r) /\ (new_tv_schm sigma i -> new_tv_ty (fst r) f)) :=
     match max_gen_vars sigma as y with
     | nmax => 
-       st <- @get id ;
-       _ <- @put id (st + nmax) ;
+       st <- get ;
+       _ <- put (st + nmax) ;
        tau <- apply_inst_subst_hoare (compute_inst_subst st nmax) sigma ;
        ret (tau, (compute_inst_subst st nmax))
     end.
@@ -62,10 +84,10 @@ Next Obligation.
 Defined.
 
 Program Definition look_dep (x : id) (G : ctx) :
-  @HoareState id (@top id) schm (fun i k f => i = f /\ in_ctx x G = Some k) :=
+  @Infer (@top id) schm (fun i k f => i = f /\ in_ctx x G = Some k) :=
   match in_ctx x G with
   | Some sig => ret sig
-  | None => failT _
+  | None => failT (MissingVar' x (missingVar x)) schm
   end.
 
 Lemma assoc_subst_exists : forall (G : ctx) (i : id) (s : substitution) (sigma : schm),
@@ -233,33 +255,25 @@ Hint Resolve apply_subst_app1.
 Hint Rewrite apply_subst_app1 : subst.
 
 (** Gives you a fresh variable *)
-Program Definition fresh : @HoareState id (@top id) id (fun i x f => S i = f /\ i = x) := fun n => exist _ (Some (n, S n)) _.
+Program Definition fresh : @Infer (@top id) id (fun i x f => S i = f /\ i = x) := fun n => exist _ (inleft (n, S n)) _.
 
 Program Definition addFreshCtx (G : ctx) (x : id) (alpha : id):
-  @HoareState id (fun i => new_tv_ctx G i) ctx (fun i r f => alpha < i -> (new_tv_ctx r f /\ f = i /\ new_tv_ty (var alpha) f)) :=
+  @Infer (fun i => new_tv_ctx G i) ctx (fun i r f => alpha < i -> (new_tv_ctx r f /\ f = i /\ new_tv_ty (var alpha) f)) :=
   ret ((x, ty_to_schm (var alpha)) :: G).
 Next Obligation.
   split; intros;
   unfold top; auto.
 Defined.
 
-Fixpoint sizeTerm e : nat :=
-  match e with
-  | lam_t _ e => sizeTerm e + 1
-  | app_t l r => (max (sizeTerm l) (sizeTerm r)) + 1
-  | let_t _ e1 e2 => (max (sizeTerm e1) (sizeTerm e2)) + 1
-  | _ => 0
-  end.
-
 Program Definition unify (tau1 tau2 : ty) :
-  @HoareState id (@top id) substitution (fun i mu f => i = f /\
+  @Infer (@top id) substitution (fun i mu f => i = f /\
                                       (forall s', apply_subst s' tau1 = apply_subst s' tau2 ->
                                              exists s'', forall tau, apply_subst s' tau = apply_subst (compose_subst mu s'') tau) /\
                                       ((new_tv_ty tau1 i /\ new_tv_ty tau2 i) -> new_tv_subst mu i) /\
                                         apply_subst mu tau1 = apply_subst mu tau2) :=
   match Unify.unify tau1 tau2 as y  with
   | existT _ c (inleft _ (exist _ mu HS)) => ret mu
-  | existT _ c _ => failT _
+  | existT _ c (inright _ error) => failT (UnifyFailure' tau1 tau2 error) substitution
   end.
 Next Obligation.
   splits; intros; eauto.
@@ -332,7 +346,7 @@ Hint Resolve new_tv_subst_cons_diff.
 Unset Implicit Arguments.
 
 Program Fixpoint W_hoare (e : term) (G : ctx) {struct e} :
-  @HoareState id (fun i => new_tv_ctx G i) (ty * substitution)
+  @Infer (fun i => new_tv_ctx G i) (ty * substitution)
               (fun i x f => i <= f /\ new_tv_subst (snd x) f /\ new_tv_ty (fst x) f /\
                new_tv_ctx (apply_subst_ctx (snd x) G) f /\ has_type (apply_subst_ctx ((snd x)) G) e (fst x) /\ completeness e G (fst x) ((snd x)) i) :=
   match e with
@@ -376,7 +390,7 @@ Next Obligation. (* Case: properties used in var_t *)
 Defined.
 Next Obligation.  (* Case: soundness and completeness of var_t *)
   edestruct (look_dep x G >>= _);
-  crush;
+  crush; 
   rename x into st0, x2 into st1;
   rename x0 into tau', x1 into tau.
   - (* Case: var_t soundness *)

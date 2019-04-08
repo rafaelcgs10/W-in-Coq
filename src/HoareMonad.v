@@ -18,32 +18,32 @@ Definition Pre : Type := st -> Prop.
 
 Definition Post (a : Type) : Type := st -> a -> st -> Prop.
 
-Program Definition HoareState (pre : Pre) (a : Type) (post : Post a) : Type :=
-forall i : sig (fun t : st => pre t), sig (fun anonymous : option (prod a st) => match anonymous with
-                                                                    | Some (x, f) => post (proj1_sig i) x f
-                                                                    | None => True
+Program Definition HoareState  (B : Prop) (pre : Pre) (a : Type) (post : Post a) : Type :=
+forall i : sig (fun t : st => pre t), sig (fun anonymous : sumor (prod a st) B => match anonymous with
+                                                                    | inleft (x, f) => post (proj1_sig i) x f
+                                                                    | inright _ => B
                                                                     end).
            
 Definition top : Pre := fun st => True.
 
-Program Definition ret (a : Type) : forall x,
-    @HoareState top a (fun i y f => i = f /\ y = x) := fun x s => exist _ (Some (x, s)) _.
+Program Definition ret {B : Prop} (a : Type) : forall x,
+    @HoareState B top a (fun i y f => i = f /\ y = x) := fun x s => exist _ (inleft (x, s)) _.
 
 
-Program Definition bind : forall a b P1 P2 Q1 Q2,
-  (@HoareState P1 a Q1) -> (forall (x : a), @HoareState (P2 x) b (Q2 x)) ->
-  @HoareState (fun s1 => P1 s1 /\ forall x s2, Q1 s1 x s2 -> P2 x s2) b (fun s1 y s3 => exists x, exists s2, Q1 s1 x s2 /\ Q2 x s2 y s3) :=
-  fun a b P1 P2 Q1 Q2 c1 c2 s1 => match c1 s1 as y with
-                               | Some (x, s2) => c2 x s2
-                               | None => None
+Program Definition bind : forall a b P1 P2 Q1 Q2 B,
+  (@HoareState B P1 a Q1) -> (forall (x : a), @HoareState B (P2 x) b (Q2 x)) ->
+  @HoareState B (fun s1 => P1 s1 /\ forall x s2, Q1 s1 x s2 -> P2 x s2) b (fun s1 y s3 => exists x, exists s2, Q1 s1 x s2 /\ Q2 x s2 y s3) :=
+  fun B a b P1 P2 Q1 Q2 c1 c2 s1 => match c1 s1 as y with
+                               | inleft (x, s2) => c2 x s2
+                               | inright R => inright R
                                end.
 Next Obligation.
-  eapply p0.
+  eapply p.
   cbv in Heq_y.
   destruct c1.
   destruct x0.
   - simpl in y.
-    destruct p1.
+    destruct p0.
     inversion Heq_y.
     subst.
     auto.
@@ -54,13 +54,13 @@ Next Obligation.
   destruct x0.
   cbv in Heq_y.
   simpl in *.
-  destruct p1.
+  destruct p0.
   exists x s2.
   split;
   auto.
   destruct c1.
   destruct x0.
-  destruct p1.
+  destruct p0.
   simpl in *.
   inversion Heq_y.
   subst.
@@ -72,14 +72,13 @@ Defined.
 
 Check bind.
 
-Program Definition failT (A : Type) : @HoareState top A (fun _ _ _ => True) := fun s => exist _ None _.
+Program Definition failT {B : Prop} (b : B) (A : Type) : @HoareState B top A (fun _ _ _ => True) := fun s => exist _ (inright b) _.
 
-Program Definition get : @HoareState top st (fun i x f => i = f /\ x = i) := fun s => exist _ (Some (s, s)) _.
+Program Definition get {B : Prop} : @HoareState B top st (fun i x f => i = f /\ x = i) := fun s => exist _ (inleft (s, s)) _.
 
-Program Definition put (x : st) : @HoareState top unit (fun _ _ f => f = x) := fun  _ => exist _ (Some (tt, x)) _.
+Program Definition put {B : Prop} (x : st) : @HoareState B top unit (fun _ _ f => f = x) := fun  _ => exist _ (inleft (tt, x)) _.
 
 End hoare_state_monad.
-
 
 Infix ">>=" := bind (right associativity, at level 71).
 
@@ -88,10 +87,11 @@ Notation "x <- m ; p" := (m >>= fun x => p)
      format "'[' x  <-  '[' m ']' ; '//' '[' p ']' ']'").
 
 Program Definition getN := 
-    n <- @get nat ;
+    n <- @get nat True  ;
     ret n.
 
 
+(*
 Program Definition applyMH (A B : Set) pre1 pos1
         (fn : forall x : A, (@HoareState B pre1 B pos1)) (x : A) : @HoareState B pre1 B pos1 := 
     x' <- fn x ;
@@ -112,7 +112,6 @@ Next Obligation.
   auto.
 Defined.
 
-(*
 Lemma toListPost : forall A B, forall (post : Post A B), A -> (@HoareState A pre1 B pos1)) -> Post A (list B).
   intros.
   unfold Post in *.

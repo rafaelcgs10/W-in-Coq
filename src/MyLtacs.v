@@ -52,6 +52,7 @@ Ltac crush' :=
     | [ x : (_ * _)%type |- _ ] => let t := fresh "t" in destruct x as [x t]
     | [ H : (_,_) = (_,_) |- _] => inverts* H
     | [ H : option _ |- _] => destruct H
+    | [ H : sumor _ _ |- _] => destruct H
     | [ H : Some _ = Some _ |- _] => inverts* H
     | [ H : Some _ = None |- _] => congruence
     | [ H : Some_schm  _ = Some_schm _ |- _] => inverts* H
@@ -61,7 +62,6 @@ Ltac crush' :=
     | [ H : ex _ |- _] => destruct H
     | [ H : sig _ |- _] => destruct H
     | [ H : sigT _ |- _] => destruct H
-    | [ H :  let _ := _ in _  |- _] => simpl in H
     | [ H : context[fst (_, _)] |- _] => simpl in H
     | [ H : context[snd (_, _)] |- _] => simpl in H
     | [ H : context[_ ++ nil] |- _] => rewrite app_nil_r in H
