@@ -112,7 +112,6 @@ Qed.
 Hint Resolve compose_subst_nil_r.
 Hint Rewrite compose_subst_nil_r:RE.
 
-
 (** ** Some Obvious Facts About Composition **)
 
 Lemma apply_compose_subst_nil_l : forall s t, apply_subst (compose_subst nil s) t = apply_subst s t.
@@ -176,4 +175,61 @@ Fixpoint id_in_subst (i : id) (s : substitution) : option ty :=
     | nil => None
     | (i', tau)::s' => if eq_id_dec i i' then Some tau else id_in_subst i s'
   end.
+
+Lemma arrow_subst_eq : forall l l' r r' s,  apply_subst s l = apply_subst s l' ->
+                                          apply_subst s r = apply_subst s r' ->
+                                          apply_subst s (arrow l r) = apply_subst s (arrow l' r').
+Proof.
+  intros ; do 2 rewrite apply_subst_arrow ; fequals*.
+Qed.
+
+Hint Resolve arrow_subst_eq.
+
+Lemma apply_compose_assoc_var : forall s1 s2 s3 i, apply_subst (compose_subst (compose_subst s1 s2) s3) (var i) =
+                                              apply_subst (compose_subst s1 (compose_subst s2 s3)) (var i).
+Proof.
+  induction s1. intros. eauto.
+  intros.
+  repeat rewrite apply_compose_equiv.
+  reflexivity.
+Qed.
+
+Lemma apply_subst_lit_dom : forall s1 s2, dom (apply_subst_list s1 s2) = dom s1.
+Proof.
+  induction s1; intros; mysimp; simpl in *; eauto.
+  congruence.
+Qed.
+
+Lemma dom_dist_app : forall s1 s2, dom (s1 ++ s2) = (dom s1) ++ (dom s2).
+Proof.
+  induction s1; intros; mysimp; simpl in *; eauto.
+  congruence.
+Qed.
+
+Lemma apply_subst_list_dom : forall s1 s2, dom (apply_subst_list s1 s2) = dom s1.
+Proof.
+  induction s1; intros; mysimp; simpl in *; eauto.
+  congruence.
+Qed.
+
+Lemma dom_dist_compose : forall s1 i t, dom (compose_subst s1 [(i, t)]) = dom s1 ++ [i].
+Proof.
+  induction s1; intros; mysimp; simpl in *; eauto.
+  rewrite dom_dist_app.
+  rewrite apply_subst_list_dom.
+  simpl.
+  reflexivity.
+Qed.
+
+Lemma ids_ty_apply_subst : forall s t, (ids_ty (apply_subst s t)) = List.concat (List.map ids_ty ( (List.map (apply_subst s) (List.map var (ids_ty t))))).
+Proof.
+  intros.
+  induction t; mysimp.
+  rewrite app_nil_r. reflexivity.
+  repeat rewrite map_app.
+  repeat rewrite concat_app.
+  rewrite <- IHt1.
+  rewrite <- IHt2.
+  reflexivity.
+Qed.
 
