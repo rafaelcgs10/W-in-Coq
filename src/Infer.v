@@ -376,19 +376,19 @@ Program Fixpoint W_hoare (e : term) (G : ctx) {struct e} :
                  tau2_s2 <- W_hoare e2 ((x,gen_ty (fst tau1_s1) (apply_subst_ctx (snd tau1_s1) G) )::(apply_subst_ctx (snd tau1_s1) G))  ;
                  ret (fst tau2_s2, compose_subst (snd tau1_s1) (snd tau2_s2))
   end. 
-Next Obligation. (* Case: properties used in const_t *)
+Next Obligation.
   intros; unfold top; auto.
 Defined.
-Next Obligation.  (* Case: soundness and completeness of const_t *)
+Next Obligation.  (* Case: postcondition of const_t *)
   crush.
   econstructor.
   intro. intros.
   inverts* H0.
 Defined.
-Next Obligation. (* Case: properties used in var_t *)
+Next Obligation. 
   intros; unfold top; auto.
 Defined.
-Next Obligation.  (* Case: soundness and completeness of var_t *)
+Next Obligation.  (* Case: postcondition of var *)
   edestruct (look_dep x G >>= _);
   crush; 
   rename x into st0, x2 into st1;
@@ -428,16 +428,17 @@ Next Obligation.  (* Case: soundness and completeness of var_t *)
       reflexivity.
       assumption.
 Defined.
-Next Obligation. (* Case: properties used in var_t *)
+Next Obligation. 
   splits; intros; unfold top; auto;
   crush. intros. crush. 
   destructs H0; eauto.
 Defined.
-Next Obligation. (* Case: lam soundness  *)
+Next Obligation. (* Case: postcondition of lambda  *)
   simpl.
   destruct (W_hoare e' (((x, sc_var x0)) :: G) >>= _);
   crush; clear W_hoare;
   rename x0 into st0, t1 into s, x1 into tau_r, t into st1.
+  (* Subcase : new_tv_ty lambda *)
   - destruct (find_subst s st0).
     + rename t into tau_l.
       econstructor; eauto.
@@ -445,12 +446,14 @@ Next Obligation. (* Case: lam soundness  *)
       subst.
       eapply new_tv_ty_to_schm; eauto.
     + econstructor; eauto.
+  (* Subcase : soundness lambda *)
   - econstructor.
     simpl in H0.
     assert (sc_var st0 = ty_to_schm (var st0)). auto.
     cases (find_subst s st0);
     simpl;
     auto.
+  (* Subcase : completeness lambda *)
   - unfold completeness. 
     intros.
     inversion_clear H2.
@@ -491,7 +494,7 @@ Next Obligation.
   destructs H0;
   try splits; auto.
 Defined.
-Next Obligation.
+Next Obligation. (* Case: postcondition of application  *)
   destruct (W_hoare l G  >>= _).
   crush;
   clear W_hoare;
@@ -500,17 +503,20 @@ Next Obligation.
   rename x3 into mu, t1 into s1, t2 into s2;
   rename H6 into COMP_L, H12 into COMP_R;
   rename x2 into tauL, x0 into tauLR.
+  (* Subcase : new_tv_subst application *)
   - apply new_tv_compose_subst; eauto.
     apply new_tv_compose_subst; eauto.
     eapply MGU'.
     splits; eauto.
     econstructor; eauto.
+  (* Subcase : new_tv_ty application *)
   - fold (apply_subst mu (var alpha)).
     subst.
     apply new_tv_apply_subst_ty; eauto.
     apply MGU'; eauto.
     splits; eauto.
     econstructor; eauto.
+  (* Subcase : new_tv_ctx application *)
   - subst.
     eapply new_tv_s_ctx; eauto.
     apply new_tv_compose_subst; eauto.
@@ -518,12 +524,14 @@ Next Obligation.
     eapply MGU'.
     splits; eauto.
     econstructor; eauto.
+  (* Subcase : soundness application *)
   - fold (apply_subst mu (var alpha)) in *.
     subst.
     repeat rewrite apply_subst_ctx_compose.
     apply app_ht with (tau := apply_subst mu tauL); eauto.
     rewrite <- MGU'';
     eauto.
+  (* Subcase : completeness application *)
   - subst.
     unfold completeness. intros.
     rename H6 into SOUND_LR.
@@ -577,9 +585,9 @@ Next Obligation.
   destructs H0;
   try splits; eauto.
 Defined.
-Next Obligation.
+Next Obligation. (* Case : postcondition of let *)
   destruct (W_hoare e1 G >>= _).
-  crush;
+   crush;
   clear W_hoare;
   rename H11 into SOUND_e2, H5 into SOUND_e1;
   rename H6 into COMP_e1, H12 into COMP_e2;
@@ -587,7 +595,9 @@ Next Obligation.
   rename x3 into tau_e2, t2 into s2, x2 into st2;
   rename x1 into tau_e1, t1 into s1, x0 into st1;
   eauto.
+  (* Subcase : new_tv_ctx let *)
   - eapply new_tv_s_ctx; eauto. 
+  (* Subcase : soundness let *)
   -
     pose proof exists_renaming_not_concerned_with2 (gen_ty_vars tau_e1 (apply_subst_ctx s1 G))
          (FV_ctx (apply_subst_ctx s1 G)) (FV_subst s2)  as renaming.
@@ -613,6 +623,7 @@ Next Obligation.
     rewrite <- gen_ty_in_subst_ctx; eauto.
     rewrite <- subst_add_type_scheme; eauto.
     rewrite <- gen_alpha4_bis; auto.
+  (* Subcase : completeness let *)
   - intro. intros.
     rename H5 into SOUND_let.
     inversion_clear SOUND_let.
