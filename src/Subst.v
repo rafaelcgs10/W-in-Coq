@@ -233,3 +233,56 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma apply_subst_app : forall (s1 s2 : substitution) (st : id),
+    find_subst s1 st = None -> apply_subst (s1 ++ s2) (var st) = apply_subst s2 (var st).
+Proof.
+  induction s1;
+  crush.
+Qed.
+
+Hint Resolve apply_subst_app.
+Hint Rewrite apply_subst_app:RE.
+
+Lemma apply_app : forall (s1 s2 : substitution) (st : id) (tau : ty),
+    find_subst s1 st = Some tau -> apply_subst (s1 ++ s2) (var st) = tau.
+Proof.
+  induction s1; crush.
+Qed.
+
+Hint Resolve apply_app.
+Hint Rewrite apply_app:RE.
+
+Lemma apply_subst_app1 : forall (s1 s2 : substitution) (st : id),
+ find_subst s1 st = None -> apply_subst (compose_subst s1 s2) (var st) = apply_subst s2 (var st).
+Proof.
+  intros.
+  induction s1.
+  - mysimp.
+  - simpl in *.
+    destruct a.
+    mysimp.
+Qed.
+
+Hint Resolve apply_subst_app1.
+Hint Rewrite apply_subst_app1 : subst.
+
+Lemma add_subst_rewrite_for_modified_stamp : forall (s : substitution) (i : id) (tau : ty),
+    (apply_subst ((i, tau)::s) (var i)) = tau.
+  intros.
+  mysimp.
+Qed.
+
+Hint Resolve add_subst_rewrite_for_modified_stamp.
+
+Lemma add_subst_rewrite_for_unmodified_stamp : forall (s : substitution) (i j : id) (tau : ty),
+    i <> j -> (apply_subst ((i, tau):: s)) (var j) = apply_subst s (var j).
+  intros; induction s; mysimp.
+Qed.
+
+Hint Resolve add_subst_rewrite_for_unmodified_stamp.
+
+Lemma img_ids_append_cons : forall a t s, img_ids ((a, t)::s) = ids_ty t ++ img_ids s.
+Proof.
+  induction t; mysimp.
+Qed.
+

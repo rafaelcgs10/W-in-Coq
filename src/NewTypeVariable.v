@@ -9,6 +9,7 @@ Require Import SubstSchm.
 Require Import List.
 Require Import MyLtacs.
 Require Import Subst.
+Require Import SubstSchm.
 Require Import ListIds.
 Require Import Context.
 Require Import Relation_Operators.
@@ -650,3 +651,89 @@ Lemma new_tv_gen_ty: forall (tau : ty) (G : ctx) (st : id), new_tv_ty tau st -> 
 Qed. 
 
 Hint Resolve new_tv_gen_ty.
+
+
+(* Relating new_tv_ty to compute_subst*)
+Lemma t_is_app_T_aux : forall (sigma : schm) (tau tau' : ty) (s : substitution) (p : nat) (st : id) (x : list ty),
+    new_tv_schm sigma st -> max_gen_vars sigma <= p ->
+    apply_inst_subst (compute_inst_subst st p) sigma = Some_schm tau ->
+    apply_inst_subst x (apply_subst_schm s sigma) = Some_schm tau' ->
+    tau' = apply_subst ((compute_subst st x) ++ s) tau.
+Proof.
+  induction sigma.
+  - intros.
+    inversion H. subst.
+    simpl in H1. inversion H1.
+    simpl in H2. fold (apply_subst s (var i)) in H2.
+    rewrite apply_subst_inst_to_ty_to_schm in H2.
+    inversion H2.
+    rewrite apply_app_compute_subst; eauto.
+   - crush. 
+   - intros. 
+     simpl in *.
+     rewrite nth_error_compute_inst_Some in *; eauto.
+     inversion H1. inversion H. subst.
+     cases (nth_error x i).
+     inversion H2. subst. clear H2 H1.
+     erewrite apply_app; eauto.
+     rewrite Nat.add_comm.
+     eapply find_subst_id_compute; eauto.
+     inversion H2.
+   - intros. 
+     inversion H. subst.
+     simpl in H0. rewrite apply_subst_schm_arrow in H2.
+     edestruct (exist_arrow_apply_inst_arrow (compute_inst_subst st p)); eauto.
+     destruct H3.
+     edestruct (exist_arrow_apply_inst_arrow x); eauto.
+     destruct H4. subst.
+     apply and_arrow_apply_inst_arrow in H1.
+     destruct H1.
+     apply and_arrow_apply_inst_arrow in H2.
+     destruct H2.
+     simpl.
+     eapply Nat.max_lub_r in H0 as H0r.
+     eapply Nat.max_lub_l in H0 as H0l.
+     erewrite <- IHsigma1; eauto.
+     erewrite <- IHsigma2; eauto.
+Qed.
+
+Hint Resolve t_is_app_T_aux.
+
+Lemma new_tv_subst_false : forall st s t, new_tv_subst ((st, t) :: s) st -> False.
+Proof.
+  intros.
+  induction s. inversion H.
+  specialize H0 with (x:=st).
+  simpl in H0.
+  destruct (eq_id_dec st st);
+  intuition.
+  inversion H.
+  simpl in H0.
+  specialize H0 with (x:=st).
+  destruct (eq_id_dec st st); intuition.
+Qed.
+
+Hint Resolve new_tv_subst_false.
+
+Lemma new_tv_subst_cons_diff : forall a st t s, a <> st -> new_tv_subst ((a, t) :: s) st -> new_tv_subst s st.
+Proof.
+  intros.
+  econstructor.
+  intros.
+  unfold FV_subst in H1.
+  inversion H0.
+  eapply H2.
+  simpl.
+  destruct (eq_id_dec a x); try contradiction; auto.
+  apply in_list_id_or_append_inversion in H1.
+  destruct H1.
+  apply in_list_id_append1; auto.
+  apply in_list_id_append2.
+  simpl.
+  rewrite img_ids_append_cons.
+  apply in_list_id_append2.
+  assumption.
+Qed.
+
+Hint Resolve new_tv_subst_cons_diff.
+

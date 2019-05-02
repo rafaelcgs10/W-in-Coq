@@ -530,3 +530,64 @@ Qed.
 
 Hint Resolve nth_error_compute_inst_None.
 Hint Rewrite nth_error_compute_inst_None:RE.
+
+(** * About computing the subst s' in the completeness proof **)
+
+Fixpoint compute_subst (i : id) (l : list ty) : substitution :=
+  match l return substitution with
+  | nil => nil
+  | t :: l' => (i, t) :: compute_subst (S i) l'
+  end.
+
+Lemma not_in_domain_compute : forall (is_s : inst_subst) (st0 st1 : id),
+    st0 < st1 -> find_subst (compute_subst st1 is_s) st0 = None.
+Proof.
+  induction is_s; crush.
+Qed.
+
+Hint Resolve not_in_domain_compute.
+Hint Rewrite not_in_domain_compute:RE.
+
+Lemma apply_app_compute_subst : forall (is_s : inst_subst) (s : substitution) (st0 st1 : id),
+       st0 < st1 -> apply_subst ((compute_subst st1 is_s) ++ s) (var st0) = apply_subst s (var st0).
+Proof.
+  induction is_s;
+  crush.
+Qed.
+
+Hint Resolve apply_app_compute_subst.
+Hint Rewrite apply_app_compute_subst:RE.
+
+Lemma compute_subst_cons_rwt : forall (st : id) (tau : ty) (is_s : inst_subst),
+    compute_subst st (tau :: is_s) = (st, tau) :: compute_subst (S st) is_s.
+Proof.
+  auto.
+Qed.
+
+Hint Resolve compute_subst_cons_rwt.
+Hint Rewrite compute_subst_cons_rwt:RE.
+
+Lemma find_subst_id_compute : forall (i : id) (is_s : inst_subst) (st : id) (tau : ty),
+    nth_error is_s i = Some tau -> find_subst (compute_subst st is_s) ((st + i)) = Some tau.
+Proof.
+  induction i; crush.
+  destruct is_s; crush.
+  destruct is_s. crush.
+  rewrite compute_subst_cons_rwt.
+  crush.
+  rewrite <- Nat.add_succ_comm.
+  erewrite IHi; eauto.
+Qed.
+
+Hint Resolve find_subst_id_compute.
+Hint Rewrite find_subst_id_compute:RE.
+
+Lemma apply_subst_inst_to_ty_to_schm : forall (is_s : inst_subst) (tau : ty),
+    apply_inst_subst is_s (ty_to_schm tau) = Some_schm tau.
+Proof.
+  induction tau; crush.
+Qed.
+
+Hint Resolve apply_subst_inst_to_ty_to_schm.
+Hint Rewrite apply_subst_inst_to_ty_to_schm:RE.
+
