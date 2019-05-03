@@ -31,15 +31,16 @@ Program Definition apply_inst_subst_hoare (is_s : inst_subst) (sigma : schm):
   end .
       
 Program Definition schm_inst_dep (sigma : schm) :
-  @Infer (@top id) (ty * inst_subst)
-              (fun i r f => f = i + (max_gen_vars sigma) /\ apply_inst_subst (snd r) sigma = Some_schm (fst r) /\
-              compute_inst_subst i (max_gen_vars sigma) = (snd r) /\ (new_tv_schm sigma i -> new_tv_ty (fst r) f)) :=
+  @Infer (@top id) ty
+         (fun i r f => f = i + (max_gen_vars sigma) /\
+                    apply_inst_subst (compute_inst_subst i (max_gen_vars sigma)) sigma = Some_schm r /\
+                    (new_tv_schm sigma i -> new_tv_ty r f)) :=
     match max_gen_vars sigma as y with
     | nmax => 
        st <- get ;
        _ <- put (st + nmax) ;
        tau <- apply_inst_subst_hoare (compute_inst_subst st nmax) sigma ;
-       ret (tau, (compute_inst_subst st nmax))
+       ret tau
     end.
 Next Obligation.
   simpl in *.
@@ -85,8 +86,8 @@ Program Fixpoint W (e : term) (G : ctx) {struct e} :
 
   | var_t x =>
             sigma <- look_dep x G ;
-            tau_iss <- schm_inst_dep sigma ;
-            ret ((fst tau_iss), nil)
+            tau <- schm_inst_dep sigma ;
+            ret (tau, nil)
 
   | lam_t x e' =>
               alpha <- fresh ;
@@ -126,12 +127,13 @@ Next Obligation.  (* Case: postcondition of var *)
   - (* Case: var_t soundness *)
     econstructor; eauto. 
     rewrite apply_subst_ctx_nil. eauto.
-    unfold is_schm_instance. exists (compute_inst_subst st1 (max_gen_vars tau)). assumption.
+    unfold is_schm_instance. exists (compute_inst_subst st1 (max_gen_vars tau)).
+    assumption.
   (* Case: var_t completeness *)
   - subst.
     unfold completeness.
     intros.
-    inversion H1.
+    inversion H3.
     subst.
     inversion H7.
     rename x into is_s.
