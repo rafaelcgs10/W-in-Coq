@@ -75,7 +75,7 @@ Unset Implicit Arguments.
 
 (*** The algorithm W *)
 
-Program Fixpoint W_hoare (e : term) (G : ctx) {struct e} :
+Program Fixpoint W (e : term) (G : ctx) {struct e} :
   @Infer (fun i => new_tv_ctx G i) (ty * substitution)
               (fun i x f => i <= f /\ new_tv_subst (snd x) f /\ new_tv_ty (fst x) f /\
                new_tv_ctx (apply_subst_ctx (snd x) G) f /\ has_type (apply_subst_ctx ((snd x)) G) e (fst x) /\ completeness e G (fst x) ((snd x)) i) :=
@@ -91,19 +91,19 @@ Program Fixpoint W_hoare (e : term) (G : ctx) {struct e} :
   | lam_t x e' =>
               alpha <- fresh ;
               G' <- addFreshCtx G x alpha ;
-              tau_s <- W_hoare e' G'  ;
+              tau_s <- W e' G'  ;
               ret ((arrow (apply_subst ((snd tau_s)) (var alpha)) (fst tau_s)), (snd tau_s))
 
   | app_t l r =>
-              tau1_s1 <- W_hoare l G  ;
-              tau2_s2 <- W_hoare r (apply_subst_ctx (snd tau1_s1) G)  ;
+              tau1_s1 <- W l G  ;
+              tau2_s2 <- W r (apply_subst_ctx (snd tau1_s1) G)  ;
               alpha <- fresh ;
               s <- unify (apply_subst (snd tau2_s2) (fst tau1_s1)) (arrow (fst tau2_s2) (var alpha)) ;
               ret (apply_subst s (var alpha), compose_subst  (snd tau1_s1) (compose_subst (snd tau2_s2) s))
 
   | let_t x e1 e2  =>
-                 tau1_s1 <- W_hoare e1 G  ;
-                 tau2_s2 <- W_hoare e2 ((x,gen_ty (fst tau1_s1) (apply_subst_ctx (snd tau1_s1) G) )::(apply_subst_ctx (snd tau1_s1) G))  ;
+                 tau1_s1 <- W e1 G  ;
+                 tau2_s2 <- W e2 ((x,gen_ty (fst tau1_s1) (apply_subst_ctx (snd tau1_s1) G) )::(apply_subst_ctx (snd tau1_s1) G))  ;
                  ret (fst tau2_s2, compose_subst (snd tau1_s1) (snd tau2_s2))
   end. 
 Next Obligation.
@@ -165,8 +165,8 @@ Next Obligation.
 Defined.
 Next Obligation. (* Case: postcondition of lambda  *)
   simpl.
-  destruct (W_hoare e' (((x, sc_var x0)) :: G) >>= _);
-  crush; clear W_hoare;
+  destruct (W e' (((x, sc_var x0)) :: G) >>= _);
+  crush; clear W;
   rename x0 into st0, t1 into s, x1 into tau_r, t into st1.
   (* Subcase : new_tv_ty lambda *)
   - destruct (find_subst s st0).
@@ -225,9 +225,9 @@ Next Obligation.
   try splits; auto.
 Defined.
 Next Obligation. (* Case: postcondition of application  *)
-  destruct (W_hoare l G  >>= _).
+  destruct (W l G  >>= _).
   crush;
-  clear W_hoare;
+  clear W;
   rename H7 into MGU, H13 into MGU', H15 into MGU'';
   rename x4 into alpha, x into st0, x1 into st1;
   rename x3 into mu, t1 into s1, t2 into s2;
@@ -316,9 +316,9 @@ Next Obligation.
   try splits; eauto.
 Defined.
 Next Obligation. (* Case : postcondition of let *)
-  destruct (W_hoare e1 G >>= _).
+  destruct (W e1 G >>= _).
    crush;
-  clear W_hoare;
+  clear W;
   rename H11 into SOUND_e2, H5 into SOUND_e1;
   rename H6 into COMP_e1, H12 into COMP_e2;
   rename x into st0, t into st3;
@@ -384,4 +384,4 @@ Next Obligation. (* Case : postcondition of let *)
     Unshelve. eauto. eauto.
 Defined.
 
-Print Assumptions W_hoare.
+Print Assumptions W.
