@@ -266,23 +266,31 @@ Qed.
 Hint Resolve apply_subst_app1.
 Hint Rewrite apply_subst_app1 : subst.
 
-Lemma add_subst_rewrite_for_modified_stamp : forall (s : substitution) (i : id) (tau : ty),
+Lemma add_subst_rewrite_for_modified_id : forall (s : substitution) (i : id) (tau : ty),
     (apply_subst ((i, tau)::s) (var i)) = tau.
   intros.
   mysimp.
 Qed.
 
-Hint Resolve add_subst_rewrite_for_modified_stamp.
+Hint Resolve add_subst_rewrite_for_modified_id.
 
-Lemma add_subst_rewrite_for_unmodified_stamp : forall (s : substitution) (i j : id) (tau : ty),
+Lemma add_subst_rewrite_for_unmodified_id : forall (s : substitution) (i j : id) (tau : ty),
     i <> j -> (apply_subst ((i, tau):: s)) (var j) = apply_subst s (var j).
   intros; induction s; mysimp.
 Qed.
 
-Hint Resolve add_subst_rewrite_for_unmodified_stamp.
+Hint Resolve add_subst_rewrite_for_unmodified_id.
 
 Lemma img_ids_append_cons : forall a t s, img_ids ((a, t)::s) = ids_ty t ++ img_ids s.
 Proof.
   induction t; mysimp.
 Qed.
 
+Lemma assoc_id_in_subst_app2 : forall (s1 s2 : substitution) (st : id) (tau : ty),
+ find_subst s1 st = Some tau -> find_subst (s1 ++ s2) st = Some tau.
+Proof.
+  intros. induction s1; crush.
+Qed.
+
+Hint Resolve assoc_id_in_subst_app2.
+Hint Rewrite assoc_id_in_subst_app2:RE.

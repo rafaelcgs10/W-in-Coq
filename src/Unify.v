@@ -6,6 +6,7 @@ Require Import Relation_Operators.
 Require Import LibTactics.
 Require Import Coq.Setoids.Setoid.
 Require Import Program.
+Require Import HoareMonad.
 Require Import SimpleTypes.
 Require Import Subst.
 Require Import NewTypeVariable.
@@ -70,17 +71,6 @@ Proof.
 Qed.
 
 (** * Specification of the Unification Algorithm *)
-
-Inductive UnifyFailure : ty -> ty -> Prop :=
-  | occ_fail  : forall v t, occurs v t -> UnifyFailure (var v) t
-  | occ_fail'  : forall v t, occurs v t -> UnifyFailure t (var v)
-  | diff_cons : forall n n', n <> n' -> UnifyFailure (con n) (con n')
-  | con_arrow   : forall n l r, UnifyFailure (con n) (arrow l r)
-  | arrow_con   : forall n l r, UnifyFailure (arrow l r) (con n)
-  | arrow_left  : forall l l' r r', UnifyFailure l l' -> UnifyFailure (arrow l r) (arrow l' r')
-  | arrow_right  : forall l l' r r' s, UnifyFailure (apply_subst s r) (apply_subst s r') -> UnifyFailure (arrow l r) (arrow l' r') .
-
-Hint Constructors UnifyFailure.
 
 (** ** Definition of a unifier for a list of constraints *)
 
@@ -441,7 +431,7 @@ refine (fix ids_ty_dep2 (tau tau' : ty) : {t : list id | wf_ty t tau /\ wf_ty t 
   try (apply wf_ty_app_comm; apply wf_ty_app; auto).
 Qed.
 
-Definition unify : forall t1 t2 : ty,
+Definition unify'' : forall t1 t2 : ty,
    {x & ({ s | unifier t1 t2 s /\ wf_subst x s /\
                (forall st, (new_tv_ty t1 st /\ new_tv_ty t2 st) -> new_tv_subst s st) /\
            forall s', unifier t1 t2 s' ->
@@ -464,3 +454,24 @@ Fixpoint id_in_subst (i : id) (s : substitution) : option ty :=
     | nil => None
     | (i', tau)::s' => if eq_id_dec i i' then Some tau else id_in_subst i s'
   end.
+
+Program Definition unify (tau1 tau2 : ty) :
+  @Infer (@top id) substitution (fun i mu f => i = f /\
+                                      (forall s', apply_subst s' tau1 = apply_subst s' tau2 ->
+                                             exists s'', forall tau, apply_subst s' tau = apply_subst (compose_subst mu s'') tau) /\
+                                      ((new_tv_ty tau1 i /\ new_tv_ty tau2 i) -> new_tv_subst mu i) /\
+                                        apply_subst mu tau1 = apply_subst mu tau2) :=
+  match unify'' tau1 tau2 as y  with
+  | existT _ c (inleft _ (exist _ mu HS)) => ret mu
+  | existT _ c (inright _ error) => failT (@UnifyFailure' tau1 tau2 error) substitution
+  end.
+Next Obligation.
+  splits; intros; eauto.
+  edestruct e; eauto.
+  exists x0.
+  eapply ext_subst_var_ty.
+  intros.
+  simpl.
+  eauto.
+Defined.
+

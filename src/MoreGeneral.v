@@ -481,6 +481,9 @@ Hint Resolve index_aux2.
 Lemma index_aux_false : forall l n m i, m < n -> index_list_id_aux n i l = Some m -> False.
 Proof.
   induction l; crush.
+  Unshelve.
+  auto.
+  auto.
 Qed.
 Hint Resolve index_aux_false.
 

@@ -20,28 +20,7 @@ Require Import SimpleTypes.
 Require Import Subst.
 Require Import MyLtacs.
 
-Inductive SubstFailure :  Prop :=
-| substFail : SubstFailure.
-
-Hint Constructors SubstFailure.
-
-Inductive MissingVar : id ->  Prop :=
-| missingVar : forall i, MissingVar i.
-
-Hint Constructors MissingVar.
-
-Inductive InferFailure : Prop :=
-| SubstFailure' : SubstFailure -> InferFailure
-| UnifyFailure' : forall t1 t2, UnifyFailure t1 t2 -> InferFailure
-| MissingVar' : forall i, MissingVar i -> InferFailure.
-
-Hint Constructors InferFailure.
-
-Unset Implicit Arguments.
-
-Definition Infer := @HoareState id InferFailure.
-Definition get := @get id InferFailure.
-Definition put := @put id InferFailure.
+(*** A bunch of auxiliary definitions *)
 
 (** Gives a type that is a (new) instance of a scheme *)
 Program Definition apply_inst_subst_hoare (is_s : inst_subst) (sigma : schm):
@@ -72,24 +51,8 @@ Program Definition look_dep (x : id) (G : ctx) :
   @Infer (@top id) schm (fun i k f => i = f /\ in_ctx x G = Some k) :=
   match in_ctx x G with
   | Some sig => ret sig
-  | None => failT (MissingVar' x (missingVar x)) schm
+  | None => failT (@MissingVar' x (missingVar x)) schm
   end.
-
-
-Lemma assoc_stamp_in_subst_app2 : forall (s1 s2 : substitution) (st : id) (tau : ty),
- find_subst s1 st = Some tau -> find_subst (s1 ++ s2) st = Some tau.
-Proof.
-  intros. induction s1; crush.
-Qed.
-
-Hint Resolve assoc_stamp_in_subst_app2.
-Hint Rewrite assoc_stamp_in_subst_app2:RE.
-
-Definition completeness (e : term) (G : ctx) (tau : ty) (s : substitution) (st : id) :=
-  forall (tau' : ty) (phi : substitution),
-    has_type (apply_subst_ctx phi G) e tau' -> 
-    exists s', tau' = apply_subst s' tau /\
-    (forall x : id, x < st -> apply_subst phi (var x) = apply_subst s' (apply_subst s (var x))).
 
 (** Gives you a fresh variable *)
 Program Definition fresh : @Infer (@top id) id (fun i x f => S i = f /\ i = x) := fun n => exist _ (inleft (n, S n)) _.
@@ -102,27 +65,15 @@ Next Obligation.
   unfold top; auto.
 Defined.
 
-Program Definition unify (tau1 tau2 : ty) :
-  @Infer (@top id) substitution (fun i mu f => i = f /\
-                                      (forall s', apply_subst s' tau1 = apply_subst s' tau2 ->
-                                             exists s'', forall tau, apply_subst s' tau = apply_subst (compose_subst mu s'') tau) /\
-                                      ((new_tv_ty tau1 i /\ new_tv_ty tau2 i) -> new_tv_subst mu i) /\
-                                        apply_subst mu tau1 = apply_subst mu tau2) :=
-  match Unify.unify tau1 tau2 as y  with
-  | existT _ c (inleft _ (exist _ mu HS)) => ret mu
-  | existT _ c (inright _ error) => failT (UnifyFailure' tau1 tau2 error) substitution
-  end.
-Next Obligation.
-  splits; intros; eauto.
-  edestruct e; eauto.
-  exists x0.
-  eapply ext_subst_var_ty.
-  intros.
-  simpl.
-  eauto.
-Defined.
+Definition completeness (e : term) (G : ctx) (tau : ty) (s : substitution) (st : id) :=
+  forall (tau' : ty) (phi : substitution),
+    has_type (apply_subst_ctx phi G) e tau' -> 
+    exists s', tau' = apply_subst s' tau /\
+    (forall x : id, x < st -> apply_subst phi (var x) = apply_subst s' (apply_subst s (var x))).
     
 Unset Implicit Arguments.
+
+(*** The algorithm W *)
 
 Program Fixpoint W_hoare (e : term) (G : ctx) {struct e} :
   @Infer (fun i => new_tv_ctx G i) (ty * substitution)
@@ -255,7 +206,7 @@ Next Obligation. (* Case: postcondition of lambda  *)
       fequals; eauto.
     * intros;
       rewrite <- H8; eauto.
-      erewrite add_subst_rewrite_for_unmodified_stamp; auto; try omega.
+      erewrite add_subst_rewrite_for_unmodified_id; auto; try omega.
     * unfold completeness in H6.
       specialize H6 with (phi := (st0, tau)::phi).
       edestruct H6.

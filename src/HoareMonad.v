@@ -6,6 +6,9 @@ Require Import LibTactics.
 
 Require Import Program.
 Require Import List.
+Require Import SimpleTypes.
+Require Import Occurs.
+Require Import Subst.
 Require Import Omega.
 
 Section hoare_state_monad.
@@ -74,9 +77,9 @@ Check bind.
 
 Program Definition failT {B : Prop} (b : B) (A : Type) : @HoareState B top A (fun _ _ _ => True) := fun s => exist _ (inright b) _.
 
-Program Definition get {B : Prop} : @HoareState B top st (fun i x f => i = f /\ x = i) := fun s => exist _ (inleft (s, s)) _.
+Program Definition get' {B : Prop} : @HoareState B top st (fun i x f => i = f /\ x = i) := fun s => exist _ (inleft (s, s)) _.
 
-Program Definition put {B : Prop} (x : st) : @HoareState B top unit (fun _ _ f => f = x) := fun  _ => exist _ (inleft (tt, x)) _.
+Program Definition put' {B : Prop} (x : st) : @HoareState B top unit (fun _ _ f => f = x) := fun  _ => exist _ (inleft (tt, x)) _.
 
 End hoare_state_monad.
 
@@ -86,60 +89,38 @@ Notation "x <- m ; p" := (m >>= fun x => p)
     (at level 68, right associativity,
      format "'[' x  <-  '[' m ']' ; '//' '[' p ']' ']'").
 
-Program Definition getN := 
-    n <- @get nat True  ;
-    ret n.
+(** * Errors of W *)
+Inductive UnifyFailure : ty -> ty -> Prop :=
+  | occ_fail  : forall v t, occurs v t -> UnifyFailure (var v) t
+  | occ_fail'  : forall v t, occurs v t -> UnifyFailure t (var v)
+  | diff_cons : forall n n', n <> n' -> UnifyFailure (con n) (con n')
+  | con_arrow   : forall n l r, UnifyFailure (con n) (arrow l r)
+  | arrow_con   : forall n l r, UnifyFailure (arrow l r) (con n)
+  | arrow_left  : forall l l' r r', UnifyFailure l l' -> UnifyFailure (arrow l r) (arrow l' r')
+  | arrow_right  : forall l l' r r' s, UnifyFailure (apply_subst s r) (apply_subst s r') -> UnifyFailure (arrow l r) (arrow l' r') .
 
+Hint Constructors UnifyFailure.
 
-(*
-Program Definition applyMH (A B : Set) pre1 pos1
-        (fn : forall x : A, (@HoareState B pre1 B pos1)) (x : A) : @HoareState B pre1 B pos1 := 
-    x' <- fn x ;
-    ret x'
-  .
-Next Obligation.
-  unfold top.
-  split; auto.
-Defined.
-Next Obligation.
-  cbv.
-  edestruct (fn x).
-  destruct x1.
-  simpl in *.
-  destruct p.
-  auto.
-  simpl in y.
-  auto.
-Defined.
+Inductive SubstFailure :  Prop :=
+| substFail : SubstFailure.
 
-Lemma toListPost : forall A B, forall (post : Post A B), A -> (@HoareState A pre1 B pos1)) -> Post A (list B).
-  intros.
-  unfold Post in *.
-  intros.
-  eapply X; auto.
-Qed.
-*)
+Hint Constructors SubstFailure.
 
-(*
-Program Fixpoint mapMH (A B : Set) pre1 pos1 pre2 pos2
-        (fn : forall x : A, (@HoareState A (pre1 x) B (pos1 x))) (l : list A) : @HoareState A pre2 (list B) pos2 := 
-  match l with
-  | nil => ret nil
-  | x::xs =>
-    DO
-      x' <- fn x ;
-      xs' <- mapMH pos2 fn xs ;
-      ret (x'::xs')
-    OD
-   end.
-Next Obligation.
-  unfold top.
-  auto.
-Defined.
-Next Obligation.
-  auto.
-  unfold HoareState in fn.
-  apply exist in H.
-Abort.
- *)
+Inductive MissingVar : id ->  Prop :=
+| missingVar : forall i, MissingVar i.
 
+Hint Constructors MissingVar.
+
+Inductive InferFailure : Prop :=
+| SubstFailure' : SubstFailure -> InferFailure
+| UnifyFailure' : forall t1 t2, UnifyFailure t1 t2 -> InferFailure
+| MissingVar' : forall i, MissingVar i -> InferFailure.
+
+Hint Constructors InferFailure.
+
+Unset Implicit Arguments.
+
+(** * Instance of Hoare Exception-Sate Monad *)
+Definition Infer := @HoareState id InferFailure.
+Definition get := @get' id InferFailure.
+Definition put := @put' id InferFailure.
