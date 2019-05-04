@@ -5,13 +5,6 @@ Require Import Arith.Arith_base List Omega.
 Require Import SimpleTypes.
 Require Import Schemes.
 
-(* This is here just for lazyness *)
-Fixpoint find_subst (s : list (id * ty)) (i : id) : option ty :=
-  match s with
-    | nil => None
-    | (v,t') :: s' => if (eq_id_dec v i) then Some t' else find_subst s' i
-  end.
-
 Ltac s :=
   match goal with
     | [ H : _ /\ _ |- _] => destruct H
@@ -69,7 +62,6 @@ Ltac crush' :=
     | [ |- context[eq_id_dec ?a ?b] ] => destruct (eq_id_dec a b) ; subst ; try congruence
     | [ H : context[eq_id_dec ?a ?b] |- _ ] => destruct (eq_id_dec a b) ; subst ; try congruence
     | [ |- context[eq_nat_dec ?a ?b] ] => destruct (eq_nat_dec a b) ; subst ; try congruence
-    | [ |- context[find_subst ?s ?a] ] => destruct (find_subst ?s ?a) ; subst ; try congruence
     | [ H : context[eq_nat_dec ?a ?a] |- _ ] => destruct (eq_nat_dec a a) ; subst ; try congruence
   end.
 

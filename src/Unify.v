@@ -101,7 +101,7 @@ Hint Resolve unifier_arrowend.
 (** * Type of the unification algorithm *)
 
 (*
-The type of unification algorithm specifies that from a list of well-formed constraints
+The type of unification algorithm specifies that from well-formed constraints
 we can either:
 
 1 - Produce a well-formed substitution s such that it unifies the constraints and s is the

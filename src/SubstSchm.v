@@ -15,7 +15,7 @@ Require Import Schemes.
 Require Import LibTactics.
 
 
-(* Simple Substitution on schemes *)
+(** * Simple Substitution on schemes *)
 
 Fixpoint apply_subst_schm (s : substitution) (sigma : schm) : schm :=
   match sigma with
@@ -25,7 +25,7 @@ Fixpoint apply_subst_schm (s : substitution) (sigma : schm) : schm :=
   | sc_gen i => sc_gen i
   end.
 
-(** ** Some Obvious Facts About Substitutions Schemes **)
+(** ** Some obvious facts about substitutions schemes **)
 
 Lemma apply_subst_schm_id : forall t, apply_subst_schm nil t = t.
 Proof.
@@ -100,7 +100,13 @@ Qed.
 Hint Resolve apply_subst_schm_nil.
 Hint Rewrite apply_subst_schm_nil : subst.
 
-(* Inst subst on schemes *)
+(** * Inst subst on schemes *)
+(** * Substitution to make a scheme a simple type *)
+
+Definition inst_subst := list ty.
+
+Definition ids_inst_subst (s : inst_subst) : list id := List.concat (List.map ids_ty s).
+
 Fixpoint apply_inst_subst (is: inst_subst) (sigma: schm) : schm_check:=
   match sigma with
   | (sc_con c) => (Some_schm (con c))
@@ -118,6 +124,8 @@ Fixpoint apply_inst_subst (is: inst_subst) (sigma: schm) : schm_check:=
                             end
                          end
 end.
+
+(** ** Some obvious facts about instance substitutions schemes **)
 
 Lemma apply_inst_subst_con : forall (i : id) (is : inst_subst),
     apply_inst_subst is (sc_con i) = Some_schm (con i).
@@ -163,16 +171,23 @@ Qed.
 Hint Resolve ty_to_subst_schm.
 Hint Rewrite ty_to_subst_schm:RE.
 
+
+(** * Type instance definition **)
+
 Definition is_schm_instance (tau : ty) (sigma : schm) :=
     exists is: inst_subst, (apply_inst_subst is sigma) = (Some_schm tau).
 
+
+(**  Most general instance definition **)
 Definition most_general_schm_instance (tau : ty) (sigma : schm) :=
   is_schm_instance tau sigma -> forall tau', is_schm_instance tau' sigma ->
                                     exists (s : substitution), tau' = apply_subst s tau.
 
+(** ** Application of a simple substitution over a inst_subst *)
 Definition map_apply_subst_ty (s : substitution) (is : inst_subst) : inst_subst :=
   List.map (apply_subst s) is.
 
+(** Some facts about application of a simple substitution over a inst_subst  *)
 Lemma apply_inst_subst_con_inversion : forall (is : inst_subst) (e : schm) (i : id),
     e = sc_con i -> apply_inst_subst is e = Some_schm (con i).
 Proof.

@@ -14,7 +14,11 @@ Require Import MyLtacs.
 (** A operation for substitute all the ocurrences of variable x in t2 by t1. *)
 Definition substitution := list (id * ty).
 
-(** find_subst is in MyLtacs because I'm lazy!*)
+Fixpoint find_subst (s : list (id * ty)) (i : id) : option ty :=
+  match s with
+    | nil => None
+    | (v,t') :: s' => if (eq_id_dec v i) then Some t' else find_subst s' i
+  end.
 
 Fixpoint apply_subst (s : substitution) (t : ty) : ty :=
   match t with
@@ -37,9 +41,14 @@ Proof.
   induction t; mysimp.
 Qed.
 
+
+(** * Free variables of a substitution *)
+
 Definition FV_subst (s: substitution) := ((dom s) ++ (img_ids s)).
 
+
 (** * Some lemas retaled to the domain of a substitution *)
+
 Lemma dom_dist_app : forall s1 s2, dom (s1 ++ s2) = (dom s1) ++ (dom s2).
 Proof.
   induction s1; intros; mysimp; simpl in *; eauto.
@@ -58,7 +67,7 @@ Proof.
   reflexivity.
 Qed.
 
-(** ** Some Obvious Facts About Substitutions **)
+(** ** Some obvious facts about substitutions **)
 
 Lemma apply_subst_id : forall t, apply_subst nil t = t.
 Proof.
@@ -149,7 +158,7 @@ Definition compose_subst (s1 s2 : substitution) :=
       apply_subst_list s1 s2 ++ s2.
 
 
-(** ** Some Obvious Facts About Composition **)
+(** ** Some obvious facts about composition **)
 
 Lemma compose_subst_nil_l : forall s, compose_subst nil s = s.
 Proof.

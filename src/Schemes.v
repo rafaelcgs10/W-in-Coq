@@ -17,7 +17,7 @@ Inductive schm : Type :=
   | sc_gen : id -> schm
   | sc_arrow : schm -> schm -> schm. 
 
-(** * Substitutions for Schemes *)
+(** * It converts a simple type into a scheme  *)
 
 Fixpoint ty_to_schm (tau : ty) : schm :=
 match tau with
@@ -25,16 +25,6 @@ match tau with
   | con n => sc_con n
   | arrow t1 t2 => sc_arrow (ty_to_schm t1) (ty_to_schm t2)                 
 end.
-
-(** * Substitution to make a Scheme a simple Type *)
-
-Definition inst_subst := list ty.
-
-Definition ids_inst_subst (s : inst_subst) : list id := List.concat (List.map ids_ty s).
-
-Inductive schm_check : Type :=
-  | Some_schm : ty -> schm_check
-  | Error_schm : schm_check.
 
 (** * Free variables of schemes *)
 
@@ -53,3 +43,8 @@ Fixpoint max_gen_vars (sigma : schm) : nat :=
   | sc_arrow s1 s2 => max (max_gen_vars s1) (max_gen_vars s2)
   end.
 
+(** *  Option type for the instance substitution **)
+
+Inductive schm_check : Type :=
+  | Some_schm : ty -> schm_check
+  | Error_schm : schm_check.
