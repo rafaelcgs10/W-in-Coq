@@ -3,7 +3,6 @@ Set Implicit Arguments.
 Require Import LibTactics.
 Require Import Arith.Arith_base List Omega.
 Require Import SimpleTypes.
-Require Import Schemes.
 
 Ltac s :=
   match goal with

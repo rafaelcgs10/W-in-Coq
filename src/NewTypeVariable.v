@@ -39,9 +39,9 @@ Hint Constructors new_tv_schm.
 Inductive new_tv_ctx : ctx -> id -> Prop :=
 | new_tv_ctx_nil : forall i : id, new_tv_ctx nil i
 | new_tv_ctx_cons : forall (G : ctx) (i x : id) (sigma : schm),
-                            new_tv_ctx G i ->
-                            new_tv_schm sigma i ->
-                            new_tv_ctx ((x, sigma) :: G) i.
+    new_tv_ctx G i ->
+    new_tv_schm sigma i ->
+    new_tv_ctx ((x, sigma) :: G) i.
 
 Hint Constructors new_tv_ctx.
 

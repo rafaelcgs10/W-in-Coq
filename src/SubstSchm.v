@@ -100,25 +100,25 @@ Qed.
 Hint Resolve apply_subst_schm_nil.
 Hint Rewrite apply_subst_schm_nil : subst.
 
-(** * Inst subst on schemes *)
+(** * Instance subst on schemes *)
 (** * Substitution to make a scheme a simple type *)
 
 Definition inst_subst := list ty.
 
 Definition ids_inst_subst (s : inst_subst) : list id := List.concat (List.map ids_ty s).
 
-Fixpoint apply_inst_subst (is: inst_subst) (sigma: schm) : option ty:=
+Fixpoint apply_inst_subst (is_s : inst_subst) (sigma: schm) : option ty:=
   match sigma with
   | (sc_con c) => (Some (con c))
   | (sc_var v) => (Some (var v))
-  | (sc_gen x) => match (nth_error is x) with
+  | (sc_gen x) => match (nth_error is_s x) with
                      | None => None
                      | (Some t) => (Some t)
                  end
-  | (sc_arrow ts1 ts2) => match (apply_inst_subst is ts1) with
+  | (sc_arrow ts1 ts2) => match (apply_inst_subst is_s ts1) with
                           | None => None
                           | (Some t1) =>
-                            match (apply_inst_subst is ts2) with
+                            match (apply_inst_subst is_s ts2) with
                              | None => None
                              | (Some t2) => (Some (arrow t1 t2))
                             end
@@ -127,8 +127,8 @@ end.
 
 (** ** Some obvious facts about instance substitutions schemes **)
 
-Lemma apply_inst_subst_con : forall (i : id) (is : inst_subst),
-    apply_inst_subst is (sc_con i) = Some (con i).
+Lemma apply_inst_subst_con : forall (i : id) (is_s : inst_subst),
+    apply_inst_subst is_s (sc_con i) = Some (con i).
 Proof.
   intros. reflexivity.
 Qed.
@@ -136,14 +136,16 @@ Qed.
 Hint Resolve apply_inst_subst_con.
 Hint Rewrite apply_inst_subst_con:RE.
 
-Lemma apply_inst_subst_var : forall (i : id) (is : inst_subst),
-    apply_inst_subst is (sc_var i) = Some (var i).
+Lemma apply_inst_subst_var : forall (i : id) (is_s : inst_subst),
+    apply_inst_subst is_s (sc_var i) = Some (var i).
 Proof.
   intros. reflexivity.
 Qed.
 
 Hint Resolve apply_inst_subst_var.
 Hint Rewrite apply_inst_subst_var:RE.
+
+(** * Lemmas relation scheme substitution and ty_to_schm *)
 
 Lemma ty_to_subst_single : forall (tau t : ty) (i : id),
     apply_subst_schm ((i, t)::nil) (ty_to_schm tau) = ty_to_schm (apply_subst ((i, t)::nil) tau).
@@ -175,8 +177,20 @@ Hint Rewrite ty_to_subst_schm:RE.
 (** * Type instance definition **)
 
 Definition is_schm_instance (tau : ty) (sigma : schm) :=
-    exists is: inst_subst, (apply_inst_subst is sigma) = (Some tau).
+    exists is_s : inst_subst, (apply_inst_subst is_s sigma) = (Some tau).
 
+Lemma apply_inst_subst_gen_nth : forall (is_s : inst_subst) (i : id) (tau : ty),
+    apply_inst_subst is_s (sc_gen i) = Some tau -> nth_error is_s i = Some tau.
+Proof.
+  intros.
+  simpl in H.
+  destruct (nth_error is_s i).
+  inversion H. reflexivity.
+  inversion H.
+Qed.
+
+Hint Resolve apply_inst_subst_gen_nth.
+Hint Rewrite apply_inst_subst_gen_nth:RE.
 
 (**  Most general instance definition **)
 Definition most_general_schm_instance (tau : ty) (sigma : schm) :=
@@ -184,12 +198,12 @@ Definition most_general_schm_instance (tau : ty) (sigma : schm) :=
                                     exists (s : substitution), tau' = apply_subst s tau.
 
 (** ** Application of a simple substitution over a inst_subst *)
-Definition map_apply_subst_ty (s : substitution) (is : inst_subst) : inst_subst :=
-  List.map (apply_subst s) is.
+Definition map_apply_subst_ty (s : substitution) (is_s : inst_subst) : inst_subst :=
+  List.map (apply_subst s) is_s.
 
 (** Some facts about application of a simple substitution over a inst_subst  *)
-Lemma apply_inst_subst_con_inversion : forall (is : inst_subst) (e : schm) (i : id),
-    e = sc_con i -> apply_inst_subst is e = Some (con i).
+Lemma apply_inst_subst_con_inversion : forall (is_s : inst_subst) (e : schm) (i : id),
+    e = sc_con i -> apply_inst_subst is_s e = Some (con i).
 Proof.
   intros.
   subst.
@@ -199,8 +213,11 @@ Qed.
 Hint Resolve apply_inst_subst_con_inversion.
 Hint Rewrite apply_inst_subst_con_inversion:RE.
 
-Lemma apply_inst_ty_to_schm : forall (tau : ty) (is : inst_subst),
-    apply_inst_subst is (ty_to_schm tau) = Some tau.
+
+(** * Lemmas relation instance substitution and ty_to_schm *)
+
+Lemma apply_inst_ty_to_schm : forall (tau : ty) (is_s : inst_subst),
+    apply_inst_subst is_s (ty_to_schm tau) = Some tau.
 Proof.
   intros.
   induction tau; mysimp.
@@ -212,12 +229,23 @@ Qed.
 Hint Resolve apply_inst_ty_to_schm.
 Hint Rewrite apply_inst_ty_to_schm:RE.
 
-Lemma subst_inst_subst_type_var : forall (is : inst_subst) (s: substitution) (i : id),
-    (apply_inst_subst is (sc_var i)) = (Some (var i)) ->
-    (apply_inst_subst (map_apply_subst_ty s is) (apply_subst_schm s (sc_var i))) =
+Lemma apply_subst_inst_to_ty_to_schm : forall (is_s : inst_subst) (tau : ty),
+    apply_inst_subst is_s (ty_to_schm tau) = Some tau.
+Proof.
+  induction tau; crush.
+Qed.
+
+Hint Resolve apply_subst_inst_to_ty_to_schm.
+Hint Rewrite apply_subst_inst_to_ty_to_schm:RE.
+
+(** * Lemma relating map substitution and apply instance substitution *)
+
+Lemma subst_inst_subst_type_var : forall (is_s : inst_subst) (s: substitution) (i : id),
+    (apply_inst_subst is_s (sc_var i)) = (Some (var i)) ->
+    (apply_inst_subst (map_apply_subst_ty s is_s) (apply_subst_schm s (sc_var i))) =
     (Some (apply_subst s (var i))).
 Proof.
-  induction is.
+  induction is_s.
   simpl.
   - intros. induction s.
     + reflexivity.
@@ -231,22 +259,9 @@ Qed.
 Hint Resolve subst_inst_subst_type_var.
 Hint Rewrite subst_inst_subst_type_var:RE.
 
-Lemma apply_inst_subst_gen_nth : forall (is : inst_subst) (i : id) (tau : ty),
-    apply_inst_subst is (sc_gen i) = Some tau -> nth_error is i = Some tau.
-Proof.
-  intros.
-  simpl in H.
-  destruct (nth_error is i).
-  inversion H. reflexivity.
-  inversion H.
-Qed.
-
-Hint Resolve apply_inst_subst_gen_nth.
-Hint Rewrite apply_inst_subst_gen_nth:RE.
-
-Lemma nth_error_map_apply_subst : forall (is : inst_subst) (s : substitution) (i : id) (tau : ty),
-    nth_error is i = Some tau ->
-    nth_error (map_apply_subst_ty s is) i = Some (apply_subst s tau).
+Lemma nth_error_map_apply_subst : forall (is_s : inst_subst) (s : substitution) (i : id) (tau : ty),
+    nth_error is_s i = Some tau ->
+    nth_error (map_apply_subst_ty s is_s) i = Some (apply_subst s tau).
 Proof.
   intros.
   apply map_nth_error.
@@ -256,9 +271,9 @@ Qed.
 Hint Resolve nth_error_map_apply_subst.
 Hint Rewrite nth_error_map_apply_subst:RE.
 
-Lemma map_apply_subst_gen : forall (tau : ty) (s : substitution) (is : inst_subst) (i : id),
-    apply_inst_subst is (sc_gen i) = Some tau ->
-    apply_inst_subst (map_apply_subst_ty s is) (sc_gen i) = Some (apply_subst s tau).
+Lemma map_apply_subst_gen : forall (tau : ty) (s : substitution) (is_s : inst_subst) (i : id),
+    apply_inst_subst is_s (sc_gen i) = Some tau ->
+    apply_inst_subst (map_apply_subst_ty s is_s) (sc_gen i) = Some (apply_subst s tau).
 Proof.
   induction tau;
     try (intros;
@@ -272,13 +287,16 @@ Qed.
 Hint Resolve map_apply_subst_gen.
 Hint Rewrite map_apply_subst_gen:RE.
 
-Lemma exist_arrow_apply_inst_arrow : forall (is : inst_subst) (sigma1 sigma2 : schm) (tau : ty),
-    apply_inst_subst is (sc_arrow sigma1 sigma2) = Some tau -> exists tau1 tau2, tau = arrow tau1 tau2.
+
+(** * Lemmas to derive existentials and equations from apply_inst_susbt *)
+
+Lemma exist_arrow_apply_inst_arrow : forall (is_s : inst_subst) (sigma1 sigma2 : schm) (tau : ty),
+    apply_inst_subst is_s (sc_arrow sigma1 sigma2) = Some tau -> exists tau1 tau2, tau = arrow tau1 tau2.
 Proof.
   intros.
   simpl in H.
-    destruct (apply_inst_subst is sigma1).
-    destruct (apply_inst_subst is sigma2).
+    destruct (apply_inst_subst is_s sigma1).
+    destruct (apply_inst_subst is_s sigma2).
     inversion H.
     exists t t0.
     reflexivity.
@@ -289,15 +307,15 @@ Qed.
 Hint Resolve exist_arrow_apply_inst_arrow.
 Hint Rewrite exist_arrow_apply_inst_arrow:RE.
 
-Lemma and_arrow_apply_inst_arrow : forall (sigma1 sigma2 : schm) (tau tau' : ty) (is : inst_subst),
-    apply_inst_subst is (sc_arrow sigma1 sigma2) = Some (arrow tau tau') ->
-    (apply_inst_subst is sigma1 = Some tau) /\ (apply_inst_subst is sigma2 = Some tau').
+Lemma and_arrow_apply_inst_arrow : forall (sigma1 sigma2 : schm) (tau tau' : ty) (is_s : inst_subst),
+    apply_inst_subst is_s (sc_arrow sigma1 sigma2) = Some (arrow tau tau') ->
+    (apply_inst_subst is_s sigma1 = Some tau) /\ (apply_inst_subst is_s sigma2 = Some tau').
 Proof.
   intros.
   split;
     try (simpl in H;
-    destruct (apply_inst_subst is sigma1);
-    destruct (apply_inst_subst is sigma2);
+    destruct (apply_inst_subst is_s sigma1);
+    destruct (apply_inst_subst is_s sigma2);
     inversion H; reflexivity;
     inversion H;
     inversion H).
@@ -306,23 +324,23 @@ Qed.
 Hint Resolve and_arrow_apply_inst_arrow.
 Hint Rewrite and_arrow_apply_inst_arrow:RE.
 
-Lemma exist_arrow_apply_inst_arrow2 : forall (sigma1 sigma2 : schm) (tau : ty) (is : inst_subst),
-    apply_inst_subst is (sc_arrow sigma1 sigma2) = Some tau ->
-    exists tau1 tau2, (apply_inst_subst is sigma1 = Some tau1) /\ (apply_inst_subst is sigma2 = Some tau2) /\
+Lemma exist_arrow_apply_inst_arrow2 : forall (sigma1 sigma2 : schm) (tau : ty) (is_s : inst_subst),
+    apply_inst_subst is_s (sc_arrow sigma1 sigma2) = Some tau ->
+    exists tau1 tau2, (apply_inst_subst is_s sigma1 = Some tau1) /\ (apply_inst_subst is_s sigma2 = Some tau2) /\
                  arrow tau1 tau2 = tau.
 Proof.
   intros.
   simpl in H.
-    destruct (apply_inst_subst is sigma1); crush.
-    destruct (apply_inst_subst is sigma2); crush.
+    destruct (apply_inst_subst is_s sigma1); crush.
+    destruct (apply_inst_subst is_s sigma2); crush.
 Qed.
 
 Hint Resolve exist_arrow_apply_inst_arrow2.
 
 Lemma subst_inst_subst_type:
-  forall (sigma : schm) (s: substitution) (is : inst_subst) (tau : ty),
-    (apply_inst_subst is sigma) = (Some tau) ->
-    (apply_inst_subst (map_apply_subst_ty s is) (apply_subst_schm s sigma)) =
+  forall (sigma : schm) (s: substitution) (is_s : inst_subst) (tau : ty),
+    (apply_inst_subst is_s sigma) = (Some tau) ->
+    (apply_inst_subst (map_apply_subst_ty s is_s) (apply_subst_schm s sigma)) =
     (Some (apply_subst s tau)).
 Proof.
   induction sigma.
@@ -348,8 +366,8 @@ Proof.
     destruct H'.
     destruct H0.
     rewrite H0 in *.
-    specialize IHsigma1 with (s:=s) (is:=is) (tau:=x).
-    specialize IHsigma2 with (s:=s) (is:=is) (tau:=x0).
+    specialize IHsigma1 with (s:=s) (is_s:=is_s) (tau:=x).
+    specialize IHsigma2 with (s:=s) (is_s:=is_s) (tau:=x0).
     rewrite apply_subst_schm_arrow.
     simpl in *.
     rewrite IHsigma1.
@@ -366,7 +384,9 @@ Qed.
 Hint Resolve subst_inst_subst_type.
 Hint Rewrite subst_inst_subst_type:RE.
 
-(* Lemmas about FV_schm *)
+
+(** * Lemmas about FV_schm *)
+
 Lemma FV_type_scheme_type_to_type_scheme : forall (tau : ty),
     (FV_schm (ty_to_schm tau)) = (ids_ty tau).
 Proof.
@@ -454,6 +474,9 @@ Fixpoint compute_inst_subst (st : id) (n : nat) : list ty :=
     | l' => (var st :: l')
     end
   end.
+
+
+(** * Lemmas about nth_error function *)
 
 Lemma nth_error_nil : forall i, nth_error (nil : list ty) i = None.
 Proof.
@@ -594,13 +617,4 @@ Qed.
 
 Hint Resolve find_subst_id_compute.
 Hint Rewrite find_subst_id_compute:RE.
-
-Lemma apply_subst_inst_to_ty_to_schm : forall (is_s : inst_subst) (tau : ty),
-    apply_inst_subst is_s (ty_to_schm tau) = Some tau.
-Proof.
-  induction tau; crush.
-Qed.
-
-Hint Resolve apply_subst_inst_to_ty_to_schm.
-Hint Rewrite apply_subst_inst_to_ty_to_schm:RE.
 
