@@ -355,12 +355,11 @@ Qed.
 Hint Resolve new_tv_subst_nil.
 
 Lemma new_tv_schm_to_new_tv_ty : forall sigma x x0 i, new_tv_schm sigma x ->
-                          apply_inst_subst (compute_inst_subst x i) sigma = Some_schm x0 ->
+                          apply_inst_subst (compute_inst_subst x i) sigma = Some x0 ->
                           new_tv_ty x0 (x + i).
 Proof.
   induction sigma; intros; simpl in *; mysimp.
   - inversion H. inversion H0. econstructor. omega.
-  - inversion H0.  econstructor.
   - pose proof (Nat.lt_ge_cases i0 i).
     destruct H1.
     + erewrite nth_error_compute_inst_None in H0; auto. 
@@ -656,8 +655,8 @@ Hint Resolve new_tv_gen_ty.
 (* Relating new_tv_ty to compute_subst*)
 Lemma t_is_app_T_aux : forall (sigma : schm) (tau tau' : ty) (s : substitution) (p : nat) (st : id) (x : list ty),
     new_tv_schm sigma st -> max_gen_vars sigma <= p ->
-    apply_inst_subst (compute_inst_subst st p) sigma = Some_schm tau ->
-    apply_inst_subst x (apply_subst_schm s sigma) = Some_schm tau' ->
+    apply_inst_subst (compute_inst_subst st p) sigma = Some tau ->
+    apply_inst_subst x (apply_subst_schm s sigma) = Some tau' ->
     tau' = apply_subst ((compute_subst st x) ++ s) tau.
 Proof.
   induction sigma.

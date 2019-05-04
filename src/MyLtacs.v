@@ -48,7 +48,6 @@ Ltac crush' :=
     | [ H : sumor _ _ |- _] => destruct H
     | [ H : Some _ = Some _ |- _] => inverts* H
     | [ H : Some _ = None |- _] => congruence
-    | [ H : Some_schm  _ = Some_schm _ |- _] => inverts* H
     | [ H : None = Some _ |- _] => congruence
     | [ H : true = false |- _] => inversion H
     | [ H : false = true |- _] => inversion H

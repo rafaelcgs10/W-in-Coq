@@ -24,16 +24,16 @@ Require Import MyLtacs.
 
 (** Gives a type that is a (new) instance of a scheme *)
 Program Definition apply_inst_subst_hoare (is_s : inst_subst) (sigma : schm):
-  @Infer (@top id) ty (fun i r f => i = f /\ apply_inst_subst is_s sigma = Some_schm r) :=
+  @Infer (@top id) ty (fun i r f => i = f /\ apply_inst_subst is_s sigma = Some r) :=
   match apply_inst_subst is_s sigma with
-  | Error_schm => failT (SubstFailure' substFail) ty
-  | Some_schm tau => ret tau 
+  | None => failT (SubstFailure' substFail) ty
+  | Some tau => ret tau 
   end .
       
 Program Definition schm_inst_dep (sigma : schm) :
   @Infer (@top id) ty
          (fun i r f => f = i + (max_gen_vars sigma) /\
-                    apply_inst_subst (compute_inst_subst i (max_gen_vars sigma)) sigma = Some_schm r /\
+                    apply_inst_subst (compute_inst_subst i (max_gen_vars sigma)) sigma = Some r /\
                     (new_tv_schm sigma i -> new_tv_ty r f)) :=
     match max_gen_vars sigma as y with
     | nmax => 

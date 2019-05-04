@@ -43,8 +43,3 @@ Fixpoint max_gen_vars (sigma : schm) : nat :=
   | sc_arrow s1 s2 => max (max_gen_vars s1) (max_gen_vars s2)
   end.
 
-(** *  Option type for the instance substitution **)
-
-Inductive schm_check : Type :=
-  | Some_schm : ty -> schm_check
-  | Error_schm : schm_check.

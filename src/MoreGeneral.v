@@ -135,7 +135,7 @@ Hint Rewrite nth_error_make_constant_inst_subst3:RE.
 
 Lemma apply_subst_inst_make_constant_inst_subst : forall (sigma : schm) (tau : ty) (p : id),
     max_gen_vars sigma <= p ->
-    apply_inst_subst (make_constant_inst_subst p tau) sigma = Some_schm (find_instance sigma tau).
+    apply_inst_subst (make_constant_inst_subst p tau) sigma = Some (find_instance sigma tau).
 Proof.
   induction sigma; eauto.
   unfold max_gen_vars.
@@ -269,7 +269,7 @@ Qed.
 Hint Resolve length_make_constant_inst_subst.
 
 Lemma apply_inst_subst_succeeds : forall (sigma : schm) (is_s : inst_subst),
-    max_gen_vars sigma <= length is_s -> exists tau, apply_inst_subst is_s sigma = Some_schm tau.
+    max_gen_vars sigma <= length is_s -> exists tau, apply_inst_subst is_s sigma = Some tau.
 Proof.
   induction sigma; crush.
   cases (nth_error is_s i).
@@ -309,7 +309,7 @@ Qed.
 Hint Resolve apply_inst_subst_ge_app.
 
 Lemma is_instance_le_max : forall (sigma : schm) (tau : ty) (is_s : inst_subst),
-    apply_inst_subst is_s sigma = Some_schm tau -> max_gen_vars sigma <= length is_s.
+    apply_inst_subst is_s sigma = Some tau -> max_gen_vars sigma <= length is_s.
 Proof.
   induction sigma; crush.
   cases (nth_error is_s i).
@@ -640,7 +640,7 @@ Hint Resolve is_prefixe2_gen_aux.
 Lemma inst_subst_to_subst_aux_4 : forall (G : ctx) (tau1 tau2 : ty) (l L : list id)
                                    (is_s : list ty) (phi : substitution),
     are_disjoints (FV_ctx G) l ->
-    apply_inst_subst is_s (fst (gen_ty_aux tau1 G l)) = Some_schm tau2 ->
+    apply_inst_subst is_s (fst (gen_ty_aux tau1 G l)) = Some tau2 ->
     is_prefixe_free2 (FV_ctx G) (snd (gen_ty_aux tau1 G l)) L ->
     product_list L is_s = Some phi -> apply_subst phi tau1 = tau2.
 Proof.
@@ -785,12 +785,12 @@ Lemma more_general_gen_type_aux : forall (G1 G2 : ctx) (tau1 tau2 : ty) (phi : s
                                     (l2 l1 L P : list id) (is_s : inst_subst),
     more_general_ctx G1 G2 -> are_disjoints (FV_ctx G2) l2 ->
     are_disjoints (FV_ctx G1) l1 ->
-    apply_inst_subst is_s (fst (gen_ty_aux tau1 G2 l2)) = Some_schm tau2 ->
+    apply_inst_subst is_s (fst (gen_ty_aux tau1 G2 l2)) = Some tau2 ->
     is_prefixe_free2 (FV_ctx G2) (snd (gen_ty_aux tau1 G2 l2)) L ->
     product_list L is_s = Some phi ->
     is_prefixe_free2 (FV_ctx G1) (snd (gen_ty_aux tau1 G1 l1)) P ->
     apply_inst_subst (map_extend_subst_type (ty_from_id_list P) phi)
-                     (fst (gen_ty_aux tau1 G1 l1)) = Some_schm tau2.
+                     (fst (gen_ty_aux tau1 G1 l1)) = Some tau2.
 Proof.
  simple induction tau1.
  - do 8 intro; intros more_gen_hyp disjoint1 disjoint2.
@@ -1007,12 +1007,12 @@ Lemma more_general_gen_ty_before_apply_subst_aux : forall (G : ctx) (tau1 tau2 :
                       (l1 l2 L P : list id) (is_s : inst_subst),
     are_disjoints (FV_ctx G) l1 ->
     are_disjoints (FV_ctx (apply_subst_ctx s G)) l2 ->
-    apply_inst_subst is_s (fst (gen_ty_aux (apply_subst s tau1) (apply_subst_ctx s G) l2)) = Some_schm tau2 ->
+    apply_inst_subst is_s (fst (gen_ty_aux (apply_subst s tau1) (apply_subst_ctx s G) l2)) = Some tau2 ->
     is_prefixe_free2 (FV_ctx (apply_subst_ctx s G)) (snd (gen_ty_aux (apply_subst s tau1) (apply_subst_ctx s G) l2)) L ->
     product_list L is_s = Some phi ->
     is_prefixe_free2 (FV_ctx G) (snd (gen_ty_aux tau1 G l1)) P ->
     apply_inst_subst (map_extend_subst_type (ty_from_id_list P) (compose_subst s phi))
-                     (apply_subst_schm s (fst (gen_ty_aux tau1 G l1))) = Some_schm tau2.
+                     (apply_subst_schm s (fst (gen_ty_aux tau1 G l1))) = Some tau2.
 Proof.
   induction tau1.
   - do 8 intro; simpl in |- *.
