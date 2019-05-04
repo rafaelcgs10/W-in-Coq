@@ -449,12 +449,6 @@ Proof.
   split; auto.
 Qed.
 
-Fixpoint id_in_subst (i : id) (s : substitution) : option ty :=
-  match s with
-    | nil => None
-    | (i', tau)::s' => if eq_id_dec i i' then Some tau else id_in_subst i s'
-  end.
-
 Program Definition unify (tau1 tau2 : ty) :
   @Infer (@top id) substitution (fun i mu f => i = f /\
                                       (forall s', apply_subst s' tau1 = apply_subst s' tau2 ->

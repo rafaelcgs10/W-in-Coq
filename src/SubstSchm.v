@@ -548,15 +548,15 @@ Qed.
 Hint Resolve not_in_domain_compute.
 Hint Rewrite not_in_domain_compute:RE.
 
-Lemma apply_app_compute_subst : forall (is_s : inst_subst) (s : substitution) (st0 st1 : id),
+Lemma find_subst_some_apply_app_compute_subst : forall (is_s : inst_subst) (s : substitution) (st0 st1 : id),
        st0 < st1 -> apply_subst ((compute_subst st1 is_s) ++ s) (var st0) = apply_subst s (var st0).
 Proof.
   induction is_s;
   crush.
 Qed.
 
-Hint Resolve apply_app_compute_subst.
-Hint Rewrite apply_app_compute_subst:RE.
+Hint Resolve find_subst_some_apply_app_compute_subst.
+Hint Rewrite find_subst_some_apply_app_compute_subst:RE.
 
 Lemma compute_subst_cons_rwt : forall (st : id) (tau : ty) (is_s : inst_subst),
     compute_subst st (tau :: is_s) = (st, tau) :: compute_subst (S st) is_s.

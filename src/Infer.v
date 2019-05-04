@@ -156,7 +156,7 @@ Next Obligation.  (* Case: postcondition of var *)
         assumption.
     + intros.
       rewrite apply_subst_nil.
-      rewrite apply_app_compute_subst.
+      rewrite find_subst_some_apply_app_compute_subst.
       reflexivity.
       assumption.
 Defined.

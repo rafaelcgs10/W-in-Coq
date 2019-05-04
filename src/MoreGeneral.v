@@ -147,7 +147,7 @@ Proof.
   simpl.
   erewrite (IHsigma1 tau p); eauto.
   erewrite (IHsigma2 tau p); eauto.
-  info_eauto with *.
+  eauto with *.
   simpl in le.
   pose proof (PeanoNat.Nat.le_max_l (max_gen_vars sigma1) (max_gen_vars sigma2)).
   auto with *.
@@ -238,7 +238,7 @@ Proof.
     intros.
     cut (is_schm_instance (find_instance (sc_gen i) (con i)) (sc_arrow sigma1 sigma2)); auto.
     intros.
-    absurd (is_schm_instance (con i) (sc_arrow sigma1 sigma2)); info_auto.
+    absurd (is_schm_instance (con i) (sc_arrow sigma1 sigma2)); auto.
   - intros.
     exists (sigma1, sigma2). reflexivity.
 Qed.

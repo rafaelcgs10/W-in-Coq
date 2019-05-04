@@ -667,7 +667,7 @@ Proof.
     simpl in H2. fold (apply_subst s (var i)) in H2.
     rewrite apply_subst_inst_to_ty_to_schm in H2.
     inversion H2.
-    rewrite apply_app_compute_subst; eauto.
+    rewrite find_subst_some_apply_app_compute_subst; eauto.
    - crush. 
    - intros. 
      simpl in *.
@@ -675,7 +675,7 @@ Proof.
      inversion H1. inversion H. subst.
      cases (nth_error x i).
      inversion H2. subst. clear H2 H1.
-     erewrite apply_app; eauto.
+     erewrite find_subst_some_apply_app; eauto.
      rewrite Nat.add_comm.
      eapply find_subst_id_compute; eauto.
      inversion H2.
