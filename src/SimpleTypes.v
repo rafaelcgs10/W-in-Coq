@@ -17,9 +17,9 @@ Definition eq_id_dec : forall (v v' : id), {v = v'} + {v <> v'} := eq_nat_dec.
 (** Type definition is direct *)
 
 Inductive ty : Set :=
-  | var : id -> ty
-  | con : id -> ty
-  | arrow : ty -> ty -> ty.
+| var : id -> ty
+| con : id -> ty
+| arrow : ty -> ty -> ty.
 
 (** List of ids in a type *)
 Fixpoint ids_ty(tau : ty) : list id :=

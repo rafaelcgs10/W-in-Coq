@@ -10,21 +10,21 @@ Require Import LibTactics.
 Require Import LibTactics.
 
 (** * Schemes *)
-      
+
 Inductive schm : Type :=
-  | sc_var : id -> schm
-  | sc_con : id -> schm
-  | sc_gen : id -> schm
-  | sc_arrow : schm -> schm -> schm. 
+| sc_var : id -> schm
+| sc_con : id -> schm
+| sc_gen : id -> schm
+| sc_arrow : schm -> schm -> schm. 
 
 (** * It converts a simple type into a scheme  *)
 
 Fixpoint ty_to_schm (tau : ty) : schm :=
-match tau with
+  match tau with
   | var n => sc_var n
   | con n => sc_con n
   | arrow t1 t2 => sc_arrow (ty_to_schm t1) (ty_to_schm t2)                 
-end.
+  end.
 
 (** * Free variables of schemes *)
 

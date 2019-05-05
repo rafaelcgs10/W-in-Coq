@@ -194,9 +194,11 @@ Hint Rewrite apply_compose_subst_nil_r:RE.
 
 
 (** More lemmas about substitution composition *)
-Lemma apply_compose_equiv : forall s1 s2 t, apply_subst (compose_subst s1 s2) t = apply_subst s2 (apply_subst s1 t).
+Lemma apply_compose_equiv : forall s1 s2 t,
+    apply_subst (compose_subst s1 s2) t = apply_subst s2 (apply_subst s1 t).
 Proof.
-  induction s1; intros; mysimp. repeat rewrite apply_compose_subst_nil_l.  autorewrite with RE using congruence.
+  induction s1; intros; mysimp.
+  repeat rewrite apply_compose_subst_nil_l.  autorewrite with RE using congruence.
   induction t; mysimp; simpl in *; eauto.
   repeat rewrite apply_subst_fold.
   erewrite <- IHs1.
@@ -208,8 +210,9 @@ Qed.
 Hint Resolve apply_compose_equiv.
 Hint Rewrite apply_compose_equiv:RE.
 
-Lemma apply_compose_assoc_var : forall s1 s2 s3 i, apply_subst (compose_subst (compose_subst s1 s2) s3) (var i) =
-                                              apply_subst (compose_subst s1 (compose_subst s2 s3)) (var i).
+Lemma apply_compose_assoc_var : forall s1 s2 s3 i,
+    apply_subst (compose_subst (compose_subst s1 s2) s3) (var i) =
+    apply_subst (compose_subst s1 (compose_subst s2 s3)) (var i).
 Proof.
   induction s1. intros. eauto.
   intros.
@@ -291,10 +294,11 @@ Hint Resolve add_subst_rewrite_for_unmodified_id.
 
 (** ** Extensionality Lemmas For Substitutions *)
 Lemma ext_subst_var_ty : forall s s', (forall v, apply_subst s (var v) = apply_subst s' (var v)) ->
-                                       forall t, apply_subst s t = apply_subst s' t.
+                                 forall t, apply_subst s t = apply_subst s' t.
 Proof.
-  intros ; induction t ; mysimp ; try (do 2 rewrite apply_subst_arrow) ;
-     simpl in * ; auto ; try (do 2 rewrite apply_subst_con) ; auto.
-    try (rewrite IHt1 ; auto). try (rewrite IHt2 ; auto).
+  intros ; induction t; mysimp;
+    try (do 2 rewrite apply_subst_arrow) ;
+    simpl in *; auto; try (do 2 rewrite apply_subst_con); auto.
+  try (rewrite IHt1 ; auto). try (rewrite IHt2 ; auto).
 Qed.
 

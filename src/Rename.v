@@ -25,12 +25,12 @@ Fixpoint apply_ren_subst (s : ren_subst) (t : id) : id :=
   end.
 
 Inductive is_rename_subst : ren_subst ->  Prop :=
-    | is_rename_intro : forall r, (are_disjoints (dom_ren r) (img_ren r)) ->
-    (forall (x y: id),
-       (in_list_id x (dom_ren r)) = true ->  
-       (in_list_id y (dom_ren r)) = true ->
-       x <> y -> (apply_ren_subst r x) <> (apply_ren_subst r y)) ->
-       is_rename_subst r.
+| is_rename_intro : forall r, (are_disjoints (dom_ren r) (img_ren r)) ->
+                         (forall (x y: id),
+                             (in_list_id x (dom_ren r)) = true ->  
+                             (in_list_id y (dom_ren r)) = true ->
+                             x <> y -> (apply_ren_subst r x) <> (apply_ren_subst r y)) ->
+                         is_rename_subst r.
 
 Lemma nil_is_rename_subst : is_rename_subst nil.
 Proof.
@@ -71,13 +71,13 @@ Proof.
 Qed.
 
 Inductive renaming_of_not_concerned_with: 
-(ren_subst) -> (list id) -> (list id) -> (list id) -> Prop :=
-  | renaming_of_not_concerned_with_intro : forall (r:ren_subst) (l l1 l2: (list id)),
+  (ren_subst) -> (list id) -> (list id) -> (list id) -> Prop :=
+| renaming_of_not_concerned_with_intro : forall (r:ren_subst) (l l1 l2: (list id)),
     (is_rename_subst r) ->
     (dom_ren r) = l ->
     (are_disjoints l1 (img_ren r)) ->
     (are_disjoints l2 (img_ren r)) ->
-       (renaming_of_not_concerned_with r l l1 l2).
+    (renaming_of_not_concerned_with r l l1 l2).
 
 Lemma dom_img_rename_subst: forall r s, 
     (in_list_id s (dom_ren r))=true -> {y: id | (in_list_id y (img_ren r))=true /\
@@ -103,20 +103,20 @@ Definition compute_renaming2 : forall (i : id) (l l1 l2 : list id),
     (forall x, in_list_id x l = true -> x < i) -> (forall x, in_list_id x l1 = true -> x < i) ->
     (forall x, in_list_id x l2 = true -> x < i) ->
     {rho : ren_subst | is_rename_subst rho /\
-    dom_ren rho = l /\ (forall y, in_list_id y (img_ren rho) = true -> i <= y)
-    /\ (forall x, in_list_id x (dom_ren rho) = true -> x < i) /\ are_disjoints l1 (img_ren rho)
-    /\ are_disjoints l2 (img_ren rho)}.
+                       dom_ren rho = l /\ (forall y, in_list_id y (img_ren rho) = true -> i <= y)
+                       /\ (forall x, in_list_id x (dom_ren rho) = true -> x < i) /\ are_disjoints l1 (img_ren rho)
+                       /\ are_disjoints l2 (img_ren rho)}.
   refine (fix compute_renaming2 i l l1 l2 p p1 p2 :
             {rho : ren_subst | is_rename_subst rho /\ dom_ren rho = l /\
-            (forall y, in_list_id y (img_ren rho) = true -> i <= y) /\
-            (forall x, in_list_id x (dom_ren rho) = true -> x < i) /\ are_disjoints l1 (img_ren rho)
-             /\ are_disjoints l2 (img_ren rho)} := 
+                               (forall y, in_list_id y (img_ren rho) = true -> i <= y) /\
+                               (forall x, in_list_id x (dom_ren rho) = true -> x < i) /\ are_disjoints l1 (img_ren rho)
+                               /\ are_disjoints l2 (img_ren rho)} := 
             match l as y return l = y -> _ with
-          | nil => fun _ => exist _ nil _
-          | p::l' => fun H => match (compute_renaming2 (S i) l' l1 l2 _ _ _) with
-                      | exist _ rl H => exist _ ((p, i)::rl) _
-                    end
-          end _); try clear compute_renaming2.
+            | nil => fun _ => exist _ nil _
+            | p::l' => fun H => match (compute_renaming2 (S i) l' l1 l2 _ _ _) with
+                            | exist _ rl H => exist _ ((p, i)::rl) _
+                            end
+            end _); try clear compute_renaming2.
   - split.
     + apply nil_is_rename_subst.
     + split.
@@ -152,7 +152,7 @@ Definition compute_renaming2 : forall (i : id) (l l1 l2 : list id),
         intuition.
         reflexivity.
       }
-         econstructor.
+      econstructor.
       * simpl.
         assumption.
       * intros.

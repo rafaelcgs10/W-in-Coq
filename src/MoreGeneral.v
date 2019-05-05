@@ -18,17 +18,17 @@ Require Import MyLtacs.
 Require Import LibTactics.
 
 Inductive more_general : schm -> schm -> Prop :=
-    | more_general_intro : forall sigma1 sigma2 : schm,
-      (forall tau : ty, is_schm_instance tau sigma2 -> is_schm_instance tau sigma1) ->
-      more_general sigma1 sigma2.
+| more_general_intro : forall sigma1 sigma2 : schm,
+    (forall tau : ty, is_schm_instance tau sigma2 -> is_schm_instance tau sigma1) ->
+    more_general sigma1 sigma2.
 
 Hint Constructors more_general.
 
 Inductive more_general_ctx : ctx -> ctx -> Prop :=
-  | more_general_ctx_nil : more_general_ctx nil nil
-  | more_general_ctx_cons : forall (G1 G2 : ctx) (i : id) (sigma1 sigma2 : schm),
-     more_general_ctx G1 G2 -> more_general sigma1 sigma2 ->
-     more_general_ctx ((i, sigma1) :: G1) ((i, sigma2) :: G2).
+| more_general_ctx_nil : more_general_ctx nil nil
+| more_general_ctx_cons : forall (G1 G2 : ctx) (i : id) (sigma1 sigma2 : schm),
+    more_general_ctx G1 G2 -> more_general sigma1 sigma2 ->
+    more_general_ctx ((i, sigma1) :: G1) ((i, sigma2) :: G2).
 
 Hint Constructors more_general_ctx.
 
@@ -75,7 +75,7 @@ Hint Resolve map_extend_app.
 Hint Rewrite map_extend_app:RE.
 
 Inductive is_prefixe_free2 : list id -> list id -> list id -> Prop :=
-  prefixe_free2_intro : forall C l L : list id,
+|  prefixe_free2_intro : forall C l L : list id,
     {l1 : list id | L = l ++ l1 /\ are_disjoints C l1} -> is_prefixe_free2 C l L.
 
 Hint Constructors is_prefixe_free2.
