@@ -1,3 +1,9 @@
+(** * The unification algorithm
+      This file contains the defintions of constraints for 
+      the termination proof, the type specification of the unfication 
+      algorithm, the algorithm itself, several lemmas and proofs and
+      some functions/interfaces so it's easy to use the unification. *)
+
 Set Implicit Arguments.
 
 Require Import Arith.Arith_base List Omega.
@@ -16,7 +22,7 @@ Require Import Occurs.
 Require Import WellFormed.
 
 (** The size of a type. This is used in by the termination argument of
-    the unification algorithm.  **)
+    the unification algorithm.  *)
 
 Fixpoint size (t : ty) : nat :=
   match t with
@@ -45,7 +51,7 @@ Definition size_t (t : (ty * ty)) : nat :=
   | (t1, t2) => size t1 + size t2
   end.
 
-(** * Constraint ordering *)
+(** ** Constraint ordering *)
 
 (** A strict order on constraints. Here we use the library definition of lexicographic orderings. *)
 Definition constraints_lt : constraints -> constraints -> Prop :=
@@ -61,54 +67,7 @@ Definition well_founded_constraints_lt : well_founded constraints_lt :=
               (well_founded_ltof varctxt (@length id))
               (fun _ => well_founded_ltof (ty * ty)%type size_t).
 
-
-(** * Specification of the Unification Algorithm *)
-
-(** ** Definition of a unifier for a for two given types *)
-Definition unifier (t1 t2 : ty) (s : substitution) : Prop := apply_subst s t1 = apply_subst s t2.
-
-(** a simple lemma about unifiers and variable substitutions *)
-Lemma unifier_arrowend : forall v t t1 t2 s, unifier (apply_subst ((v, t) :: nil) t1) (apply_subst ((v, t) :: nil) t2) s ->
-                                        unifier t1 t2 (compose_subst ((v,t)::nil) s).
-Proof.
-  intros.
-  unfold unifier in *.
-  repeat rewrite apply_compose_equiv.
-  assumption.
-Defined.
-
-Lemma unify_ty : forall t v t' s, apply_subst s (var v) = apply_subst s t' ->
-                             apply_subst s t = apply_subst s (apply_subst ((v, t')::nil) t).
-Proof.
-  induction t ; intros ; mysimp.
-  fequals*.
-Defined.
-
-Hint Resolve unify_ty.
-
-Hint Resolve unifier_arrowend.
-
-(** * The type of the unification algorithm *)
-
-(*
-The type of unification algorithm specifies that from well-formed constraints
-we can either:
-
-1 - Produce a well-formed substitution s such that it unifies the constraints and s is the
-    least of such unifiers.
-2 - It returns a proof that no such unifier exists.
- *)
-
-Definition unify_type (c : constraints) :=
-  wf_constraints c ->
-  ({ s | unifier (fst (get_tys c)) (snd (get_tys c)) s /\ wf_subst (get_ctxt c) s /\
-         (forall st, (new_tv_ty (fst (get_tys c)) st /\ new_tv_ty (snd (get_tys c)) st) -> new_tv_subst s st) /\
-         forall s', unifier (fst (get_tys c)) (snd (get_tys c)) s' ->
-               exists s'', forall v, apply_subst s' (var v) = apply_subst (compose_subst s s'') (var v)})
-  + { UnifyFailure (fst (get_tys c)) (snd (get_tys c)) }.
-
-Unset Implicit Arguments.
-
+(** ** More lemmas about constraints *)
 Lemma constraints_mk_inversion : forall t1 t2 C l, get_tys l = (t1, t2) -> get_ctxt l = C ->
                                               l = mk_constraints C (fst (get_tys l)) (snd (get_tys l)).
 Proof.
@@ -147,10 +106,62 @@ Defined.
 
 Hint Resolve arrow_lt_constraints2.
 
-(** * The unification algorithm itself *)
-(** * Main definition of the unification function *)
+(** * Specification of the Unification Algorithm *)
 
-(* The unification algorithm is defined by a combinator that performs well-founded recursion
+(** ** Definition of unifier *)
+Definition unifier (t1 t2 : ty) (s : substitution) : Prop := apply_subst s t1 = apply_subst s t2.
+
+(** A lemma about unifiers and variable substitutions. *)
+Lemma unifier_arrowend : forall v t t1 t2 s,
+    unifier (apply_subst ((v, t) :: nil) t1) (apply_subst ((v, t) :: nil) t2) s ->
+    unifier t1 t2 (compose_subst ((v,t)::nil) s).
+Proof.
+  intros.
+  unfold unifier in *.
+  repeat rewrite apply_compose_equiv.
+  assumption.
+Qed.
+
+Lemma unify_ty : forall t v t' s,
+    apply_subst s (var v) = apply_subst s t' ->
+    apply_subst s t = apply_subst s (apply_subst ((v, t')::nil) t).
+Proof.
+  induction t ; intros ; mysimp.
+  fequals*.
+Qed.
+
+Hint Resolve unify_ty.
+
+Hint Resolve unifier_arrowend.
+
+(** ** The type of the unification algorithm *)
+
+(**
+The type of unification algorithm specifies that from well-formed constraints
+we can either:
+
+1 - Produce a well-formed substitution s such that it unifies the constraints and s is the
+    least of such unifiers.
+
+2 - It returns a proof that no such unifier exists.
+    UnifyFailure is defined in HoareMonad file.
+ *)
+
+Definition unify_type (c : constraints) :=
+  wf_constraints c ->
+  ({ s | unifier (fst (get_tys c)) (snd (get_tys c)) s /\ wf_subst (get_ctxt c) s /\
+         (forall st, (new_tv_ty (fst (get_tys c)) st /\ new_tv_ty (snd (get_tys c)) st) -> new_tv_subst s st) /\
+         forall s', unifier (fst (get_tys c)) (snd (get_tys c)) s' ->
+               exists s'', forall v, apply_subst s' (var v) = apply_subst (compose_subst s s'') (var v)})
+  + { UnifyFailure (fst (get_tys c)) (snd (get_tys c)) }.
+
+Unset Implicit Arguments.
+
+(** * The unification algorithm itself *)
+
+(** ** Main definition of the unification function *)
+
+(** The unification algorithm is defined by a combinator that performs well-founded recursion
    over a well-founded relation. The constraints_lt is a well founded relation over constraints,
    so, we can use the library combinator for well-founded recursion in order to compute the
    unifier over such constraints. *)
@@ -303,7 +314,7 @@ Defined.
 
 (** * Auxiliary functions so we can use the unification algorithm *)
 
-(** It gives a list of ids from a type with a proof of wf_ty *)
+(** This function gives a list of ids from a type with a proof of wf_ty *)
 Definition ids_ty_dep : forall (tau : ty), {l : list id | wf_ty l tau}.
   refine (fix ids_ty_dep (tau : ty) : {t : list id | wf_ty t tau} :=
             match tau with
@@ -324,7 +335,7 @@ Definition ids_ty_dep : forall (tau : ty), {l : list id | wf_ty l tau}.
     auto.
 Qed.
 
-(* A extension from the above function, but for two types *)
+(** An extension from the above function, but for two types *)
 Definition ids_ty_dep2 : forall (tau tau' : ty), {l : list id | wf_ty l tau /\ wf_ty l tau'}.
   refine (fix ids_ty_dep2 (tau tau' : ty) : {t : list id | wf_ty t tau /\ wf_ty t tau'} :=
             match tau,tau' with
@@ -365,7 +376,7 @@ Definition ids_ty_dep2 : forall (tau tau' : ty), {l : list id | wf_ty l tau /\ w
     try (apply wf_ty_app_comm; apply wf_ty_app; auto).
 Qed.
 
-(* An interface so unify can work by only providing the two types to be unified *)
+(** An interface so unify can work by only providing the two types to be unified *)
 Definition unify'' : forall t1 t2 : ty,
     {x & ({ s | unifier t1 t2 s /\ wf_subst x s /\
                 (forall st, (new_tv_ty t1 st /\ new_tv_ty t2 st) -> new_tv_subst s st) /\
@@ -384,6 +395,7 @@ Proof.
   split; auto.
 Qed.
 
+(** An interface to the Infer monad  *)
 Program Definition unify (tau1 tau2 : ty) :
   @Infer (@top id) substitution (fun i mu f =>
                                    i = f /\
