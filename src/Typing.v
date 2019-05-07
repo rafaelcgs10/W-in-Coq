@@ -73,7 +73,7 @@ Proof.
   - intros. 
     inversion H.
     subst.
-    pose proof exists_renaming_not_concerned_with2 (gen_ty_vars tau0 G)
+    pose proof exists_renaming_not_concerned_with (gen_ty_vars tau0 G)
          (FV_ctx G) (FV_subst s)  as lol.
     destruct lol as [rho].
     inversion r.

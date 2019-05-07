@@ -344,7 +344,7 @@ Next Obligation. (* Case : postcondition of let *)
   (* Subcase : new_tv_ctx let *)
   - eapply new_tv_s_ctx; eauto. 
   (* Subcase : soundness let *)
-  - pose proof exists_renaming_not_concerned_with2 (gen_ty_vars tau_e1 (apply_subst_ctx s1 G))
+  - pose proof exists_renaming_not_concerned_with (gen_ty_vars tau_e1 (apply_subst_ctx s1 G))
          (FV_ctx (apply_subst_ctx s1 G)) (FV_subst s2)  as renaming.
     destruct renaming as [rho renaming].
     inversion renaming.

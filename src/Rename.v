@@ -1,3 +1,9 @@
+(** * Renaming substitution
+      This file contains the definition of renaming substitution and its lemmas.
+      The renaming substitution is essential to the let case of the soundness proof
+      of algorithm W.
+    *)
+
 Set Implicit Arguments.
 
 Require Import Disjoints.
@@ -10,20 +16,23 @@ Require Import Arith.Arith_base List Omega.
 Require Import Wellfounded.Lexicographic_Product.
 Require Import Relation_Operators.
 Require Import Coq.Setoids.Setoid.
-
 Require Import LibTactics.
 
-Definition ren_subst := list (id*id).
+(** * Renaming substitution definition *)
+Definition ren_subst := list (id * id).
 
+(** ** Renaming substitution projections *)
 Definition dom_ren (rho : ren_subst) : list id := List.map (@fst id id) rho.
 Definition img_ren (rho : ren_subst) : list id := List.map (@snd id id) rho.
 
+(** ** Renaming substitution application *)
 Fixpoint apply_ren_subst (s : ren_subst) (t : id) : id :=
   match s with
     | nil => t
     | (i,j) :: s' => if eq_id_dec i t then j else apply_ren_subst s' t
   end.
 
+(** Inductive definition that asserts that a given [ren_subst] is realy a renaming. *)
 Inductive is_rename_subst : ren_subst ->  Prop :=
 | is_rename_intro : forall r, (are_disjoints (dom_ren r) (img_ren r)) ->
                          (forall (x y: id),
@@ -31,6 +40,8 @@ Inductive is_rename_subst : ren_subst ->  Prop :=
                              (in_list_id y (dom_ren r)) = true ->
                              x <> y -> (apply_ren_subst r x) <> (apply_ren_subst r y)) ->
                          is_rename_subst r.
+
+(** * Several lemmas about the renaming substitution *)
 
 Lemma nil_is_rename_subst : is_rename_subst nil.
 Proof.
@@ -44,12 +55,6 @@ Proof.
   assumption.
 Qed.
 
-Fixpoint rename_to_subst (r: ren_subst): substitution :=
-  match r with
-  | nil => nil
-  | vt:: l => ((fst vt), (var (snd vt)))::(rename_to_subst l)
-  end.
-
 Lemma dom_ren_simpl : forall rho i j, dom_ren ((i, j)::rho) = i::dom_ren rho.
 Proof.
   reflexivity.
@@ -58,16 +63,6 @@ Qed.
 Lemma img_ren_simpl : forall rho i j, img_ren ((i, j)::rho) = j::img_ren rho.
 Proof.
   reflexivity.
-Qed.
-
-Lemma dom_rename_to_subst : forall rho,  (dom (rename_to_subst rho) = dom_ren rho).
-Proof.
-  intros.
-  induction rho.
-  - reflexivity.
-  - simpl.
-    rewrite IHrho.
-    reflexivity.
 Qed.
 
 Inductive renaming_of_not_concerned_with: 
@@ -99,24 +94,27 @@ Qed.
 
 Hint Resolve dom_img_rename_subst.
 
-Definition compute_renaming2 : forall (i : id) (l l1 l2 : list id),
+(** Finding this special renaming substitution is an essential step in the let case of the soundness proof*)
+Definition compute_renaming : forall (i : id) (l l1 l2 : list id),
     (forall x, in_list_id x l = true -> x < i) -> (forall x, in_list_id x l1 = true -> x < i) ->
     (forall x, in_list_id x l2 = true -> x < i) ->
     {rho : ren_subst | is_rename_subst rho /\
-                       dom_ren rho = l /\ (forall y, in_list_id y (img_ren rho) = true -> i <= y)
-                       /\ (forall x, in_list_id x (dom_ren rho) = true -> x < i) /\ are_disjoints l1 (img_ren rho)
-                       /\ are_disjoints l2 (img_ren rho)}.
-  refine (fix compute_renaming2 i l l1 l2 p p1 p2 :
+                       dom_ren rho = l /\ (forall y, in_list_id y (img_ren rho) = true -> i <= y) /\
+                       (forall x, in_list_id x (dom_ren rho) = true -> x < i) /\
+                       are_disjoints l1 (img_ren rho) /\
+                       are_disjoints l2 (img_ren rho)}.
+  refine (fix compute_renaming i l l1 l2 p p1 p2 :
             {rho : ren_subst | is_rename_subst rho /\ dom_ren rho = l /\
                                (forall y, in_list_id y (img_ren rho) = true -> i <= y) /\
-                               (forall x, in_list_id x (dom_ren rho) = true -> x < i) /\ are_disjoints l1 (img_ren rho)
-                               /\ are_disjoints l2 (img_ren rho)} := 
+                               (forall x, in_list_id x (dom_ren rho) = true -> x < i) /\
+                               are_disjoints l1 (img_ren rho) /\
+                               are_disjoints l2 (img_ren rho)} := 
             match l as y return l = y -> _ with
             | nil => fun _ => exist _ nil _
-            | p::l' => fun H => match (compute_renaming2 (S i) l' l1 l2 _ _ _) with
+            | p::l' => fun H => match (compute_renaming (S i) l' l1 l2 _ _ _) with
                             | exist _ rl H => exist _ ((p, i)::rl) _
                             end
-            end _); try clear compute_renaming2.
+            end _); try clear compute_renaming.
   - split.
     + apply nil_is_rename_subst.
     + split.
@@ -243,9 +241,9 @@ Definition compute_renaming2 : forall (i : id) (l l1 l2 : list id),
   -  reflexivity.
 Defined.
 
-Hint Resolve compute_renaming2.
+Hint Resolve compute_renaming.
 
-Lemma exists_renaming_not_concerned_with2: forall (l l1 l2: (list id)),
+Lemma exists_renaming_not_concerned_with: forall (l l1 l2: (list id)),
   {r:ren_subst | (renaming_of_not_concerned_with r l l1 l2)}.
 Proof.
   intros.
@@ -275,7 +273,7 @@ Proof.
   {intros. apply le_to_lt. eapply le_trans. split. apply H5. assumption. assumption. }
   assert (forall x : id, in_list_id x l2 = true -> x < S mi1).
   {intros. apply le_to_lt. eapply le_trans. split. apply H7. assumption. assumption. }
-  pose proof (compute_renaming2 l l1 l2 H11 H12 H13) as COMP.
+  pose proof (compute_renaming l l1 l2 H11 H12 H13) as COMP.
   inversion COMP.
   destruct H14.
   exists (x).
@@ -289,10 +287,10 @@ Proof.
   assumption.
 Defined.
 
-Hint Resolve exists_renaming_not_concerned_with2.
+Hint Resolve exists_renaming_not_concerned_with.
 
 Lemma index_rename_aux : forall (rho: ren_subst) (i: id) (l: (list id)) (c : id),
-    (is_rename_subst rho) -> (is_sublist_id l (dom_ren rho)) -> in_list_id i (dom_ren rho) = true ->
+    is_rename_subst rho -> is_sublist_id l (dom_ren rho) -> in_list_id i (dom_ren rho) = true ->
     index_list_id_aux c i l =
     index_list_id_aux c (apply_ren_subst rho i) (List.map (apply_ren_subst rho) l).
 Proof.
@@ -315,10 +313,10 @@ Qed.
 Hint Resolve index_rename_aux.
 
 Lemma index_rename : forall (rho : ren_subst) (i : id) (l: (list id)),
-    (is_rename_subst rho) ->
-    (is_sublist_id l (dom_ren rho)) ->
-    (in_list_id i (dom_ren rho))=true ->
-    (index_list_id i l) = (index_list_id (apply_ren_subst rho i) (List.map (apply_ren_subst rho) l)).
+    is_rename_subst rho ->
+    is_sublist_id l (dom_ren rho) ->
+    in_list_id i (dom_ren rho) = true ->
+    index_list_id i l = index_list_id (apply_ren_subst rho i) (List.map (apply_ren_subst rho) l).
 Proof.
   intros.
   unfold index_list_id.
@@ -347,7 +345,8 @@ Qed.
 Hint Resolve rename_img.
 
 Lemma in_list_id_dom_img : forall rho i, 
-    (in_list_id i (dom_ren rho) = true -> in_list_id (apply_ren_subst rho i) (img_ren rho) = true).
+    (in_list_id i (dom_ren rho) = true ->
+     in_list_id (apply_ren_subst rho i) (img_ren rho) = true).
 Proof.
   induction rho.
   intros.
@@ -359,6 +358,27 @@ Qed.
 
 Hint Resolve in_list_id_dom_img.
 
+(** ** Converts a renaming substitute to a usual substitution *)
+
+Fixpoint rename_to_subst (r: ren_subst): substitution :=
+  match r with
+  | nil => nil
+  | vt:: l => ((fst vt), (var (snd vt)))::(rename_to_subst l)
+  end.
+
+(** ** Some lemmas about the above conversion *)
+
+Lemma dom_rename_to_subst : forall rho,  (dom (rename_to_subst rho) = dom_ren rho).
+Proof.
+  intros.
+  induction rho.
+  - reflexivity.
+  - simpl.
+    rewrite IHrho.
+    reflexivity.
+Qed.
+
+(**  A lemma about apply a renaminng substitution *)
 Lemma apply_subst_rename_to_subst : forall rho i,
     are_disjoints (dom_ren rho) (img_ren rho) ->
     apply_subst (rename_to_subst rho) (var i) = var (apply_ren_subst rho i).
