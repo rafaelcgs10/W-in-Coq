@@ -1,3 +1,8 @@
+(** * The typing rules
+      This file contains the defintion typing rules of the Damas-Milner type system in
+      a syntax-direct version and the great substitution lemma.
+    *)
+
 Set Implicit Arguments.
 
 Require Import LibTactics.
@@ -39,7 +44,7 @@ Inductive has_type : ctx -> term -> ty -> Prop :=
                                 has_type ((x, gen_ty tau G) :: G) e' tau' ->
                                 has_type G (let_t x e e') tau'.
 
-(*** The Great Substitution Lemma *)
+(** * The Great Substitution Lemma *)
 (** has_type is stable under substitution *)
 Lemma has_type_is_stable_under_substitution : forall e s G tau,
     has_type G e tau -> has_type (apply_subst_ctx s G) e (apply_subst s tau).
