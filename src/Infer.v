@@ -369,7 +369,7 @@ Next Obligation. (* Case : postcondition of let *)
     rewrite apply_subst_ctx_compose; eauto.
     rewrite <- gen_ty_in_subst_ctx; eauto.
     rewrite <- subst_add_type_scheme; eauto.
-    rewrite <- gen_alpha4_bis; auto.
+    rewrite <- gen_apply_rename_to_subst; auto.
   (* Subcase : completeness let *)
   - intro. intros.
     rename H5 into SOUND_let.

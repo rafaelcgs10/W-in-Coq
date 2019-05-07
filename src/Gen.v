@@ -115,7 +115,7 @@ Hint Resolve free_and_bound_are_disjoints.
 
 (** ** Lemmas related to the renaminng substitution *)
 
-Lemma is_sublist_gen_vars2 : forall (rho: ren_subst) (G: ctx) (t: ty),
+Lemma is_subst_list_gen_vars_aux : forall (rho: ren_subst) (G: ctx) (t: ty),
     (is_rename_subst rho) ->
     (are_disjoints (dom_ren rho) (FV_ctx G)) ->
     (are_disjoints (FV_ctx G) (img_ren rho)) ->
@@ -153,9 +153,9 @@ Lemma is_sublist_gen_vars2 : forall (rho: ren_subst) (G: ctx) (t: ty),
       apply H2.
 Qed.
 
-Hint Resolve is_sublist_gen_vars2.
+Hint Resolve is_subst_list_gen_vars_aux.
 
-Lemma is_sublist_gen_vars3 : forall (rho : ren_subst) (s: substitution) (G : ctx) (tau: ty),
+Lemma is_sublist_gen_vars : forall (rho : ren_subst) (s: substitution) (G : ctx) (tau: ty),
     (is_rename_subst rho) -> (dom_ren rho) = (gen_ty_vars tau G) ->
     (are_disjoints (FV_ctx G) (img_ren rho)) ->
     (is_sublist_id (gen_ty_vars (apply_subst (rename_to_subst rho) tau) G)
@@ -163,13 +163,13 @@ Lemma is_sublist_gen_vars3 : forall (rho : ren_subst) (s: substitution) (G : ctx
 Proof.
   intros.
   inversion H.
-  eapply is_sublist_gen_vars2; auto.
+  eapply is_subst_list_gen_vars_aux; auto.
   rewrite H0.
   eapply free_and_bound_are_disjoints. rewrite <- H0.
   apply sublist_reflexivity.
 Qed.
 
-Hint Resolve is_sublist_gen_vars3.
+Hint Resolve is_sublist_gen_vars.
 
 (** The generalizable ids form a sublist of dom rho, for some conditions *)
 Lemma is_sublist_gen_ty_dom_rho: forall (G : ctx) (rho : ren_subst) (tau: ty) (l : list id),
@@ -219,12 +219,12 @@ Proof.
     apply are_disjoints_symetry in H3.
     apply disjoint_list_and_append_inversion1 in H3.
     apply H3.
-    eapply is_sublist_gen_vars3; auto.
+    eapply is_sublist_gen_vars; auto.
   - eapply disjoint_sublist_bis.
     apply are_disjoints_symetry in H3.
     apply disjoint_list_and_append_inversion2 in H3.
     apply H3.
-    eapply is_sublist_gen_vars3; auto.
+    eapply is_sublist_gen_vars; auto.
 Qed.
 
 Hint Resolve renaming_not_concerned_with_gen_vars.
@@ -326,7 +326,7 @@ Qed.
 Hint Resolve gen_ty_renaming.
 Hint Rewrite gen_ty_renaming:RE.
 
-Lemma gen_alpha4_bis : forall (G : ctx) (rho : ren_subst) (tau : ty),
+Lemma gen_apply_rename_to_subst : forall (G : ctx) (rho : ren_subst) (tau : ty),
     is_rename_subst rho -> dom_ren rho = gen_ty_vars tau G ->
     are_disjoints (FV_ctx G) (img_ren rho) ->
     gen_ty tau G = gen_ty (apply_subst (rename_to_subst rho) tau) G.
@@ -343,8 +343,8 @@ Proof.
   apply sublist_reflexivity.
 Qed.
 
-Hint Resolve gen_alpha4_bis.
-Hint Rewrite gen_alpha4_bis:RE.
+Hint Resolve gen_apply_rename_to_subst.
+Hint Rewrite gen_apply_rename_to_subst:RE.
 
 (** ** Several other generalization lemmas *)
 
@@ -434,7 +434,7 @@ Qed.
 Hint Resolve gen_ty_in_subst_ctx.
 Hint Rewrite gen_ty_in_subst_ctx:RE.
 
-Lemma snd_gen_aux_with_app3 : forall (G : ctx) (tau : ty) (l : list id),
+Lemma exists_snd_gen_aux_app : forall (G : ctx) (tau : ty) (l : list id),
     exists l', snd (gen_ty_aux tau G l) = l ++ l' /\ are_disjoints (FV_ctx G) l'.
 Proof.
   induction tau.
@@ -464,13 +464,13 @@ Proof.
     eauto.
 Qed.
 
-Hint Resolve snd_gen_aux_with_app3.
+Hint Resolve exists_snd_gen_aux_app.
 
 Lemma disjoint_snd_gen_aux : forall (G : ctx) (l : list id) (tau : ty),
     are_disjoints (FV_ctx G) l -> are_disjoints (FV_ctx G) (snd (gen_ty_aux tau G l)).
 Proof.
   intros.
-  destruct (snd_gen_aux_with_app3 G tau l).
+  destruct (exists_snd_gen_aux_app G tau l).
   destruct H0. rewrite H0.
   eauto.
 Qed.
