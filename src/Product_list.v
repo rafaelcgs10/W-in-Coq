@@ -100,6 +100,6 @@ Lemma product_list_exists : forall (tau : ty) (G : ctx) (is_s : inst_subst),
 Proof.
   intros.
   apply product_for_le_length.
-  rewrite length_Snd_gen_aux.
+  rewrite length_snd_gen_aux.
   crush.
 Qed.
