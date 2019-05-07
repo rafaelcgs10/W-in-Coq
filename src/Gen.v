@@ -424,3 +424,88 @@ Qed.
 
 Hint Resolve gen_alpha4_bis.
 Hint Rewrite gen_alpha4_bis:RE.
+
+Lemma Snd_gen_aux_with_app3 : forall (G : ctx) (tau : ty) (l : list id),
+    exists l', snd (gen_ty_aux tau G l) = l ++ l' /\ are_disjoints (FV_ctx G) l'.
+Proof.
+  induction tau.
+  - intro. simpl.
+    cases (in_list_id i (FV_ctx G)).
+    exists (nil : list id).
+    crush.
+    cases (index_list_id i l).
+    exists (nil : list id).
+    crush.
+    exists (i::nil : list id).
+    crush.
+  - crush.
+    exists (nil : list id).
+    crush.
+  - intros.
+    rewrite snd_gen_ty_aux_arrow_rewrite.
+    edestruct IHtau1.
+    destruct H.
+    rewrite H.
+    edestruct IHtau2.
+    destruct H1.
+    rewrite H1.
+    exists (x ++ x0).
+    split.
+    rewrite app_assoc. reflexivity.
+    eauto.
+Qed.
+
+Hint Resolve Snd_gen_aux_with_app3.
+
+Lemma disjoint_Snd_gen_aux : forall (G : ctx) (l : list id) (tau : ty),
+    are_disjoints (FV_ctx G) l -> are_disjoints (FV_ctx G) (snd (gen_ty_aux tau G l)).
+Proof.
+  intros.
+  destruct (Snd_gen_aux_with_app3 G tau l).
+  destruct H0. rewrite H0.
+  eauto.
+Qed.
+
+Hint Resolve disjoint_Snd_gen_aux.
+
+Lemma length_Snd_gen_aux : forall (G : ctx) (tau : ty) (l : list id),
+    length (snd (gen_ty_aux tau G l)) = max (length l) (max_gen_vars (fst (gen_ty_aux tau G l))).
+Proof.
+  induction tau; crush.
+  cases (in_list_id i (FV_ctx G)); crush.
+  rewrite Nat.max_0_r. reflexivity.
+  cases (index_list_id i l).
+  simpl.
+  symmetry.
+  apply max_l.
+  change (i0 < length l) in |- *.
+  eapply index_lt; eauto.
+  simpl.
+  rewrite app_length.
+  simpl.
+  symmetry.
+  assert (S (length l) = length l + 1). auto with *.
+  rewrite H.
+  apply max_r. auto with *.
+  rewrite Nat.max_0_r. reflexivity.
+  cases (gen_ty_aux tau1 G l).
+  cases (gen_ty_aux tau2 G l0).
+  simpl.
+  specialize IHtau1 with (l:=l).
+  rewrite Eq in IHtau1.
+  specialize IHtau2 with (l:=l0).
+  rewrite Eq0 in IHtau2.
+  simpl in *.
+  rewrite IHtau1 in IHtau2.
+  rewrite Nat.max_assoc.
+  assumption.
+Qed.
+
+Lemma is_not_generalizable_aux : forall (G : ctx) (tau : ty) (l : list id),
+    is_sublist_id (ids_ty tau) (FV_ctx G) ->
+    gen_ty_aux tau G l = (ty_to_schm tau, l).
+Proof.
+  induction tau; crush.
+Qed.
+
+Hint Resolve is_not_generalizable_aux.

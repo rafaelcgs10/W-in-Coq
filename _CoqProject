@@ -3,12 +3,13 @@
    src/SimpleTypes.v
    src/Schemes.v
    src/MyLtacs.v
+   src/Nth_error_tools.v
+   src/ListIds.v
    src/Subst.v
    src/Occurs.v
    src/Varctxt.v
    src/WellFormed.v
    src/Unify.v
-   src/ListIds.v
    src/HoareMonad.v
    src/Sublist.v
    src/Context.v
@@ -18,5 +19,7 @@
    src/Gen.v
    src/Typing.v
    src/NewTypeVariable.v
+   src/Product_list.v
+   src/Prefix.v
    src/MoreGeneral.v
    src/Infer.v

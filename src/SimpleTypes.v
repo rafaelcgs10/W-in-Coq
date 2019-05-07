@@ -36,3 +36,18 @@ Definition eq_ty_dec : forall (t t' : ty), {t = t'} + {t <> t'}.
   decide equality.
 Defined.
 
+(** * Creates a list of type from a list of ids *)
+Fixpoint ty_from_id_list (l : list id) : list ty :=
+  match l with
+  | nil => nil
+  | x::l' => var x :: ty_from_id_list l'
+  end.
+
+Lemma length_ty_from_id_list : forall l : list id, length (ty_from_id_list l) = length l.
+Proof.
+  induction l; simpl; auto.
+Qed.
+
+Hint Resolve length_ty_from_id_list.
+Hint Rewrite length_ty_from_id_list:RE.
+

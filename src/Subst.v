@@ -342,3 +342,61 @@ Proof.
   try (rewrite IHt1 ; auto). try (rewrite IHt2 ; auto).
 Qed.
 
+Lemma ty_from_id_list_app : forall l1 l2 : list id,
+    ty_from_id_list (l1 ++ l2) = ty_from_id_list l1 ++ ty_from_id_list l2.
+Proof.
+  induction l1; crush.
+Qed.
+
+Hint Resolve ty_from_id_list_app.
+Hint Rewrite ty_from_id_list_app:RE.
+
+(** * Map simple substitution over a list of ty *)
+
+(** This is different from [apply_subst_list] *)
+Fixpoint map_apply_subst_over_list_ty (l : list ty) (s2 : substitution) :=
+  match l with
+  | nil => nil
+  | t::l' => apply_subst s2 t :: map_apply_subst_over_list_ty l' s2
+  end.
+
+(** ** Lemmas about [apply_subst_list] *)
+
+Lemma map_extend_app : forall (s : substitution) (l1 l2 : list ty),
+    map_apply_subst_over_list_ty (l1 ++ l2) s = map_apply_subst_over_list_ty l1 s ++ map_apply_subst_over_list_ty l2 s.
+Proof.
+  induction l1; crush.
+Qed.
+
+Hint Resolve map_extend_app.
+Hint Rewrite map_extend_app:RE.
+
+Lemma length_map : forall (s : substitution) (l : list ty),
+    length (map_apply_subst_over_list_ty l s) = length l.
+Proof.
+  induction l; simpl; auto.
+Qed.
+
+Hint Resolve length_map.
+Hint Rewrite length_map:RE.
+
+Lemma length_map2 : forall (s : substitution) (l : list id),
+    length (map_apply_subst_over_list_ty (ty_from_id_list l) s) = length l.
+Proof.
+  simple induction l; auto.
+  intros; simpl in |- *.
+  rewrite H; auto.
+Qed.
+
+Hint Resolve length_map2.
+Hint Rewrite length_map2:RE.
+
+Lemma app_length_cons : forall (A : Set) (l : list A) (x : A), length (l ++ x :: nil) = S (length l).
+Proof.
+  simple induction l; auto.
+  intros; simpl in |- *; auto.
+Qed.
+
+Hint Resolve app_length_cons.
+Hint Rewrite app_length_cons:RE.
+

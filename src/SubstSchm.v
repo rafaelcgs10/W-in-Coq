@@ -11,6 +11,7 @@ Require Import Relation_Operators.
 Require Import Coq.Setoids.Setoid.
 Require Import LibTactics.
 Require Import Schemes.
+Require Import Nth_error_tools.
 
 Require Import LibTactics.
 
@@ -213,6 +214,66 @@ Qed.
 Hint Resolve apply_inst_subst_con_inversion.
 Hint Rewrite apply_inst_subst_con_inversion:RE.
 
+Fixpoint find_instance (sigma : schm) (tau : ty) :=
+  match sigma with
+  | sc_con i => con i
+  | sc_var i => var i
+  | sc_gen st => tau
+  | sc_arrow sigma1 sigma2 => arrow (find_instance sigma1 tau) (find_instance sigma2 tau)
+  end.
+
+Lemma apply_inst_subst_succeeds : forall (sigma : schm) (is_s : inst_subst),
+    max_gen_vars sigma <= length is_s -> exists tau, apply_inst_subst is_s sigma = Some tau.
+Proof.
+  induction sigma; crush.
+  cases (nth_error is_s i).
+  exists t. reflexivity.
+  apply nth_error_None in Eq.
+  omega.
+  edestruct IHsigma1; eauto.
+  apply Nat.max_lub_l in H.
+  apply H.
+  edestruct IHsigma2; eauto.
+  apply Nat.max_lub_r in H.
+  apply H.
+  rewrite H0.
+  rewrite H1.
+  exists (arrow x x0). reflexivity.
+Qed.
+
+Hint Resolve apply_inst_subst_succeeds.
+
+Lemma apply_inst_subst_ge_app : forall (sigma : schm) (is_s l : inst_subst),
+    max_gen_vars sigma <= length is_s -> apply_inst_subst (is_s ++ l) sigma = apply_inst_subst is_s sigma.
+Proof.
+  induction sigma; crush.
+  erewrite IHsigma1; eauto.
+  erewrite IHsigma2; eauto.
+  apply Nat.max_lub_r in H.
+  apply H.
+  apply Nat.max_lub_l in H.
+  apply H.
+Qed.
+
+Hint Resolve apply_inst_subst_ge_app.
+
+Lemma is_instance_le_max : forall (sigma : schm) (tau : ty) (is_s : inst_subst),
+    apply_inst_subst is_s sigma = Some tau -> max_gen_vars sigma <= length is_s.
+Proof.
+  induction sigma; crush.
+  cases (nth_error is_s i).
+  inverts* H.
+  assert (nth_error is_s i <> None). { intro. rewrite Eq in H. inversion H. }
+  apply nth_error_Some in H. omega.                                   
+  inversion H.
+  cases (apply_inst_subst is_s sigma1).
+  cases (apply_inst_subst is_s sigma2).
+  apply Nat.max_lub_iff; eauto.
+  inversion H.
+  inversion H.
+Qed.
+
+Hint Resolve is_instance_le_max.
 
 (** * Lemmas relation instance substitution and ty_to_schm *)
 
@@ -336,6 +397,34 @@ Proof.
 Qed.
 
 Hint Resolve exist_arrow_apply_inst_arrow2.
+
+Lemma var_is_not_instance_of_arrow : forall (sigma1 sigma2 : schm) (i : id),
+    ~ is_schm_instance (var i) (sc_arrow sigma1 sigma2).
+Proof.
+  intros. intro.
+  inverts* H.
+  apply exist_arrow_apply_inst_arrow2 in H0.
+  destruct H0 as [tau1 [tau2 H]].
+  destruct H.
+  destruct H0.
+  inverts* H1.
+Qed.
+
+Hint Resolve var_is_not_instance_of_arrow.
+
+Lemma con_is_not_instance_of_arrow : forall (sigma1 sigma2 : schm) (i : id),
+    ~ is_schm_instance (con i) (sc_arrow sigma1 sigma2).
+Proof.
+  intros. intro.
+  inverts* H.
+  apply exist_arrow_apply_inst_arrow2 in H0.
+  destruct H0 as [tau1 [tau2 H]].
+  destruct H.
+  destruct H0.
+  inverts* H1.
+Qed.
+
+Hint Resolve con_is_not_instance_of_arrow.
 
 Lemma subst_inst_subst_type:
   forall (sigma : schm) (s: substitution) (is_s : inst_subst) (tau : ty),
@@ -475,18 +564,6 @@ Fixpoint compute_inst_subst (st : id) (n : nat) : list ty :=
     end
   end.
 
-
-(** * Lemmas about nth_error function *)
-
-Lemma nth_error_nil : forall i, nth_error (nil : list ty) i = None.
-Proof.
-  intros.
-  induction i; mysimp.
-Qed.
-
-Hint Resolve nth_error_nil.
-Hint Rewrite nth_error_nil:RE.
-
 Lemma nth_error_compute_inst_Some : forall i k j, i < k -> nth_error (compute_inst_subst j k) i = Some (var (i + j)).
 Proof.
   induction i.
@@ -618,3 +695,93 @@ Qed.
 Hint Resolve find_subst_id_compute.
 Hint Rewrite find_subst_id_compute:RE.
 
+(** * Make constant inst subst and find inst subst *)
+
+Fixpoint make_constant_inst_subst (n : id) (tau : ty)  :=
+  match n with
+  | O => nil 
+  | S p => tau :: make_constant_inst_subst p tau
+  end.
+Lemma nth_error_make_constant_inst_subst3 : forall (p n : id) (tau : ty),
+    S n <= p -> nth_error (make_constant_inst_subst p tau) n = Some tau.
+Proof.
+  induction p; crush.
+  destruct n; crush.
+  apply IHp.
+  auto with *.
+Qed.
+
+Hint Resolve nth_error_make_constant_inst_subst3.
+Hint Rewrite nth_error_make_constant_inst_subst3:RE.
+
+Lemma apply_subst_inst_make_constant_inst_subst : forall (sigma : schm) (tau : ty) (p : id),
+    max_gen_vars sigma <= p ->
+    apply_inst_subst (make_constant_inst_subst p tau) sigma = Some (find_instance sigma tau).
+Proof.
+  induction sigma; eauto.
+  unfold max_gen_vars.
+  unfold apply_inst_subst.
+  intros tau p le.
+  simpl in le.
+  crush.
+  intros tau p le.
+  simpl.
+  erewrite (IHsigma1 tau p); eauto.
+  erewrite (IHsigma2 tau p); eauto.
+  eauto with *.
+  simpl in le.
+  pose proof (PeanoNat.Nat.le_max_l (max_gen_vars sigma1) (max_gen_vars sigma2)).
+  auto with *.
+Qed.
+
+Hint Resolve apply_subst_inst_make_constant_inst_subst.
+Hint Resolve apply_subst_inst_make_constant_inst_subst:RE.
+
+Lemma find_some_instance_of_some_sigma : forall (sigma : schm) (tau : ty),
+    is_schm_instance (find_instance sigma tau) sigma.
+Proof.
+  intros.
+  unfold is_schm_instance.
+  exists (make_constant_inst_subst (max_gen_vars sigma) tau).
+  auto.
+Qed.
+
+Hint Resolve find_some_instance_of_some_sigma.
+Hint Rewrite find_some_instance_of_some_sigma:RE.
+
+Lemma length_make_constant_inst_subst : forall (n : nat) (t : ty), length (make_constant_inst_subst n t) = n.
+  induction n; crush.
+Qed.
+
+Hint Resolve length_make_constant_inst_subst.
+
+(** Lemma about projections a type instance of an arrow. *)
+Lemma arrow_sigma_more_general_than_arrow : forall sigma sigma1 sigma2 : schm,
+    (forall tau : ty, is_schm_instance tau sigma -> is_schm_instance tau (sc_arrow sigma1 sigma2)) ->
+    {sig_sig : schm * schm | sigma = sc_arrow (fst sig_sig) (snd sig_sig)}.
+Proof.
+  induction sigma. 
+  - cut (is_schm_instance (find_instance (sc_var i) (con i)) (sc_var i)); auto.
+    intros.
+    cut (is_schm_instance (find_instance (sc_var i) (con i)) (sc_arrow sigma1 sigma2)); auto.
+    intros.
+    simpl in *.
+    absurd (is_schm_instance (var i) (sc_arrow sigma1 sigma2)); auto.
+  - intros.
+    assert (is_schm_instance (con i) (sc_con i)).
+    exists (nil:inst_subst). reflexivity.
+    apply H in H0. 
+    apply con_is_not_instance_of_arrow in H0.
+    contradiction.
+  - intros.
+    cut (is_schm_instance (find_instance (sc_gen i) (con i)) (sc_gen i)); auto.
+    intros.
+    cut (is_schm_instance (find_instance (sc_gen i) (con i)) (sc_arrow sigma1 sigma2)); auto.
+    intros.
+    absurd (is_schm_instance (con i) (sc_arrow sigma1 sigma2)); auto.
+  - intros.
+    exists (sigma1, sigma2). reflexivity.
+Qed.
+
+Hint Resolve arrow_sigma_more_general_than_arrow.
+Hint Resolve arrow_sigma_more_general_than_arrow:RE.

@@ -1,6 +1,5 @@
 Set Implicit Arguments.
 
-
 Require Import SimpleTypes.
 Require Import Subst.
 Require Import Arith.Arith_base List Omega.
@@ -9,6 +8,7 @@ Require Import Relation_Operators.
 Require Import Coq.Setoids.Setoid.
 Require Import LibTactics.
 Require Import MyLtacs.
+Require Import Nth_error_tools.
 
 
 (** Check if a id is in a list *)
@@ -397,4 +397,109 @@ Qed.
 
 Hint Resolve not_in_img.
 Hint Rewrite not_in_img:RE.
+
+
+(** * Some lemamas *)
+
+Lemma index_list_id_nil : forall st, index_list_id st nil = None.
+Proof.
+  induction st; crush.
+Qed.
+
+Hint Resolve index_list_id_nil.
+Hint Rewrite index_list_id_nil:RE.
+
+Lemma index_aux1 : forall st l k n, index_list_id_aux (S n) st l = Some k -> index_list_id_aux n st l = Some (Nat.pred k).
+Proof.
+  induction l. crush.
+  intros.
+  simpl in *.
+  destruct (eq_id_dec a st).
+  subst.
+  inversion H. subst. reflexivity.
+  apply IHl in H. auto.
+Qed.
+
+Hint Resolve index_aux1.
+
+Lemma index_aux2 : forall st l k n, index_list_id_aux n st l = Some k -> index_list_id_aux (S n) st l = Some (S k).
+Proof.
+  induction l; crush.
+Qed.
+
+Hint Resolve index_aux2.
+
+Lemma index_aux_false : forall l n m i, m < n -> index_list_id_aux n i l = Some m -> False.
+Proof.
+  induction l; crush.
+Qed.
+
+Hint Resolve index_aux_false.
+
+Lemma index_lt : forall (l : list id) (st : id) (k : id),
+    index_list_id st l = Some k -> k < length l.
+Proof.
+  induction l. unfold index_list_id in *. crush.
+  unfold index_list_id in *.
+  intros.
+  simpl in H.
+  destruct (eq_id_dec a st).
+  inversion H. subst.
+  simpl. auto with *.
+  apply index_aux1 in H.
+  apply IHl in H.
+  simpl. omega.
+Qed.
+
+Hint Resolve index_lt.
+
+Lemma index_list_none_any_k : forall l i k k', index_list_id_aux k i l = None -> index_list_id_aux k' i l = None.
+Proof.
+  induction l; crush.
+Qed.
+
+Hint Resolve index_list_none_any_k.
+
+Lemma index_list_id_cons : forall (l : list id) (i : id),
+    index_list_id i l = None -> index_list_id i (l ++ i::nil) = Some (length l).
+Proof.
+  induction l; unfold index_list_id in *; crush.
+Qed.
+
+Hint Resolve index_list_id_cons.
+
+Lemma index_list_id_aux_app : forall (l1 l2 : list id) (n : id) (i : id) k,
+ index_list_id_aux k i l1 = Some n -> index_list_id_aux k i (l1 ++ l2) = Some n.
+Proof.
+  induction l1; unfold index_list_id in *; crush.
+Qed.
+
+Hint Resolve index_list_id_aux_app.
+
+Lemma index_list_id_app : forall (l1 l2 : list id) (n : id) (i : id),
+ index_list_id i l1 = Some n -> index_list_id i (l1 ++ l2) = Some n.
+Proof.
+  induction l1; unfold index_list_id in *; crush.
+Qed.
+
+Hint Resolve index_list_id_app.
+
+Lemma index_list_id_nth : forall (l : list id) (k : id) (i : id),
+    index_list_id i l = Some k -> nth_error (ty_from_id_list l) k = Some (var i).
+Proof.
+  induction l; unfold index_list_id in *. crush.
+  intros.
+  simpl in *. destruct (eq_id_dec a i).
+  inverts* H. subst. reflexivity.
+  erewrite nth_error_k_not_zero.
+  apply IHl.
+  apply index_aux1 in H.
+  auto.
+  destruct k.
+  apply index_aux_false in H; auto. 
+  auto. 
+Qed.
+
+Hint Resolve index_list_id_nth.
+Hint Rewrite index_list_id_nth:RE.
 
