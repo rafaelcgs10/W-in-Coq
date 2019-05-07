@@ -312,7 +312,7 @@ Proof.
     eauto.
 Qed.
 
-(** The following lemmas is essential for the termination proof 
+(** The following lemma is essential for the termination proof 
     since it shows that the varctx (may) decrease after the substitution. *)
 Lemma substs_remove : forall t s C,
     wf_subst C s ->
@@ -347,7 +347,10 @@ Proof.
   assumption.
 Qed.
 
-(** The following lemmas is also essential for the termination proof. *)
+(** The following lemma is also essential for the termination proof. 
+    If [x] is a not used in substitution [s] and type [t], and type [t] 
+    has no nothing to do with [s], then composing [s] with [(x,t)] is well formed.
+*)
 Lemma wf_subst_last (s : substitution) :
   forall x t C, wf_subst C s ->
            member (minus C (dom s)) x ->
@@ -394,6 +397,10 @@ Proof.
   eauto.
 Qed.
 
+(**
+    This last lemma is also essential for the termination proof. 
+    It is a condintion to create a well formed composed substitution .
+ *)
 Lemma wf_subst_arrowend : forall s2 C s1,
     wf_subst C s1 ->
     wf_subst (minus C (dom s1)) s2 ->
