@@ -25,7 +25,7 @@ Lemma is_prefixe2_gen_aux : forall (l L : list id) (tau : ty) (G : ctx),
     is_prefixe_free2 (FV_ctx G) l L.
 Proof.
   intros.
-  destruct (Snd_gen_aux_with_app3 G tau l).
+  destruct (snd_gen_aux_with_app3 G tau l).
   destruct H0.
   inverts* H.
   destruct H2.
