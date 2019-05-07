@@ -326,6 +326,26 @@ Qed.
 Hint Resolve gen_ty_renaming.
 Hint Rewrite gen_ty_renaming:RE.
 
+Lemma gen_alpha4_bis : forall (G : ctx) (rho : ren_subst) (tau : ty),
+    is_rename_subst rho -> dom_ren rho = gen_ty_vars tau G ->
+    are_disjoints (FV_ctx G) (img_ren rho) ->
+    gen_ty tau G = gen_ty (apply_subst (rename_to_subst rho) tau) G.
+Proof.
+  intros; unfold gen_ty in |- *.
+  inversion H.
+  assert (nil = map (apply_ren_subst rho) nil).
+  {reflexivity. }
+  rewrite H5.
+  rewrite gen_ty_renaming_aux; auto.
+  rewrite H0.
+  apply free_and_bound_are_disjoints.
+  rewrite <- H0.
+  apply sublist_reflexivity.
+Qed.
+
+Hint Resolve gen_alpha4_bis.
+Hint Rewrite gen_alpha4_bis:RE.
+
 (** ** Several other generalization lemmas *)
 
 (** If the ids of a ty are free in the G, then gen_ty_aux is just ty_to_schm *)
