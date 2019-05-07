@@ -142,7 +142,7 @@ Next Obligation.  (* Case: postcondition of var *)
     destruct H7.
     exists ((compute_subst st1 is_s) ++ phi).
     splits.
-    + eapply t_is_app_T_aux with (p := max_gen_vars sigma'). 
+    + eapply new_tv_schm_compute_inst_subst with (p := max_gen_vars sigma'). 
       * eapply new_tv_ctx_implies_new_tv_schm; 
         crush.
       * reflexivity.
