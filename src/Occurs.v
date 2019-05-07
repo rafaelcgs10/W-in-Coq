@@ -1,3 +1,7 @@
+(** * The occurs chech for the unification algorithm
+      This file contains the defintions and lemmas about
+      occurs check used in the unification algorithm. *)
+
 Set Implicit Arguments.
 
 Require Import Arith.Arith_base List Omega.
