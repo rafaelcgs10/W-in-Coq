@@ -1,3 +1,10 @@
+(** * The product list
+      This file contains defintions and lemmas about [product_list], which computes 
+      a substitution from a list of id and a list of types of the same length. 
+      This function is used in the lemmas 
+      [inst_subst_to_subst_aux] and [more_general_ctx_disjoint_prefix_apply_inst] 
+      in the Moregeneral file. *)
+
 Set Implicit Arguments.
 
 Require Import List.
@@ -14,8 +21,8 @@ Require Import MyLtacs.
 Require Import Nth_error_tools.
 Require Import LibTactics.
 
-
-Fixpoint product_list (l1 : list id) (l2 : list ty) :=
+(** This creates a substitution from a list of id and a list of types of the same length. *)
+Fixpoint product_list (l1 : list id) (l2 : list ty) : option substitution :=
   match l1 with
   | nil =>  Some nil
   | st :: l'1 => match l2 with
@@ -94,6 +101,7 @@ Qed.
 
 Hint Resolve product_for_le_length.
 
+(** *)
 Lemma product_list_exists : forall (tau : ty) (G : ctx) (is_s : inst_subst),
     max_gen_vars (gen_ty tau G) <= length is_s ->
     exists s, product_list (snd (gen_ty_aux tau G nil)) is_s = Some s.

@@ -199,7 +199,7 @@ Qed.
 Hint Resolve FV_more_general_ctx.
 
 (** This complex lemma is needed to prove [more_general_ctx_disjoint_prefix_apply_inst]. *)
-Lemma inst_subst_to_subst_aux_4 :
+Lemma inst_subst_to_subst_aux :
   forall (G : ctx) (tau1 tau2 : ty) (l L : list id)
     (is_s : list ty) (phi : substitution),
     are_disjoints (FV_ctx G) l ->
@@ -267,8 +267,8 @@ Proof.
     erewrite (@IHtau1_1 tau1 l L is_s phi); eauto.
 Qed.
 
-Hint Resolve inst_subst_to_subst_aux_4.
-Hint Rewrite inst_subst_to_subst_aux_4:RE.
+Hint Resolve inst_subst_to_subst_aux.
+Hint Rewrite inst_subst_to_subst_aux:RE.
 
 (** This huge lemma is needed to prove [more_general_gen_ty]. *)
 Lemma more_general_ctx_disjoint_prefix_apply_inst :
@@ -300,7 +300,7 @@ Proof.
       rewrite (nth_error_app (map_apply_subst_over_list_ty
                (ty_from_id_list l1) phi) (map_apply_subst_over_list_ty (ty_from_id_list x) phi)).
       erewrite (@nth_error_map phi (ty_from_id_list l1) i0 (var i)).
-      rewrite (@inst_subst_to_subst_aux_4 G2 (var i) tau2 l2 L is_s phi); eauto.
+      rewrite (@inst_subst_to_subst_aux G2 (var i) tau2 l2 L is_s phi); eauto.
       eauto.
       crush.
     + intros.
@@ -315,7 +315,7 @@ Proof.
       rewrite (nth_error_app (map_apply_subst_over_list_ty (ty_from_id_list (l1 ++ i::nil)) phi)
                              (map_apply_subst_over_list_ty (ty_from_id_list P2) phi)).
       erewrite (@nth_error_map phi (ty_from_id_list (l1 ++ i::nil)) (length l1) (var i)).
-      erewrite (@inst_subst_to_subst_aux_4 G2 (var i) tau2 l2 L is_s phi); eauto.
+      erewrite (@inst_subst_to_subst_aux G2 (var i) tau2 l2 L is_s phi); eauto.
       rewrite ty_from_id_list_app; simpl.
       rewrite <- length_ty_from_id_list; eauto.
       crush.
@@ -439,7 +439,7 @@ Proof.
         rewrite nth_error_app; eauto.
         erewrite nth_error_map; eauto.
         rewrite apply_compose_equiv.
-        erewrite inst_subst_to_subst_aux_4.
+        erewrite inst_subst_to_subst_aux.
         reflexivity.
         apply disjoint2.
         eauto.
@@ -458,7 +458,7 @@ Proof.
         rewrite nth_error_app; eauto.
         erewrite nth_error_map; eauto.
         rewrite apply_compose_equiv.
-        erewrite inst_subst_to_subst_aux_4 with (l := l2); eauto.
+        erewrite inst_subst_to_subst_aux with (l := l2); eauto.
         rewrite length_map2.
         eauto.
   - crush.
