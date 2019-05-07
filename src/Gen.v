@@ -1,3 +1,8 @@
+(** * The generalization functions and lemmas
+      This file contains the defintion of the generalization function [gen_ty].
+      The generalization process is essential in the let case of algorithm W.
+    *)
+
 Require Import LibTactics.
 Require Import Sublist.
 Require Import Context.
@@ -33,7 +38,7 @@ Fixpoint gen_ty_aux (tau : ty) (G : ctx) (l : list id) : schm * list id :=
 Definition gen_ty (tau : ty) (G : ctx) :=
   @fst schm (list id) (gen_ty_aux tau G nil).
 
-(** List of variables that can be generalize *)
+(** List of variables that can be generalized. *)
 Fixpoint gen_ty_vars (tau : ty) (G : ctx) :=
   match tau with
   | con i => nil
@@ -41,7 +46,9 @@ Fixpoint gen_ty_vars (tau : ty) (G : ctx) :=
   | arrow tau' tau'' => (gen_ty_vars tau' G) ++ (gen_ty_vars tau'' G)
   end.
 
-(** gen_ty_vars distributes over arrow *)
+(** * Several lemmas about the generalization function *)
+
+(** gen_ty_vars distributes over arrow. *)
 Lemma gen_ty_vars_arrow : forall t1 t2 G, gen_ty_vars (arrow t1 t2) G =
                                      gen_ty_vars t1 G ++ gen_ty_vars t2 G.
 Proof.
@@ -65,7 +72,7 @@ Hint Resolve fst_gen_aux_arrow_rewrite.
 Hint Rewrite fst_gen_aux_arrow_rewrite:RE.
 
 
-(** Snd gen_ty_aux distributes over arrow *)
+(** snd gen_ty_aux distributes over arrow *)
 Lemma snd_gen_ty_aux_arrow_rewrite : forall (tau tau': ty) (G : ctx) (l: list id),
     (snd (gen_ty_aux (arrow tau tau') G l)) =
     (snd (gen_ty_aux tau' G (snd (gen_ty_aux tau G l)))).
@@ -77,41 +84,6 @@ Qed.
 
 Hint Resolve snd_gen_ty_aux_arrow_rewrite.
 Hint Rewrite snd_gen_ty_aux_arrow_rewrite:RE.
-
-(** The generalizable ids form a sublist of dom rho, for some conditions *)
-Lemma is_sublist_gen_ty_dom_rho: forall (G : ctx) (rho : ren_subst) (tau: ty) (l : list id),
-    (is_rename_subst rho) ->
-    (are_disjoints (dom_ren rho) (FV_ctx G)) -> (are_disjoints (FV_ctx G) (img_ren rho)) ->
-    (is_sublist_id l (dom_ren rho)) -> (is_sublist_id (gen_ty_vars tau G) (dom_ren rho)) ->
-    (is_sublist_id  (snd (gen_ty_aux tau G l)) (dom_ren rho)).
-Proof.
-  induction tau; intros.
-  - simpl.
-    cases (in_list_id i (FV_ctx G)).
-    + simpl. auto.
-    + cases (index_list_id i l).
-      * simpl. auto.
-      * simpl.
-        inversion H3. subst.
-        apply sublist_cons_inv; auto.
-        apply H4; auto. 
-        simpl. 
-        destruct (in_list_id i (FV_ctx G)); intuition.
-        mysimp.
-  - simpl. auto.
-  - generalize dependent l.
-    intros.
-    erewrite snd_gen_ty_aux_arrow_rewrite.
-    eapply IHtau2; auto.
-    eapply IHtau1; auto.
-    rewrite gen_ty_vars_arrow in H3.
-    eapply sublist_of_append_inversion1.
-    apply H3.
-    eapply sublist_of_append_inversion2.
-    apply H3.
-Qed.        
-
-Hint Resolve is_sublist_gen_ty_dom_rho.
 
 Lemma free_and_bound_are_disjoints : forall (G : ctx) (tau: ty),
     (are_disjoints (gen_ty_vars tau G ) (FV_ctx G)).
@@ -140,6 +112,8 @@ Proof.
 Qed.
 
 Hint Resolve free_and_bound_are_disjoints.
+
+(** ** Lemmas related to the renaminng substitution *)
 
 Lemma is_sublist_gen_vars2 : forall (rho: ren_subst) (G: ctx) (t: ty),
     (is_rename_subst rho) ->
@@ -197,6 +171,41 @@ Qed.
 
 Hint Resolve is_sublist_gen_vars3.
 
+(** The generalizable ids form a sublist of dom rho, for some conditions *)
+Lemma is_sublist_gen_ty_dom_rho: forall (G : ctx) (rho : ren_subst) (tau: ty) (l : list id),
+    (is_rename_subst rho) ->
+    (are_disjoints (dom_ren rho) (FV_ctx G)) -> (are_disjoints (FV_ctx G) (img_ren rho)) ->
+    (is_sublist_id l (dom_ren rho)) -> (is_sublist_id (gen_ty_vars tau G) (dom_ren rho)) ->
+    (is_sublist_id  (snd (gen_ty_aux tau G l)) (dom_ren rho)).
+Proof.
+  induction tau; intros.
+  - simpl.
+    cases (in_list_id i (FV_ctx G)).
+    + simpl. auto.
+    + cases (index_list_id i l).
+      * simpl. auto.
+      * simpl.
+        inversion H3. subst.
+        apply sublist_cons_inv; auto.
+        apply H4; auto. 
+        simpl. 
+        destruct (in_list_id i (FV_ctx G)); intuition.
+        mysimp.
+  - simpl. auto.
+  - generalize dependent l.
+    intros.
+    erewrite snd_gen_ty_aux_arrow_rewrite.
+    eapply IHtau2; auto.
+    eapply IHtau1; auto.
+    rewrite gen_ty_vars_arrow in H3.
+    eapply sublist_of_append_inversion1.
+    apply H3.
+    eapply sublist_of_append_inversion2.
+    apply H3.
+Qed.        
+
+Hint Resolve is_sublist_gen_ty_dom_rho.
+
 Lemma renaming_not_concerned_with_gen_vars: forall (rho : ren_subst) (s: substitution) (G : ctx) (tau: ty),
     (renaming_of_not_concerned_with rho (gen_ty_vars tau G) (FV_ctx G) (FV_subst s)) ->
     (are_disjoints (FV_subst s) (gen_ty_vars (apply_subst (rename_to_subst rho) tau) G)).
@@ -221,7 +230,7 @@ Qed.
 Hint Resolve renaming_not_concerned_with_gen_vars.
 
 (** This lemma is used to prove gen_ty_renaming, which says that gen_ty
- works that same for a special renaming *)
+    works that same for a special renaming *)
 Lemma gen_ty_renaming_aux: forall (tau : ty) (G: ctx) (rho : ren_subst) l,
     (is_rename_subst rho) ->
     (are_disjoints  (dom_ren rho) (FV_ctx G)) ->
@@ -295,23 +304,6 @@ Qed.
 
 Hint Resolve gen_ty_renaming_aux.
 
-(** If the ids of a ty are free in the G, then gen_ty_aux is just ty_to_schm *)
-Lemma is_not_generalizable : forall (G : ctx)  (tau : ty) (l: list id),
-    is_sublist_id (ids_ty tau) (FV_ctx G) -> gen_ty_aux tau G l= (ty_to_schm tau, l).
-Proof.
-  induction tau; intros; auto; simpl;
-    inversion H.
-  - rewrite H0; auto. mysimp.
-  - erewrite IHtau1.
-    erewrite IHtau2. reflexivity.
-    simpl in H.
-    apply sublist_of_append_inversion2 in H. auto.
-    apply sublist_of_append_inversion1 in H. auto.
-Qed.
-
-Hint Resolve is_not_generalizable.
-Hint Rewrite is_not_generalizable:RE.
-
 (** gen_ty works that same for a special renaming *)
 Lemma gen_ty_renaming: forall (G : ctx) (rho : ren_subst) (tau : ty) (s: substitution),
     (renaming_of_not_concerned_with rho (gen_ty_vars tau G) (FV_ctx G) (FV_subst s))
@@ -334,6 +326,25 @@ Qed.
 Hint Resolve gen_ty_renaming.
 Hint Rewrite gen_ty_renaming:RE.
 
+(** ** Several other generalization lemmas *)
+
+(** If the ids of a ty are free in the G, then gen_ty_aux is just ty_to_schm *)
+Lemma is_not_generalizable : forall (G : ctx)  (tau : ty) (l: list id),
+    is_sublist_id (ids_ty tau) (FV_ctx G) -> gen_ty_aux tau G l= (ty_to_schm tau, l).
+Proof.
+  induction tau; intros; auto; simpl;
+    inversion H.
+  - rewrite H0; auto. mysimp.
+  - erewrite IHtau1.
+    erewrite IHtau2. reflexivity.
+    simpl in H.
+    apply sublist_of_append_inversion2 in H. auto.
+    apply sublist_of_append_inversion1 in H. auto.
+Qed.
+
+Hint Resolve is_not_generalizable.
+Hint Rewrite is_not_generalizable:RE.
+
 Lemma gen_ty_aux_in_subst_ctx : forall (tau: ty) (G : ctx) (s : substitution) (l : list id),
     (are_disjoints (dom s) (gen_ty_vars tau G)) ->
     (are_disjoints (img_ids s) (gen_ty_vars tau G)) ->
@@ -344,14 +355,12 @@ Proof.
   induction tau; intros.
   - simpl in *.
     cases (in_list_id i (FV_ctx G)).
-    +
-      fold (apply_subst s (var i)).
+    + fold (apply_subst s (var i)).
       rewrite is_not_generalizable.
       rewrite <- ty_to_subst_schm.
       reflexivity.
       eapply sublist_FV_ctx; auto.
-    +
-      repeat fold (apply_subst s (var i)).
+    + repeat fold (apply_subst s (var i)).
       erewrite apply_subst_dom_false.
       simpl.
       rewrite not_in_FV_ctx; auto.
@@ -405,27 +414,7 @@ Qed.
 Hint Resolve gen_ty_in_subst_ctx.
 Hint Rewrite gen_ty_in_subst_ctx:RE.
 
-Lemma gen_alpha4_bis : forall (G : ctx) (rho : ren_subst) (tau : ty),
-    is_rename_subst rho -> dom_ren rho = gen_ty_vars tau G ->
-    are_disjoints (FV_ctx G) (img_ren rho) ->
-    gen_ty tau G = gen_ty (apply_subst (rename_to_subst rho) tau) G.
-Proof.
-  intros; unfold gen_ty in |- *.
-  inversion H.
-  assert (nil = map (apply_ren_subst rho) nil).
-  {reflexivity. }
-  rewrite H5.
-  rewrite gen_ty_renaming_aux; auto.
-  rewrite H0.
-  apply free_and_bound_are_disjoints.
-  rewrite <- H0.
-  apply sublist_reflexivity.
-Qed.
-
-Hint Resolve gen_alpha4_bis.
-Hint Rewrite gen_alpha4_bis:RE.
-
-Lemma Snd_gen_aux_with_app3 : forall (G : ctx) (tau : ty) (l : list id),
+Lemma snd_gen_aux_with_app3 : forall (G : ctx) (tau : ty) (l : list id),
     exists l', snd (gen_ty_aux tau G l) = l ++ l' /\ are_disjoints (FV_ctx G) l'.
 Proof.
   induction tau.
@@ -455,20 +444,20 @@ Proof.
     eauto.
 Qed.
 
-Hint Resolve Snd_gen_aux_with_app3.
+Hint Resolve snd_gen_aux_with_app3.
 
-Lemma disjoint_Snd_gen_aux : forall (G : ctx) (l : list id) (tau : ty),
+Lemma disjoint_snd_gen_aux : forall (G : ctx) (l : list id) (tau : ty),
     are_disjoints (FV_ctx G) l -> are_disjoints (FV_ctx G) (snd (gen_ty_aux tau G l)).
 Proof.
   intros.
-  destruct (Snd_gen_aux_with_app3 G tau l).
+  destruct (snd_gen_aux_with_app3 G tau l).
   destruct H0. rewrite H0.
   eauto.
 Qed.
 
-Hint Resolve disjoint_Snd_gen_aux.
+Hint Resolve disjoint_snd_gen_aux.
 
-Lemma length_Snd_gen_aux : forall (G : ctx) (tau : ty) (l : list id),
+Lemma length_snd_gen_aux : forall (G : ctx) (tau : ty) (l : list id),
     length (snd (gen_ty_aux tau G l)) = max (length l) (max_gen_vars (fst (gen_ty_aux tau G l))).
 Proof.
   induction tau; crush.
@@ -500,12 +489,3 @@ Proof.
   rewrite Nat.max_assoc.
   assumption.
 Qed.
-
-Lemma is_not_generalizable_aux : forall (G : ctx) (tau : ty) (l : list id),
-    is_sublist_id (ids_ty tau) (FV_ctx G) ->
-    gen_ty_aux tau G l = (ty_to_schm tau, l).
-Proof.
-  induction tau; crush.
-Qed.
-
-Hint Resolve is_not_generalizable_aux.
