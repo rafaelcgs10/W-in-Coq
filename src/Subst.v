@@ -46,7 +46,6 @@ Qed.
 
 Definition FV_subst (s: substitution) := ((dom s) ++ (img_ids s)).
 
-
 (** * Some lemas retaled to the domain of a substitution *)
 
 Lemma dom_dist_app : forall s1 s2, dom (s1 ++ s2) = (dom s1) ++ (dom s2).
@@ -55,7 +54,9 @@ Proof.
   congruence.
 Qed.
 
-Lemma ids_ty_apply_subst : forall s t, (ids_ty (apply_subst s t)) = List.concat (List.map ids_ty ( (List.map (apply_subst s) (List.map var (ids_ty t))))).
+Lemma ids_ty_apply_subst : forall s t,
+    (ids_ty (apply_subst s t)) =
+    List.concat (List.map ids_ty ( (List.map (apply_subst s) (List.map var (ids_ty t))))).
 Proof.
   intros.
   induction t; mysimp.
@@ -86,7 +87,8 @@ Qed.
 Hint Resolve apply_subst_con.
 Hint Rewrite apply_subst_con:RE.
 
-Lemma apply_subst_arrow : forall s l r, apply_subst s (arrow l r) = arrow (apply_subst s l) (apply_subst s r).
+Lemma apply_subst_arrow : forall s l r,
+    apply_subst s (arrow l r) = arrow (apply_subst s l) (apply_subst s r).
 Proof.
   induction s ; mysimp.
 Qed.
@@ -103,9 +105,10 @@ Qed.
 Hint Resolve apply_subst_nil.
 Hint Rewrite apply_subst_nil:RE.
 
-Lemma arrow_subst_eq : forall l l' r r' s,  apply_subst s l = apply_subst s l' ->
-                                          apply_subst s r = apply_subst s r' ->
-                                          apply_subst s (arrow l r) = apply_subst s (arrow l' r').
+Lemma arrow_subst_eq : forall l l' r r' s,
+    apply_subst s l = apply_subst s l' ->
+    apply_subst s r = apply_subst s r' ->
+    apply_subst s (arrow l r) = apply_subst s (arrow l' r').
 Proof.
   intros ; do 2 rewrite apply_subst_arrow ; fequals*.
 Qed.
@@ -113,14 +116,16 @@ Qed.
 Hint Resolve arrow_subst_eq.
 
 (** Some lemmas for folding back a substitution application *)
-Lemma apply_subst_fold : forall s, (forall i, match find_subst s i with | Some t' => t' | None => var i end = apply_subst s (var i)).
+Lemma apply_subst_fold : forall s,
+    (forall i, match find_subst s i with | Some t' => t' | None => var i end = apply_subst s (var i)).
 Proof.
   intros. reflexivity.
 Qed.
 
-Lemma apply_subst_fold2 :  forall s s', (forall i, match find_subst s i with | Some t' => t' | None => var i end =
-                                         match find_subst s' i with | Some t' => t' | None => var i end) <->
-                                   (forall i, apply_subst s (var i) = apply_subst s' (var i)).
+Lemma apply_subst_fold2 :  forall s s',
+    (forall i, match find_subst s i with | Some t' => t' | None => var i end =
+          match find_subst s' i with | Some t' => t' | None => var i end) <->
+    (forall i, apply_subst s (var i) = apply_subst s' (var i)).
 Proof.
   intros; split; intro; 
     simpl in *;
@@ -142,7 +147,6 @@ Proof.
   congruence.
 Qed.
 
-
 Lemma apply_subst_list_nil : forall s, apply_subst_list s nil = s.
 Proof.
   induction s; mysimp.
@@ -152,6 +156,35 @@ Qed.
 
 Hint Resolve apply_subst_list_nil.
 Hint Rewrite apply_subst_list_nil:RE.
+
+Lemma dom_dist : forall s1 s2 : substitution, dom (s1 ++ s2) = dom s1 ++ dom s2.
+Proof.
+  induction s1; crush.
+Qed.
+
+Hint Resolve dom_dist.
+Hint Rewrite dom_dist:RE.
+
+Lemma img_dist : forall s1 s2 : substitution, img (s1 ++ s2) = img s1 ++ img s2.
+Proof.
+  induction s1; crush.
+Qed.
+
+Hint Resolve img_dist.
+Hint Rewrite img_dist:RE.
+
+Lemma img_ids_dist : forall s1 s2 : substitution, img_ids (s1 ++ s2) = img_ids s1 ++ img_ids s2.
+Proof.
+  unfold img_ids.
+  intros.
+  rewrite <- concat_app.
+  rewrite img_dist. 
+  rewrite map_app.
+  reflexivity.
+Qed.
+
+Hint Resolve img_ids_dist.
+Hint Rewrite img_ids_dist:RE.
 
 (** ** Substitution composition *)
 Definition compose_subst (s1 s2 : substitution) :=
@@ -228,6 +261,13 @@ Proof.
   rewrite apply_subst_list_dom.
   simpl.
   reflexivity.
+Qed.
+
+(** Lemma about free variables of a composed substitution *)
+Lemma FV_subst_compose : forall s1 s2,
+    FV_subst (compose_subst s1 s2) = FV_subst ((apply_subst_list s1 s2) ++ s2).
+Proof.
+  induction s1; crush.
 Qed.
 
 (** ** find_subst lemmas *)
