@@ -93,7 +93,8 @@ Proof.
   econstructor.
   intros.
   inverts* H.
-  destruct (apply_inst_subst_succeeds sigma2' (x ++ make_constant_inst_subst (max_gen_vars sigma2') (con 0))).
+  destruct (apply_inst_subst_succeeds sigma2'
+            (x ++ make_constant_inst_subst (max_gen_vars sigma2') (con 0))).
   rewrite app_length.
   rewrite length_make_constant_inst_subst.
   auto with *.
@@ -125,7 +126,8 @@ Proof.
   econstructor.
   intros.
   inverts* H.
-  destruct (apply_inst_subst_succeeds sigma1' (x ++ make_constant_inst_subst (max_gen_vars sigma1') (con 0))).
+  destruct (apply_inst_subst_succeeds sigma1'
+            (x ++ make_constant_inst_subst (max_gen_vars sigma1') (con 0))).
   rewrite app_length.
   rewrite length_make_constant_inst_subst.
   auto with *.
@@ -178,7 +180,6 @@ Inductive more_general_ctx : ctx -> ctx -> Prop :=
 
 Hint Constructors more_general_ctx.
 
- 
 Lemma FV_more_general_ctx : forall G1 G2 : ctx,
     more_general_ctx G1 G2 ->
     Sublist.is_sublist_id (FV_ctx G1) (FV_ctx G2).
@@ -398,18 +399,22 @@ Qed.
 Hint Resolve typing_in_a_more_general_ctx.
 
 Lemma more_general_ctx_refl : forall G : ctx, more_general_ctx G G.
-simple induction G; auto.
-intros; elim a; auto.
+Proof.
+  simple induction G; auto.
+  intros; elim a; auto.
 Qed.
 
 Hint Resolve more_general_ctx_refl.
 
-Lemma more_general_gen_ty_before_apply_subst_aux : forall (G : ctx) (tau1 tau2 : ty) (phi s : substitution)
-                      (l1 l2 L P : list id) (is_s : inst_subst),
+(** Auxiliary lemma for the [more_general_gen_ty_before_apply_subst] lemma *)
+Lemma more_general_gen_ty_before_apply_subst_aux :
+  forall (G : ctx) (tau1 tau2 : ty) (phi s : substitution) (l1 l2 L P : list id) (is_s : inst_subst),
     are_disjoints (FV_ctx G) l1 ->
     are_disjoints (FV_ctx (apply_subst_ctx s G)) l2 ->
-    apply_inst_subst is_s (fst (gen_ty_aux (apply_subst s tau1) (apply_subst_ctx s G) l2)) = Some tau2 ->
-    is_prefixe_free2 (FV_ctx (apply_subst_ctx s G)) (snd (gen_ty_aux (apply_subst s tau1) (apply_subst_ctx s G) l2)) L ->
+    apply_inst_subst is_s (fst (gen_ty_aux (apply_subst s tau1)
+                                           (apply_subst_ctx s G) l2)) = Some tau2 ->
+    is_prefixe_free2 (FV_ctx (apply_subst_ctx s G))
+                     (snd (gen_ty_aux (apply_subst s tau1) (apply_subst_ctx s G) l2)) L ->
     product_list L is_s = Some phi ->
     is_prefixe_free2 (FV_ctx G) (snd (gen_ty_aux tau1 G l1)) P ->
     apply_inst_subst (map_apply_subst_over_list_ty (ty_from_id_list P) (compose_subst s phi))
@@ -422,7 +427,7 @@ Proof.
     cases (in_list_id i (FV_ctx G)).
     + simpl.
       repeat fold (apply_subst s (var i)) in *.
-      erewrite is_not_generalizable_aux; eauto.
+      erewrite is_not_generalizable; eauto.
       crush.
     + do 3 intro.
       cases (index_list_id i l1).
@@ -472,7 +477,8 @@ Proof.
     intros.
     simpl.
     erewrite (@IHtau1_1 tau1 phi s l1 l2 L P is_s); eauto.
-    erewrite (@IHtau1_2 tau3 phi s) with (l2:= (snd (gen_ty_aux (apply_subst s tau1_1) (apply_subst_ctx s G) l2))); eauto.
+    erewrite (@IHtau1_2 tau3 phi s) with
+        (l2:= (snd (gen_ty_aux (apply_subst s tau1_1) (apply_subst_ctx s G) l2))); eauto.
 Qed.
 
 Hint Resolve more_general_gen_ty_before_apply_subst_aux.
