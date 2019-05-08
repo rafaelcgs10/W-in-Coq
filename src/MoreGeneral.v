@@ -21,9 +21,9 @@ Require Import NewTypeVariable.
 Require Import SimpleTypes.
 Require Import Subst.
 Require Import MyLtacs.
-Require Import Nth_error_tools.
-Require Import Product_list.
-Require Import Prefix.
+Require Import NthErrorTools.
+Require Import ProductList.
+Require Import DisjointTail.
 Require Import LibTactics.
 
 Inductive more_general : schm -> schm -> Prop :=
@@ -204,7 +204,7 @@ Lemma inst_subst_to_subst_aux :
     (is_s : list ty) (phi : substitution),
     are_disjoints (FV_ctx G) l ->
     apply_inst_subst is_s (fst (gen_ty_aux tau1 G l)) = Some tau2 ->
-    is_prefixe_free (FV_ctx G) (snd (gen_ty_aux tau1 G l)) L ->
+    is_disjoint_with_some_tail (FV_ctx G) (snd (gen_ty_aux tau1 G l)) L ->
     product_list L is_s = Some phi -> apply_subst phi tau1 = tau2.
 Proof.
   induction tau1.
@@ -277,9 +277,9 @@ Lemma more_general_ctx_disjoint_prefix_apply_inst :
     more_general_ctx G1 G2 -> are_disjoints (FV_ctx G2) l2 ->
     are_disjoints (FV_ctx G1) l1 ->
     apply_inst_subst is_s (fst (gen_ty_aux tau1 G2 l2)) = Some tau2 ->
-    is_prefixe_free (FV_ctx G2) (snd (gen_ty_aux tau1 G2 l2)) L ->
+    is_disjoint_with_some_tail (FV_ctx G2) (snd (gen_ty_aux tau1 G2 l2)) L ->
     product_list L is_s = Some phi ->
-    is_prefixe_free (FV_ctx G1) (snd (gen_ty_aux tau1 G1 l1)) P ->
+    is_disjoint_with_some_tail (FV_ctx G1) (snd (gen_ty_aux tau1 G1 l1)) P ->
     apply_inst_subst (map_apply_subst_over_list_ty (ty_from_id_list P) phi)
                      (fst (gen_ty_aux tau1 G1 l1)) = Some tau2.
 Proof.
@@ -413,10 +413,10 @@ Lemma more_general_gen_ty_before_apply_subst_aux :
     are_disjoints (FV_ctx (apply_subst_ctx s G)) l2 ->
     apply_inst_subst is_s (fst (gen_ty_aux (apply_subst s tau1)
                                            (apply_subst_ctx s G) l2)) = Some tau2 ->
-    is_prefixe_free (FV_ctx (apply_subst_ctx s G))
+    is_disjoint_with_some_tail (FV_ctx (apply_subst_ctx s G))
                      (snd (gen_ty_aux (apply_subst s tau1) (apply_subst_ctx s G) l2)) L ->
     product_list L is_s = Some phi ->
-    is_prefixe_free (FV_ctx G) (snd (gen_ty_aux tau1 G l1)) P ->
+    is_disjoint_with_some_tail (FV_ctx G) (snd (gen_ty_aux tau1 G l1)) P ->
     apply_inst_subst (map_apply_subst_over_list_ty (ty_from_id_list P) (compose_subst s phi))
                      (apply_subst_schm s (fst (gen_ty_aux tau1 G l1))) = Some tau2.
 Proof.

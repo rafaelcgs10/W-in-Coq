@@ -18,7 +18,7 @@ Require Import Schemes.
 Require Import Subst.
 Require Import SubstSchm.
 Require Import MyLtacs.
-Require Import Nth_error_tools.
+Require Import NthErrorTools.
 Require Import LibTactics.
 
 (** This creates a substitution from a list of id and a list of types of the same length. *)

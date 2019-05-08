@@ -8,7 +8,7 @@ Require Import Relation_Operators.
 Require Import Coq.Setoids.Setoid.
 Require Import LibTactics.
 Require Import MyLtacs.
-Require Import Nth_error_tools.
+Require Import NthErrorTools.
 
 
 (** Check if a id is in a list *)

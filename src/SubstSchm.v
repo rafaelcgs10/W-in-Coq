@@ -11,7 +11,7 @@ Require Import Relation_Operators.
 Require Import Coq.Setoids.Setoid.
 Require Import LibTactics.
 Require Import Schemes.
-Require Import Nth_error_tools.
+Require Import NthErrorTools.
 
 Require Import LibTactics.
 
