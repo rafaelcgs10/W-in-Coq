@@ -1,3 +1,8 @@
+(** * The disjoint lists relation
+      This file contains the defintion of the disjoint list of [ids] relation [are_disjoints] 
+      and its lemmas.
+    *)
+
 Set Implicit Arguments.
 
 Require Import ListIds.
@@ -9,10 +14,15 @@ Require Import Coq.Setoids.Setoid.
 
 Require Import LibTactics.
 
+(** * Disjoints lists of [ids] definition *)
+
 Definition are_disjoints (l l' : list id) : Prop :=
 forall (x : id), (in_list_id x l) = true -> (in_list_id x l') = false.
 
-Lemma are_disjoints_cons_inversion : forall a b l1 l2, are_disjoints (a::l1) (b::l2) -> are_disjoints l1 l2.
+(** * Several lemmas about [are_disjoints] *)
+
+Lemma are_disjoints_cons_inversion : forall a b l1 l2,
+    are_disjoints (a::l1) (b::l2) -> are_disjoints l1 l2.
 Proof.
   intros.
   unfold are_disjoints in *.

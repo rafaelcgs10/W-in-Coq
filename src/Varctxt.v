@@ -1,3 +1,8 @@
+(** * The context of type variables 
+      This file contains the defintion of variable context [varctxt],
+      its auxiliary functions and several lemmas about them.
+    *)
+
 Set Implicit Arguments.
 
 Require Import Arith.Arith_base List Omega.
@@ -7,7 +12,6 @@ Require Import Subst.
 Require Import MyLtacs.
 Import ListNotations.
 
-(** * Context of Type Variables **)
 
 (** Type variables context is the key element to the formalization of the termination
     argument of the unification algorithm. This context is used to store the variables

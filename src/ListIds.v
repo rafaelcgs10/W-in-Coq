@@ -1,3 +1,5 @@
+(** * Auxiliary list of ids functions and lemmas *)
+
 Set Implicit Arguments.
 
 Require Import SimpleTypes.
@@ -11,13 +13,15 @@ Require Import MyLtacs.
 Require Import NthErrorTools.
 
 
-(** Check if a id is in a list *)
+(** * Check if a id is in a list *)
 
 Fixpoint in_list_id (i : id) (l : list id) : bool:=
   match l with
   | nil => false
   | x::l' => if eq_id_dec x i then true else in_list_id i l'
   end.
+
+(** * Lemmas about [in_list_id] *)
 
 Lemma in_list_id_or_append : forall x l1 l2,
     in_list_id x l1 = true \/ in_list_id x l2 = true ->
@@ -238,24 +242,17 @@ Qed.
 Hint Resolve in_list_id_append_inversion2.
 Hint Rewrite in_list_id_append_inversion2:RE.
 
-(** index of a id is in a list *)
+Lemma in_list_id_le_ex : forall l p i, (forall x : id, in_list_id x (p :: l) = true -> x < i) -> p < i.
+Proof.
+  intros.
+  specialize H with (x:=p).
+  simpl in H.
+  destruct (eq_id_dec p p); intuition.
+Qed.
 
-Fixpoint index_list_id_aux (count i : id) (l : list id) : option id :=
-  match l with
-  | nil => None
-  | x::l' => if eq_id_dec x i then Some count else index_list_id_aux (S count) i l'
-  end.
+Hint Resolve in_list_id_le_ex.
 
-Definition index_list_id (i:id) (l:list id) := index_list_id_aux 0 i l.
-  
-Fixpoint ids_ty_aux (tau : ty) (g : list id) : list id :=
-  match tau with
-  | var i => if in_list_id i g then g else i::g
-  | arrow l r => let g' := (ids_ty_aux l g) in (ids_ty_aux r g')
-  | _ => nil
-  end.
-
-Definition ids_ty2 (tau tau' : ty) := ids_ty_aux tau' (ids_ty tau).
+(** * Get the biggest element from a list of ids *)
 
 Definition max_list_ids' :
   forall (l : list id) (n : id), {m: id | (forall x, in_list_id x l = true -> x <= m) /\ n <= m}.
@@ -300,6 +297,8 @@ Qed.
 
 Definition max_list_ids l := max_list_ids' l 0.
 
+(** * Some [max_list_ids] lemmas *)
+
 Lemma max_list_ids'_eq : forall a x x0 l P, a > x -> max_list_ids' l a = exist _ x0 P -> x0 < x -> a = x.
 Proof.
   intros.
@@ -330,16 +329,6 @@ Qed.
 
 Hint Resolve max_list_ids'_false.
 
-Lemma in_list_id_le_ex : forall l p i, (forall x : id, in_list_id x (p :: l) = true -> x < i) -> p < i.
-Proof.
-  intros.
-  specialize H with (x:=p).
-  simpl in H.
-  destruct (eq_id_dec p p); intuition.
-Qed.
-
-Hint Resolve in_list_id_le_ex.
-
 Definition max_ids (i1 i2 : id) : id := if le_gt_dec i1 i2 then i2 else i1.
 
 Definition max_ids_dep: forall (i1 i2 : id),
@@ -368,6 +357,17 @@ Qed.
 
 Hint Resolve apply_subst_dom_false.
 Hint Rewrite apply_subst_dom_false:RE.
+
+(** * Get a list of [id] from a [ty] *)
+
+Fixpoint ids_ty_aux (tau : ty) (g : list id) : list id :=
+  match tau with
+  | var i => if in_list_id i g then g else i::g
+  | arrow l r => let g' := (ids_ty_aux l g) in (ids_ty_aux r g')
+  | _ => nil
+  end.
+
+Definition ids_ty2 (tau tau' : ty) := ids_ty_aux tau' (ids_ty tau).
 
 Lemma not_in_img: forall (s: substitution) (st x: id),
     st <> x -> 
@@ -398,8 +398,17 @@ Qed.
 Hint Resolve not_in_img.
 Hint Rewrite not_in_img:RE.
 
+(** * Checks if index of an [id] is in a list *)
 
-(** * Some lemamas *)
+Fixpoint index_list_id_aux (count i : id) (l : list id) : option id :=
+  match l with
+  | nil => None
+  | x::l' => if eq_id_dec x i then Some count else index_list_id_aux (S count) i l'
+  end.
+
+Definition index_list_id (i:id) (l:list id) := index_list_id_aux 0 i l.
+ 
+(** * Many lemmas about [index_list_id] *)
 
 Lemma index_list_id_nil : forall st, index_list_id st nil = None.
 Proof.

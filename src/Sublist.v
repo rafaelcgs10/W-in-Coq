@@ -1,3 +1,8 @@
+(** * The subslist relation
+      This file contains the defintion of the sublist relation [is_sublist_id] and its 
+      lemmas (some of them related to disjoints lists).
+    *)
+
 Set Implicit Arguments.
 
 Require Import LibTactics.

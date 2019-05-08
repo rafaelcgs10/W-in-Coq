@@ -1,3 +1,8 @@
+(** * The schemes
+      This file contains the defintion of schemes (polymorphic types) [schm] and 
+      some auxiliary definitions.
+    *)
+
 Set Implicit Arguments.
 
 Require Import SimpleTypes.

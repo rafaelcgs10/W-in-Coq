@@ -1,3 +1,9 @@
+(** * My Ltacs
+      This file contains the defintions of two Ltacs:
+      [mysimp] which was used in the original unification by Ribeiro and Camarão.
+      And [crush] which is a extension of [mysimp] to also try term rewriting proofs. 
+*)
+
 Set Implicit Arguments.
 
 Require Import LibTactics.

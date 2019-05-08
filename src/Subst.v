@@ -1,3 +1,8 @@
+(** * The simple type substitution
+      This file contains the defintion of simple type substitution [substitution] and 
+      some auxiliary definitions.
+    *)
+
 Set Implicit Arguments.
 
 Require Import Arith.Arith_base List Omega.
@@ -11,15 +16,16 @@ Require Import MyLtacs.
 
 (** * Substitutions *)
 
-(** A operation for substitute all the ocurrences of variable x in t2 by t1. *)
 Definition substitution := list (id * ty).
 
+(** A look up function to find in [s] the identifier [i]. *)
 Fixpoint find_subst (s : list (id * ty)) (i : id) : option ty :=
   match s with
     | nil => None
     | (v,t') :: s' => if (eq_id_dec v i) then Some t' else find_subst s' i
   end.
 
+(** The application substitution operation, which is non-incremental. *)
 Fixpoint apply_subst (s : substitution) (t : ty) : ty :=
   match t with
   | arrow l r => arrow (apply_subst s l) (apply_subst s r)
@@ -42,11 +48,11 @@ Proof.
 Qed.
 
 
-(** * Free variables of a substitution *)
+(** ** Free variables of a substitution *)
 
 Definition FV_subst (s: substitution) := ((dom s) ++ (img_ids s)).
 
-(** * Some lemas retaled to the domain of a substitution *)
+(** ** Some lemas retaled to the domain of a substitution *)
 
 Lemma dom_dist_app : forall s1 s2, dom (s1 ++ s2) = (dom s1) ++ (dom s2).
 Proof.
@@ -133,13 +139,15 @@ Proof.
 Qed.
 
 
-(** ** Apply substitution over a list **)
+(** * Apply substitution over a list **)
 
 Fixpoint apply_subst_list (s1 s2 : substitution) : substitution :=
   match s1 with
   | nil => nil
   | (i, t)::s1' => (i, apply_subst s2 t)::apply_subst_list s1' s2
   end.
+
+(** ** Some lemmas about [apply_subst_list] **)
 
 Lemma apply_subst_list_dom : forall s1 s2, dom (apply_subst_list s1 s2) = dom s1.
 Proof.
@@ -186,10 +194,10 @@ Qed.
 Hint Resolve img_ids_dist.
 Hint Rewrite img_ids_dist:RE.
 
-(** ** Substitution composition *)
+(** * Substitution composition *)
+
 Definition compose_subst (s1 s2 : substitution) :=
       apply_subst_list s1 s2 ++ s2.
-
 
 (** ** Some obvious facts about composition **)
 
@@ -263,7 +271,8 @@ Proof.
   reflexivity.
 Qed.
 
-(** Lemma about free variables of a composed substitution *)
+(** * Lemma about free variables of a composed substitution *)
+
 Lemma FV_subst_compose : forall s1 s2,
     FV_subst (compose_subst s1 s2) = FV_subst ((apply_subst_list s1 s2) ++ s2).
 Proof.
@@ -332,7 +341,8 @@ Qed.
 
 Hint Resolve add_subst_rewrite_for_unmodified_id.
 
-(** ** Extensionality Lemmas For Substitutions *)
+(** * Extensionality Lemmas For Substitutions *)
+
 Lemma ext_subst_var_ty : forall s s', (forall v, apply_subst s (var v) = apply_subst s' (var v)) ->
                                  forall t, apply_subst s t = apply_subst s' t.
 Proof.
@@ -342,10 +352,26 @@ Proof.
   try (rewrite IHt1 ; auto). try (rewrite IHt2 ; auto).
 Qed.
 
+(** * Creates a list of type from a list of ids *)
+
+Fixpoint ty_from_id_list (l : list id) : list ty :=
+  match l with
+  | nil => nil
+  | x::l' => var x :: ty_from_id_list l'
+  end.
+
+Lemma length_ty_from_id_list : forall l : list id, length (ty_from_id_list l) = length l.
+Proof.
+  induction l; simpl; auto.
+Qed.
+
+Hint Resolve length_ty_from_id_list.
+Hint Rewrite length_ty_from_id_list:RE.
+
 Lemma ty_from_id_list_app : forall l1 l2 : list id,
     ty_from_id_list (l1 ++ l2) = ty_from_id_list l1 ++ ty_from_id_list l2.
 Proof.
-  induction l1; crush.
+  induction l1; crush. 
 Qed.
 
 Hint Resolve ty_from_id_list_app.
@@ -399,4 +425,3 @@ Qed.
 
 Hint Resolve app_length_cons.
 Hint Rewrite app_length_cons:RE.
-

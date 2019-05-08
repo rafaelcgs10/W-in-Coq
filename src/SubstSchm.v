@@ -1,3 +1,9 @@
+(** * The substitution over schemes
+      This file contains the defintions of the two substitutions of schemes:
+      [apply_subst_schm] and [apply_inst_subst].
+      And several lemmas about both.
+    *)
+
 Set Implicit Arguments.
 
 Require Import ListIds.
