@@ -1,7 +1,6 @@
 (** * The Disjoint tail
-      This file contains defintions and lemmas about [is_disjoint_with_some_tail], which computes 
-      a substitution from a list of id and a list of types of the same length. 
-      This function is used in the lemmas 
+      This file contains defintions and lemmas about [is_disjoint_with_some_tail]. 
+      This definition is used in the lemmas 
       [inst_subst_to_subst_aux] and [more_general_ctx_disjoint_prefix_apply_inst] 
       in the Moregeneral file. *)
 
@@ -21,11 +20,16 @@ Require Import NthErrorTools.
 Require Import LibTactics.
 
 
+(** * Disjoint tail *)
+(** If [l] is a prefix of [L], then there is a postfix [l1] of [L] that is disjoint
+    with some given [C]. *)
 Inductive is_disjoint_with_some_tail : list id -> list id -> list id -> Prop :=
 |  prefixe_free_intro : forall C l L : list id,
     {l1 : list id | L = l ++ l1 /\ are_disjoints C l1} -> is_disjoint_with_some_tail C l L.
 
 Hint Constructors is_disjoint_with_some_tail.
+
+(** ** Lemmas about disjoint tail *)
 
 Lemma is_prefixe_gen_aux : forall (l L : list id) (tau : ty) (G : ctx),
     is_disjoint_with_some_tail (FV_ctx G) (snd (gen_ty_aux tau G l)) L ->
