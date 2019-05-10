@@ -27,7 +27,7 @@ Require Import MyLtacs.
 
 (** * A bunch of auxiliary definitions *)
 
-(** Monadic version of a the function [apply_inst_subst]. *)
+(** Monadic version of the function [apply_inst_subst]. *)
 Program Definition apply_inst_subst_hoare (is_s : inst_subst) (sigma : schm):
   @Infer (@top id) ty (fun i r f => i = f /\ apply_inst_subst is_s sigma = Some r) :=
   match apply_inst_subst is_s sigma with
