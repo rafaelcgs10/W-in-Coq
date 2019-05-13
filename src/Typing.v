@@ -34,7 +34,7 @@ Inductive term : Set :=
 | let_t   : id -> term -> term -> term
 | lam_t   : id -> term -> term
 | const_t : id -> term
-| case_t  : term -> pat -> term -> list pat -> list term -> term.
+| case_t  : term ->  list (pat * term) -> term.
 
 Inductive has_type_pat : ctx -> pat -> ty -> Prop:=
 | const_htp : forall x G, has_type_pat G (const_p x) (con x)
@@ -63,7 +63,6 @@ Fixpoint get_terms (c : list (pat * term)) : list term :=
   end.
 
 
-
 Inductive has_type : ctx -> term -> ty -> Prop :=
 | const_ht : forall x G, has_type G (const_t x) (con x)
 | var_ht : forall x G sigma tau, in_ctx x G = Some sigma -> is_schm_instance tau sigma ->
@@ -76,19 +75,19 @@ Inductive has_type : ctx -> term -> ty -> Prop :=
 | let_ht : forall G x e e' tau tau', has_type G e tau ->
                                 has_type ((x, gen_ty tau G) :: G) e' tau' ->
                                 has_type G (let_t x e e') tau'
-| case_ht : forall G e p t tau tau' ps ts, has_type G e tau ->
-                                    has_type_pat G p tau ->
-                                    has_type G t tau' ->
-                                    Forall (fun p' => has_type_pat G p' tau) ps ->
-                                    Forall (fun t' => has_type G t' tau) ts ->
-                                    has_type G (case_t e p t (com) tau'.
-                                         (*
-| case_many_ht : forall G e p t cs tau tau', has_type G e tau ->
-                                        has_type_pat G p tau ->
-                                        has_type G t tau' ->
-                                        has_type G (case_t e cs) tau' ->
-                                        has_type G (case_t e ((p, t)::cs)) tau'.
-*)
+| case_ht : forall G e tau tau' cs, has_type G e tau ->
+                               has_type_patterns G (get_pats cs) tau ->
+                               has_type_terms G (get_terms cs) tau' ->
+                               has_type G (case_t e cs) tau'
+  with has_type_terms : ctx -> list term -> ty -> Prop :=
+       | one_term : forall G e tau, has_type G e tau ->
+                                  has_type_terms G (e::nil) tau
+       | many_terms : forall G e tau es, has_type G e tau -> 
+                                         has_type_terms G es tau ->
+                                         has_type_terms G (e::es) tau.
+
+Scheme has_type_mut := Induction for has_type Sort Prop
+with has_type_terms_mut := Induction for has_type_terms Sort Prop.
 
 (** * The Great Substitution Lemma *)
 
@@ -138,29 +137,35 @@ Proof.
 Qed.    
 
 Hint Resolve has_type_patterns_is_stable_under_substitution.
-
-(*
-Lemma has_type_list_stabe : forall G tau l s,
-    Forall (fun t' => has_type G t' tau) l ->
-    Forall (fun t' => has_type (apply_subst_ctx s G) t' (apply_subst s tau)) l. 
+Lemma has_type_is_stable_under_substitution_aux1 : forall l s G tau,
+    (forall e', has_type G e' tau -> has_type (apply_subst_ctx s G) e' (apply_subst s tau)) ->
+    has_type_terms G l tau -> has_type_terms (apply_subst_ctx s G) l (apply_subst s tau).
 Proof.
   induction l.
   - intros.
-    auto.
+    inverts* H0.
   - intros.
-    inverts* H.
-    econstructor.
-*)
-    
-
+    inverts* H0.
+    econstructor; eauto.
+    econstructor; eauto.
+Qed.
+      
 
 (** has_type is stable under substitution *)
-Lemma has_type_is_stable_under_substitution : forall e s G tau,
-    has_type G e tau -> has_type (apply_subst_ctx s G) e (apply_subst s tau).
+Lemma has_type_is_stable_under_substitution_aux : forall e s G tau,
+    (forall l, has_type_terms G l tau -> has_type_terms (apply_subst_ctx s G) l (apply_subst s tau) ) /\
+    (has_type G e tau -> has_type (apply_subst_ctx s G) e (apply_subst s tau)).
 Proof.
   induction e.
   (** var case *)
-  - intros. inversion H.
+  - intros.
+    split; intros.
+    {
+      - inverts* H0.
+        econstructor; eauto.
+        econstructor; eauto.
+    }
+    inversion H.
     subst.
     econstructor.
     + induction G; simpl in *; mysimp.
@@ -178,18 +183,30 @@ Proof.
       apply H0.
   (** app case *)
   - intros. 
-    inversion H.
-    subst.
+    split; intros.
+    {
+      induction l.
+      - inverts* H0.
+      - inverts* H0.
+        econstructor; auto.
+        econstructor; auto.
+    }
+    inversion_clear H.
     apply app_ht with (tau:=apply_subst s tau0).
     rewrite <- apply_subst_arrow.
-    apply IHe1.
-    assumption.
-    apply IHe2.
-    assumption.
+    edestruct IHe1; eauto.
+    edestruct IHe2; eauto.
   (** let case *)
   - intros. 
-    inversion H.
-    subst.
+    split; intros.
+    {
+      induction l.
+      - inverts* H0.
+      - inverts* H0.
+        econstructor; auto.
+        econstructor; auto.
+    }
+    inversion_clear H.
     pose proof exists_renaming_not_concerned_with (gen_ty_vars tau0 G)
          (FV_ctx G) (FV_subst s)  as lol.
     destruct lol as [rho].
@@ -202,131 +219,87 @@ Proof.
     pose proof (subst_ctx_when_s_disjoint_with_ctx G (rename_to_subst rho)) as top. 
     pose proof (apply_subst_ctx_compose G (rename_to_subst rho) s) as top2.
     apply let_ht with (tau:= apply_subst s (apply_subst (rename_to_subst rho) tau0)).
+    edestruct IHe1.
     erewrite <- top.
-    eapply IHe1.
-    eapply IHe1.
+    apply H6.
+    edestruct IHe1.
+    apply H8.
     assumption.
     rewrite dom_rename_to_subst.
-    rewrite H1.
+    rewrite H2.
     apply free_and_bound_are_disjoints.
     rewrite <- r''.
     rewrite apply_subst_ctx_eq.
-    eapply IHe2.
+    edestruct IHe2.
+    apply H6.
     erewrite <- gen_ty_renaming.
     assumption.
     apply r.
   (** lam case *)
-  - intros. inversion H. subst. rewrite apply_subst_arrow.
-    econstructor. rewrite <- ty_to_subst_schm. rewrite apply_subst_ctx_eq. apply IHe.
+  - intros. 
+    split; intros.
+    {
+      induction l.
+      - inverts* H0.
+      - inverts* H0.
+        econstructor; auto.
+        econstructor; auto.
+    }
+    inversion H. subst. rewrite apply_subst_arrow.
+    econstructor. rewrite <- ty_to_subst_schm.
+    rewrite apply_subst_ctx_eq.
+    edestruct IHe.
+    apply H1.
     assumption.
   (** const case *)
-  - intros. inversion H.
+  - intros. 
+    split; intros.
+    {
+      induction l.
+      - inverts* H0.
+      - inverts* H0.
+        econstructor; auto.
+        econstructor; auto.
+    }
+    inversion H.
     subst.
     econstructor.
   (** case case *)
-  - intros.
-    induction l.
-    + intros. inverts* H.
-      econstructor; eauto.
-      apply Forall_forall.
-      intros.
-      inverts* H.
-      apply Forall_forall.
-      intros.
-      inverts* H.
+  - intros. 
+    split; intros.
+    {
+      induction l0.
+      - inverts* H0.
+      - inverts* H0.
+        econstructor; auto.
+        econstructor; auto.
+    }
+    inverts* H.
+    edestruct IHe.
+    econstructor.
+    apply H0.
+    apply H2.
+    auto.
+    + inverts* H.
+      simpl in *.
+      inverts* H4.
     + inverts* H.
       apply case_ht with (tau:= apply_subst s tau0). 
-      * eapply IHe1 with (s:=s) in H4.
+      * edestruct IHe.
+        eapply H0.
         auto.
       * auto.
-      * auto.
-      * apply Forall_forall.
+      * destruct a.
+        simpl.
+        econstructor.
+        edestruct IHe.
+        apply H.
         intros.
-        destruct a.
-        simpl in *.
-        destruct H.
-        {
-          subst. 
-          eapply Forall_forall with (x:=x) in H9.
-          auto.
-          simpl. left. auto.
-        }
-        {
-          eapply Forall_forall with (x:=x) in H9.
-          auto.
-          simpl. right. auto.
-        }
-      * apply Forall_forall.
-        destruct a.
-        simpl in *.
+        econstructor.
+        edestruct IHe.
+        eapply H.
         intros.
-        destruct H.
-        {
-          subst. 
-          eapply Forall_forall with (x:=x) in H10.
-          auto.
-          simpl. left. auto.
-        }
-        {
-          eapply Forall_forall with (x:=x) in H9.
-          auto.
-          simpl. right. auto.
-        }
-        intros.
-
-      *
-
-      {
-        induction t.
-        - skip.
-        - skip.
-        - skip.
-        - skip.
-        - skip.
-        - destruct l.
-          + inverts* H7.
-          + inverts* H7.
-            econstructor.
-            apply 
-          + destruct p0.
-            econstructor.
-            apply IHt; auto.
-          
-            
-      (*aqui*)
-        
-      apply IHl in H8.
-      econstructor.
-      apply IHe.
-      apply H3.
-      auto.
-      skip.
-      auto.
-    + econstructor; eauto.
-      skip.
-
-      
-    + destruct a as [p t].
-      * econstructor; eauto.
-      eapply IHe.
-      apply H2.
-      auto.
-      apply Forall_forall.
-      intros.
-      simpl in *.
-      destruct H.
-      * subst.
-        inverts* H6.
-        skip.
-      * inverts* H6.
-      
-       
-      inverts* H6.
-      inverts* H4.
-      auto.
-      apply IHe.
-      apply has_type_patterns_is_stable_under_substitution.
-      inverts* H6.
+        auto.
 Qed.
 
 Hint Resolve has_type_is_stable_under_substitution.
