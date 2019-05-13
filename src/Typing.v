@@ -137,171 +137,118 @@ Proof.
 Qed.    
 
 Hint Resolve has_type_patterns_is_stable_under_substitution.
-Lemma has_type_is_stable_under_substitution_aux1 : forall l s G tau,
-    (forall e', has_type G e' tau -> has_type (apply_subst_ctx s G) e' (apply_subst s tau)) ->
-    has_type_terms G l tau -> has_type_terms (apply_subst_ctx s G) l (apply_subst s tau).
-Proof.
-  induction l.
-  - intros.
-    inverts* H0.
-  - intros.
-    inverts* H0.
-    econstructor; eauto.
-    econstructor; eauto.
-Qed.
-      
 
 (** has_type is stable under substitution *)
-Lemma has_type_is_stable_under_substitution_aux : forall e s G tau,
-    (forall l, has_type_terms G l tau -> has_type_terms (apply_subst_ctx s G) l (apply_subst s tau) ) /\
-    (has_type G e tau -> has_type (apply_subst_ctx s G) e (apply_subst s tau)).
+Lemma has_type_is_stable_under_substitution : forall e s tau G,
+    has_type G e tau -> has_type (apply_subst_ctx s G) e (apply_subst s tau).
 Proof.
-  induction e.
+  intros.
+  apply (has_type_mut
+           (fun (G' : ctx) (e' : term) (tau' : ty) (h : has_type G' e' tau') => forall s tau G,
+                         has_type G e' tau -> has_type (apply_subst_ctx s G) e' (apply_subst s tau))
+           (fun  (G' : ctx) (l' : list term) (tau' : ty) (h : has_type_terms G' l' tau') => forall s tau G,
+              has_type_terms G l' tau -> has_type_terms (apply_subst_ctx s G) l' (apply_subst s tau))
+           ) with (c:=G) (t0:=tau); intros.
+  (** const case *)
+  - inverts* H0.
+    econstructor.
   (** var case *)
-  - intros.
-    split; intros.
-    {
-      - inverts* H0.
-        econstructor; eauto.
-        econstructor; eauto.
-    }
-    inversion H.
+  - inversion H0.
     subst.
+    rename G into G', G1 into G.
+    rename s into s', s0 into s.
+    rename tau into tau', tau1 into tau.
+    rename i into i', x into i.
     econstructor.
     + induction G; simpl in *; mysimp.
       destruct a.
       mysimp.
       apply IHG.
       econstructor.
-      apply H1.
+      apply H2.
       assumption.
       assumption.
     + unfold is_schm_instance in *.
-      destruct H3.
-      eapply subst_inst_subst_type in H0.
+      destruct H4.
+      eapply subst_inst_subst_type in H1.
       exists (map_apply_subst_ty s x).
-      apply H0.
-  (** app case *)
-  - intros. 
-    split; intros.
-    {
-      induction l.
-      - inverts* H0.
-      - inverts* H0.
-        econstructor; auto.
-        econstructor; auto.
-    }
-    inversion_clear H.
+      apply H1.
+  (** lambda case *)
+  - inverts* H1.
+    rewrite apply_subst_arrow.
+    econstructor.
+    rewrite <- ty_to_subst_schm. rewrite apply_subst_ctx_eq.
+    apply H0.
+    assumption.
+    (** app case *)
+  - rename l into e1, rho into e2.
+    rename s into s1, s0 into s.
+    rename H0 into IHe1, H1 into IHe2.
+    inverts* H2.
+    rename tau into tau'', tau1 into tau.
+    rename tau0 into tau1, tau2 into tau0.
     apply app_ht with (tau:=apply_subst s tau0).
     rewrite <- apply_subst_arrow.
-    edestruct IHe1; eauto.
-    edestruct IHe2; eauto.
-  (** let case *)
-  - intros. 
-    split; intros.
-    {
-      induction l.
-      - inverts* H0.
-      - inverts* H0.
-        econstructor; auto.
-        econstructor; auto.
-    }
-    inversion_clear H.
-    pose proof exists_renaming_not_concerned_with (gen_ty_vars tau0 G)
-         (FV_ctx G) (FV_subst s)  as lol.
-    destruct lol as [rho].
+    apply IHe1.
+    assumption.
+    apply IHe2.
+    assumption.
+    (** let case *)
+  - inverts* H2.
+    rename e0 into e1, e' into e2.
+    rename s into s', s0 into s.
+    rename tau into tau'', tau1 into tau.
+    rename tau0 into tau0', tau2 into tau0.
+    rename G into G', G1 into G.
+    rename x into i.
+    rename H0 into IHe1, H1 into IHe2.
+    destruct (exists_renaming_not_concerned_with (gen_ty_vars tau0 G)
+         (FV_ctx G) (FV_subst s)) as [rho].
     inversion r.
     subst.
     pose proof (gen_ty_in_subst_ctx G s (apply_subst (rename_to_subst rho) tau0)) as hip.
-    pose proof (renaming_not_concerned_with_gen_vars ) as hip2.
+    pose proof (renaming_not_concerned_with_gen_vars) as hip2.
     apply hip2 in r as r'.
     apply hip in r' as r''.
-    pose proof (subst_ctx_when_s_disjoint_with_ctx G (rename_to_subst rho)) as top. 
-    pose proof (apply_subst_ctx_compose G (rename_to_subst rho) s) as top2.
+    pose proof (subst_ctx_when_s_disjoint_with_ctx G (rename_to_subst rho)) as Hdis. 
+    pose proof (apply_subst_ctx_compose G (rename_to_subst rho) s) as Hcompo.
     apply let_ht with (tau:= apply_subst s (apply_subst (rename_to_subst rho) tau0)).
-    edestruct IHe1.
-    erewrite <- top.
-    apply H6.
-    edestruct IHe1.
-    apply H8.
+    erewrite <- Hdis.
+    eapply IHe1.
+    eapply IHe1.
     assumption.
     rewrite dom_rename_to_subst.
-    rewrite H2.
+    rewrite H1.
     apply free_and_bound_are_disjoints.
     rewrite <- r''.
     rewrite apply_subst_ctx_eq.
-    edestruct IHe2.
-    apply H6.
+    eapply IHe2.
     erewrite <- gen_ty_renaming.
     assumption.
     apply r.
-  (** lam case *)
-  - intros. 
-    split; intros.
-    {
-      induction l.
-      - inverts* H0.
-      - inverts* H0.
-        econstructor; auto.
-        econstructor; auto.
-    }
-    inversion H. subst. rewrite apply_subst_arrow.
-    econstructor. rewrite <- ty_to_subst_schm.
-    rewrite apply_subst_ctx_eq.
-    edestruct IHe.
-    apply H1.
-    assumption.
-  (** const case *)
-  - intros. 
-    split; intros.
-    {
-      induction l.
-      - inverts* H0.
-      - inverts* H0.
-        econstructor; auto.
-        econstructor; auto.
-    }
-    inversion H.
-    subst.
-    econstructor.
   (** case case *)
-  - intros. 
-    split; intros.
-    {
-      induction l0.
-      - inverts* H0.
-      - inverts* H0.
-        econstructor; auto.
-        econstructor; auto.
-    }
-    inverts* H.
-    edestruct IHe.
-    econstructor.
-    apply H0.
-    apply H2.
-    auto.
-    + inverts* H.
+  - induction cs.
+    + inverts* h1.
+    + destruct a as [p t].
+      inverts* H2.
       simpl in *.
-      inverts* H4.
-    + inverts* H.
-      apply case_ht with (tau:= apply_subst s tau0). 
-      * edestruct IHe.
-        eapply H0.
-        auto.
-      * auto.
-      * destruct a.
-        simpl.
-        econstructor.
-        edestruct IHe.
-        apply H.
-        intros.
-        econstructor.
-        edestruct IHe.
-        eapply H.
-        intros.
-        auto.
+      econstructor.
+      apply H0 with (tau:=tau2); eauto.
+      auto.
+      auto.
+    (** terms one case *)
+  - intros.
+    inverts* H1.
+    econstructor; eauto.
+    inverts* H7.
+    (** terms many case *)
+  - inverts* H2.
+    econstructor; eauto.
+    econstructor; eauto.
+  - auto.
+  - auto.
 Qed.
-
+    
 Hint Resolve has_type_is_stable_under_substitution.
 
 Lemma has_type_var_ctx_diff : forall (i j : id) (G : ctx) (tau : ty) (sigma : schm),
