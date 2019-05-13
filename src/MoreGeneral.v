@@ -355,21 +355,66 @@ Qed.
 
 Hint Resolve more_general_gen_ty.
 
+Lemma typing_pat_in_a_more_general_ctx : forall (p : pat) (G2 G1 : ctx) (t : ty),
+    more_general_ctx G1 G2 -> has_type_pat G2 p t -> has_type_pat G1 p t.
+Proof.
+  induction p.
+  - induction G2.
+    + intros.
+      inverts* H0. crush.
+    +  destruct a.
+       intros.
+       inversion_clear H.
+       destruct (eq_id_dec i0 i).
+       *
+       subst.
+       inversion_clear H0.
+       apply var_htp with (sigma:=sigma1); eauto.
+       crush.
+       simpl in H. destruct (eq_id_dec i i); intuition.
+       inverts* H.
+       inverts* H2.
+       * apply has_type_pat_var_ctx_diff. eauto.
+       eapply IHG2; eauto.
+       inverts* H0.
+       econstructor; crush.
+  - intros.
+    inverts* H0.
+    econstructor; eauto.
+Qed.
+
+Hint Resolve typing_pat_in_a_more_general_ctx.
+
+Lemma typing_patterns_in_a_more_general_ctx : forall (l : list pat) (G2 G1 : ctx) (t : ty),
+    more_general_ctx G1 G2 -> has_type_patterns G2 l t -> has_type_patterns G1 l t.
+Proof.
+  induction l.
+  - intros.
+    inverts* H.
+    inverts* H0.
+  - intros.
+    inverts* H0.
+    econstructor; eauto.
+    econstructor; eauto.
+Qed.
+
+Hint Resolve typing_patterns_in_a_more_general_ctx.
+
 Lemma typing_in_a_more_general_ctx : forall (e : term) (G2 G1 : ctx) (t : ty),
     more_general_ctx G1 G2 -> has_type G2 e t -> has_type G1 e t.
 Proof.
   intros.
   apply (has_type_mut
-         (fun (G' : ctx) (e' : term) (t' : ty) (h : has_type G' e' t') => forall t G1 G2,
+         (fun (G' : ctx) (e' : term) (t' : ty) (h : has_type G' e' t') => forall t G2 G1,
                        more_general_ctx G1 G2 -> has_type G2 e' t -> has_type G1 e' t)
-         (fun  (G' : ctx) (l' : list term) (t' : ty) (h : has_type_terms G' l' t') => forall t G1 G2,
+         (fun  (G' : ctx) (l' : list term) (t' : ty) (h : has_type_terms G' l' t') => forall t G2 G1,
                        more_general_ctx G1 G2 -> has_type_terms G2 l' t -> has_type_terms G1 l' t)
-         ) with (c:=G1) (t0:=t) (t:=e) (G2:=G2).
+         ) with (c:=G2) (t0:=t) (t:=e) (G2:=G2); auto.
   (** const case *)
   - intros.
     inverts* H2.
     econstructor.
-  - induction G3.
+  - induction G0.
     + intros.
       inverts* H2.
       crush.
@@ -387,46 +432,56 @@ Proof.
         inverts* H1.
         inverts* H4.
       * apply has_type_var_ctx_diff; eauto.
-       eapply IHG3; eauto.
-       inverts* H0.
-
-
-      apply var_ht with (sigma:=sigma1); eauto.
-      crush.
-      simpl in H. destruct (eq_id_dec i i); intuition.
-      inverts* H.
-      inverts* H2.
-      apply has_type_var_ctx_diff; eauto.
-      eapply IHG2; eauto.
-      inverts* H0.
-      econstructor; crush.
+        eapply IHG0; eauto.
+        inverts* H2.
+        econstructor; crush.
+  (** lambda case *)
   - intros.
-    inverts* H0.
+    inverts* H3.
     econstructor; eauto.
+    eapply H1; eauto.
+    econstructor; eauto.
+  (** app case *)
   - intros.
-    inverts* H0.
+    inverts* H4.
+    econstructor; eauto.
+  (** let case *)
+  - intros.
+    inverts* H4.
     econstructor.
-    eapply IHe1; eauto.
-    eapply IHe2; eauto.
+    eapply H1; eauto.
+    eapply H2; eauto.
     auto.
+  (** case case *)
   - intros.
-    inverts* H0.
-    econstructor; eauto.
-    eapply IHe; eauto.
-    econstructor; eauto.
+    induction cs.
+    + inverts* H4.
+      inverts* H11.
+    + inverts* H4.
+      econstructor.
+      eapply H1.
+      apply H3.
+      apply H7.
+      destruct a.
+      simpl in *.
+      eapply typing_patterns_in_a_more_general_ctx; eauto.
+      eapply H2.
+      apply H3.
+      auto.
+  (** terms one case *)
   - intros.
-    inverts* H.
-    inverts* H0.
+    inverts* H3.
     econstructor.
+    eapply H1.
+    apply H2.
+    assumption.
+    inverts* H9.
+  (** terms many case *)
   - intros.
-    inverts* H0.
-    econstructor.
-    eapply IHe.
-    apply H.
-    apply H3.
-    skip.
-    eauto.
-Admitted.
+    inverts* H4.
+    econstructor; eauto.
+    econstructor; eauto.
+Qed.
     
 Hint Resolve typing_in_a_more_general_ctx.
 

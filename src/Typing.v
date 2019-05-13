@@ -261,3 +261,12 @@ Qed.
 
 Hint Resolve has_type_var_ctx_diff.
 
+Lemma has_type_pat_var_ctx_diff : forall (i j : id) (G : ctx) (tau : ty) (sigma : schm),
+    i <> j -> has_type_pat G (var_p i) tau -> has_type_pat ((j, sigma) :: G) (var_p i) tau.
+Proof.
+  intros.
+  inversion_clear H0.
+ econstructor; crush.
+Qed.
+
+Hint Resolve has_type_pat_var_ctx_diff.
