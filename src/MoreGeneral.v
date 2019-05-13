@@ -358,24 +358,48 @@ Hint Resolve more_general_gen_ty.
 Lemma typing_in_a_more_general_ctx : forall (e : term) (G2 G1 : ctx) (t : ty),
     more_general_ctx G1 G2 -> has_type G2 e t -> has_type G1 e t.
 Proof.
-  induction e.
-  - induction G2. intros.
-    inverts* H0. crush.
-    destruct a.
-    intros.
-    inversion_clear H.
-    destruct (eq_id_dec i0 i).
-    subst.
-    inversion_clear H0.
-    apply var_ht with (sigma:=sigma1); eauto.
-    crush.
-    simpl in H. destruct (eq_id_dec i i); intuition.
-    inverts* H.
+  intros.
+  apply (has_type_mut
+         (fun (G' : ctx) (e' : term) (t' : ty) (h : has_type G' e' t') => forall t G1 G2,
+                       more_general_ctx G1 G2 -> has_type G2 e' t -> has_type G1 e' t)
+         (fun  (G' : ctx) (l' : list term) (t' : ty) (h : has_type_terms G' l' t') => forall t G1 G2,
+                       more_general_ctx G1 G2 -> has_type_terms G2 l' t -> has_type_terms G1 l' t)
+         ) with (c:=G1) (t0:=t) (t:=e) (G2:=G2).
+  (** const case *)
+  - intros.
     inverts* H2.
-    apply has_type_var_ctx_diff; eauto.
-    eapply IHG2; eauto.
-    inverts* H0.
-    econstructor; crush.
+    econstructor.
+  - induction G3.
+    + intros.
+      inverts* H2.
+      crush.
+    + destruct a.
+      intros.
+      inversion_clear H1.
+      rename i into i', x into i.
+      destruct (eq_id_dec i0 i).
+      * subst.
+        inversion_clear H2.
+        apply var_ht with (sigma:=sigma1); eauto.
+        crush.
+        simpl in H1.
+        destruct (eq_id_dec i i); intuition.
+        inverts* H1.
+        inverts* H4.
+      * apply has_type_var_ctx_diff; eauto.
+       eapply IHG3; eauto.
+       inverts* H0.
+
+
+      apply var_ht with (sigma:=sigma1); eauto.
+      crush.
+      simpl in H. destruct (eq_id_dec i i); intuition.
+      inverts* H.
+      inverts* H2.
+      apply has_type_var_ctx_diff; eauto.
+      eapply IHG2; eauto.
+      inverts* H0.
+      econstructor; crush.
   - intros.
     inverts* H0.
     econstructor; eauto.
@@ -394,7 +418,15 @@ Proof.
     inverts* H.
     inverts* H0.
     econstructor.
-Qed.
+  - intros.
+    inverts* H0.
+    econstructor.
+    eapply IHe.
+    apply H.
+    apply H3.
+    skip.
+    eauto.
+Admitted.
     
 Hint Resolve typing_in_a_more_general_ctx.
 
