@@ -20,6 +20,12 @@ Require Import List.
 Require Import SimpleTypes.
 Require Import MyLtacs.
 
+(** * Non empty list for case expressions*)
+
+Inductive non_empty_list (A : Type) : Type :=
+  | one : A -> non_empty_list A
+  | cons' : A -> non_empty_list A -> non_empty_list A.
+
 (** * Pattern definition *)
 
 Inductive pat : Set :=
@@ -34,7 +40,7 @@ Inductive term : Set :=
 | let_t   : id -> term -> term -> term
 | lam_t   : id -> term -> term
 | const_t : id -> term
-| case_t  : term ->  list (pat * term) -> term.
+| case_t  : term ->  non_empty_list (pat * term) -> term.
 
 (** * Rules for typing patterns *)
 
@@ -44,27 +50,26 @@ Inductive has_type_pat : ctx -> pat -> ty -> Prop:=
                              is_schm_instance tau sigma ->
                              has_type_pat G (var_p x) tau.
 
-Inductive has_type_patterns : ctx -> list pat -> ty -> Prop :=
+Inductive has_type_patterns : ctx -> non_empty_list pat -> ty -> Prop :=
 | one_pattern : forall G p tau, has_type_pat G p tau ->
-                           has_type_patterns G (p::nil) tau
+                           has_type_patterns G (one p) tau
 | many_pattern : forall G p ps tau, has_type_pat G p tau ->
                                has_type_patterns G ps tau ->
-                               has_type_patterns G (p::ps) tau.
+                               has_type_patterns G (cons' p ps) tau.
 
 (** * Syntax-directed rule system of Damas-Milner *)
 
-Fixpoint get_pats (c : list (pat * term)) : list pat :=
+Fixpoint get_pats (c : non_empty_list (pat * term)) : non_empty_list pat :=
   match c with
-  | nil => nil
-  | (p, _)::c' => p::get_pats c'
+  | one (p, _) => one p
+  | cons' (p, _) c' => cons' p (get_pats c')
   end.
 
-Fixpoint get_terms (c : list (pat * term)) : list term :=
+Fixpoint get_terms (c : non_empty_list (pat * term)) : non_empty_list term :=
   match c with
-  | nil => nil
-  | (_, t)::c' => t::get_terms c'
+  | one (_, t) => one t
+  | cons' (_, t) c' => cons' t (get_terms c')
   end.
-
 
 Inductive has_type : ctx -> term -> ty -> Prop :=
 | const_ht : forall x G, has_type G (const_t x) (con x)
@@ -83,12 +88,12 @@ Inductive has_type : ctx -> term -> ty -> Prop :=
                                has_type_patterns G (get_pats cs) tau ->
                                has_type_terms G (get_terms cs) tau' ->
                                has_type G (case_t e cs) tau'
-  with has_type_terms : ctx -> list term -> ty -> Prop :=
+  with has_type_terms : ctx -> non_empty_list term -> ty -> Prop :=
        | one_term : forall G e tau, has_type G e tau ->
-                                  has_type_terms G (e::nil) tau
+                                  has_type_terms G (one e) tau
        | many_terms : forall G e tau es, has_type G e tau -> 
                                          has_type_terms G es tau ->
-                                         has_type_terms G (e::es) tau.
+                                         has_type_terms G (cons' e es) tau.
 
 Scheme has_type_mut := Induction for has_type Sort Prop
 with has_type_terms_mut := Induction for has_type_terms Sort Prop.
@@ -131,10 +136,10 @@ Lemma has_type_patterns_is_stable_under_substitution : forall l s G tau,
 Proof.
   induction l.
   - intros. inverts H.
-  - intros. 
-    inverts* H.
     econstructor.
     auto.
+  - intros. 
+    inverts* H.
     econstructor.
     auto.
     auto.
@@ -150,7 +155,7 @@ Proof.
   apply (has_type_mut
            (fun (G' : ctx) (e' : term) (tau' : ty) (h : has_type G' e' tau') => forall s tau G,
                          has_type G e' tau -> has_type (apply_subst_ctx s G) e' (apply_subst s tau))
-           (fun  (G' : ctx) (l' : list term) (tau' : ty) (h : has_type_terms G' l' tau') => forall s tau G,
+           (fun  (G' : ctx) (l' : non_empty_list term) (tau' : ty) (h : has_type_terms G' l' tau') => forall s tau G,
               has_type_terms G l' tau -> has_type_terms (apply_subst_ctx s G) l' (apply_subst s tau))
            ) with (c:=G) (t0:=tau); intros.
   (** const case *)
@@ -232,7 +237,16 @@ Proof.
     apply r.
   (** case case *)
   - induction cs.
-    + inverts* h1.
+    + simpl in *.
+      destruct a.
+      simpl in *.
+      inverts* h1.
+      inverts* H2.
+      econstructor.
+      eapply H0.
+      apply H6.
+      auto.
+      auto.
     + destruct a as [p t].
       inverts* H2.
       simpl in *.
@@ -244,10 +258,8 @@ Proof.
   - intros.
     inverts* H1.
     econstructor; eauto.
-    inverts* H7.
     (** terms many case *)
   - inverts* H2.
-    econstructor; eauto.
     econstructor; eauto.
   - auto.
   - auto.
