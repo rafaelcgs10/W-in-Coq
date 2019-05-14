@@ -70,20 +70,56 @@ Program Definition fresh : @Infer (@top id) id (fun i x f => S i = f /\ i = x) :
 Program Definition addFreshCtx (G : ctx) (x : id) (alpha : id):
   @Infer (fun i => new_tv_ctx G i) ctx
          (fun i r f => alpha < i -> (new_tv_ctx r f /\ f = i /\ new_tv_ty (var alpha) f)) :=
-  ret ((x, ty_to_schm (var alpha)) :: G).
+  ret ((x, (sc_var alpha)) :: G).
 Next Obligation.
   split; intros;
   unfold top; auto.
 Defined.
 
-(** Completeness theorem definition. *)
+Unset Implicit Arguments.
+
+(** * The pattern inference *)
+Program Fixpoint inferPat (p : pat) (G : ctx) {struct p} :
+  @Infer (fun i => new_tv_ctx G i) (ty * ctx)
+         (fun i x f => i <= f /\ new_tv_ctx (snd x) f /\ new_tv_ty (fst x) f /\
+                    has_type_pat (snd x) p (fst x)) :=
+  match p with
+  | const_p x => ret ((con x), G)
+
+  | var_p x =>
+      alpha <- fresh ;
+      G' <- addFreshCtx G x alpha ;
+      tau <- schm_inst_dep (sc_var alpha) ;
+      ret (tau, G')
+  end.
+Next Obligation.
+  unfold top; auto.
+Defined.
+Next Obligation.
+  splits; auto.
+  econstructor; eauto.
+Defined.
+Next Obligation.
+  unfold top;
+    splits; intros;
+      try splits; auto.
+  destruct H0.
+  induction G; try econstructor; auto.
+  destruct a as [i sigma].
+  subst.
+  econstructor; auto.
+  inversion_clear H; auto.
+  inversion_clear H; auto.
+Defined.
+
+(** * Completeness theorem definition. *)
+
 Definition completeness (e : term) (G : ctx) (tau : ty) (s : substitution) (st : id) :=
   forall (tau' : ty) (phi : substitution),
     has_type (apply_subst_ctx phi G) e tau' -> 
     exists s', tau' = apply_subst s' tau /\
     (forall x : id, x < st -> apply_subst phi (var x) = apply_subst s' (apply_subst s (var x))).
     
-Unset Implicit Arguments.
 
 (** * The algorithm W itself *)
 
@@ -94,32 +130,32 @@ Program Fixpoint W (e : term) (G : ctx) {struct e} :
                     has_type (apply_subst_ctx ((snd x)) G) e (fst x) /\
                     completeness e G (fst x) ((snd x)) i) :=
   match e with
-  | const_t x =>
-    ret ((con x), nil)
+  | const_t x => ret ((con x), nil)
 
   | var_t x =>
-    sigma <- look_dep x G ;
+      sigma <- look_dep x G ;
       tau <- schm_inst_dep sigma ;
       ret (tau, nil)
 
   | lam_t x e' =>
-    alpha <- fresh ;
+      alpha <- fresh ;
       G' <- addFreshCtx G x alpha ;
       tau_s <- W e' G'  ;
       ret ((arrow (apply_subst ((snd tau_s)) (var alpha)) (fst tau_s)), (snd tau_s))
 
   | app_t l r =>
-    tau1_s1 <- W l G  ;
+      tau1_s1 <- W l G  ;
       tau2_s2 <- W r (apply_subst_ctx (snd tau1_s1) G)  ;
       alpha <- fresh ;
       s <- unify (apply_subst (snd tau2_s2) (fst tau1_s1)) (arrow (fst tau2_s2) (var alpha)) ;
       ret (apply_subst s (var alpha), compose_subst  (snd tau1_s1) (compose_subst (snd tau2_s2) s))
 
   | let_t x e1 e2  =>
-    tau1_s1 <- W e1 G  ;
+      tau1_s1 <- W e1 G  ;
       tau2_s2 <- W e2 ((x,gen_ty (fst tau1_s1)
                       (apply_subst_ctx (snd tau1_s1) G) )::(apply_subst_ctx (snd tau1_s1) G))  ;
       ret (fst tau2_s2, compose_subst (snd tau1_s1) (snd tau2_s2))
+  | case_t e' pts => _  
   end. 
 Next Obligation.
   intros; unfold top; auto.
@@ -400,5 +436,7 @@ Next Obligation. (* Case : postcondition of let *)
     erewrite <- new_tv_compose_subst_ctx; eauto.
     Unshelve. eauto. eauto.
 Defined.
+Next Obligation.
+  intros.
 
 Print Assumptions W.

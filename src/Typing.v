@@ -36,10 +36,13 @@ Inductive term : Set :=
 | const_t : id -> term
 | case_t  : term ->  list (pat * term) -> term.
 
+(** * Rules for typing patterns *)
+
 Inductive has_type_pat : ctx -> pat -> ty -> Prop:=
 | const_htp : forall x G, has_type_pat G (const_p x) (con x)
-| var_htp : forall x G sigma tau, in_ctx x G = Some sigma -> is_schm_instance tau sigma ->
-                            has_type_pat G (var_p x) tau.
+| var_htp : forall x G sigma tau, in_ctx x G = Some sigma ->
+                             is_schm_instance tau sigma ->
+                             has_type_pat G (var_p x) tau.
 
 Inductive has_type_patterns : ctx -> list pat -> ty -> Prop :=
 | one_pattern : forall G p tau, has_type_pat G p tau ->
@@ -65,7 +68,8 @@ Fixpoint get_terms (c : list (pat * term)) : list term :=
 
 Inductive has_type : ctx -> term -> ty -> Prop :=
 | const_ht : forall x G, has_type G (const_t x) (con x)
-| var_ht : forall x G sigma tau, in_ctx x G = Some sigma -> is_schm_instance tau sigma ->
+| var_ht : forall x G sigma tau, in_ctx x G = Some sigma ->
+                            is_schm_instance tau sigma ->
                             has_type G (var_t x) tau
 | lam_ht : forall x G tau tau' e, has_type ((x, ty_to_schm tau) :: G) e tau' ->
                              has_type G (lam_t x e) (arrow tau tau')
