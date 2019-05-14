@@ -385,17 +385,19 @@ Qed.
 
 Hint Resolve typing_pat_in_a_more_general_ctx.
 
-Lemma typing_patterns_in_a_more_general_ctx : forall (l : list pat) (G2 G1 : ctx) (t : ty),
+Lemma typing_patterns_in_a_more_general_ctx : forall (l : non_empty_list pat) (G2 G1 : ctx) (t : ty),
     more_general_ctx G1 G2 -> has_type_patterns G2 l t -> has_type_patterns G1 l t.
 Proof.
   induction l.
   - intros.
-    inverts* H.
+    econstructor.
+    eapply typing_pat_in_a_more_general_ctx.
+    apply H.
     inverts* H0.
   - intros.
+    econstructor.
     inverts* H0.
-    econstructor; eauto.
-    econstructor; eauto.
+    inverts* H0.
 Qed.
 
 Hint Resolve typing_patterns_in_a_more_general_ctx.
@@ -407,7 +409,7 @@ Proof.
   apply (has_type_mut
          (fun (G' : ctx) (e' : term) (t' : ty) (h : has_type G' e' t') => forall t G2 G1,
                        more_general_ctx G1 G2 -> has_type G2 e' t -> has_type G1 e' t)
-         (fun  (G' : ctx) (l' : list term) (t' : ty) (h : has_type_terms G' l' t') => forall t G2 G1,
+         (fun  (G' : ctx) (l' : non_empty_list term) (t' : ty) (h : has_type_terms G' l' t') => forall t G2 G1,
                        more_general_ctx G1 G2 -> has_type_terms G2 l' t -> has_type_terms G1 l' t)
          ) with (c:=G2) (t0:=t) (t:=e) (G2:=G2); auto.
   (** const case *)
@@ -456,30 +458,17 @@ Proof.
   - intros.
     induction cs.
     + inverts* H4.
-      inverts* H11.
+      econstructor;
+      eauto.
     + inverts* H4.
-      econstructor.
-      eapply H1.
-      apply H3.
-      apply H7.
-      destruct a.
-      simpl in *.
-      eapply typing_patterns_in_a_more_general_ctx; eauto.
-      eapply H2.
-      apply H3.
-      auto.
+      econstructor; eauto.
   (** terms one case *)
   - intros.
     inverts* H3.
-    econstructor.
-    eapply H1.
-    apply H2.
-    assumption.
-    inverts* H9.
+    econstructor; eauto.
   (** terms many case *)
   - intros.
     inverts* H4.
-    econstructor; eauto.
     econstructor; eauto.
 Qed.
     
