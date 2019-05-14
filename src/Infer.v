@@ -79,38 +79,78 @@ Defined.
 Unset Implicit Arguments.
 
 (** * The pattern inference *)
+
+(** ** Just one pattern *)
 Program Fixpoint inferPat (p : pat) (G : ctx) {struct p} :
   @Infer (fun i => new_tv_ctx G i) (ty * ctx)
-         (fun i x f => i <= f /\ new_tv_ctx (snd x) f /\ new_tv_ty (fst x) f /\
-                    has_type_pat (snd x) p (fst x)) :=
+         (fun i x f => i <= f /\ new_tv_ctx (snd x) f /\
+                    new_tv_ty (fst x) f /\
+                    has_type_pat (snd x) p (fst x)  ) :=
   match p with
   | const_p x => ret ((con x), G)
 
   | var_p x =>
       alpha <- fresh ;
       G' <- addFreshCtx G x alpha ;
-      tau <- schm_inst_dep (sc_var alpha) ;
-      ret (tau, G')
+      ret (var alpha, G')
   end.
 Next Obligation.
   unfold top; auto.
 Defined.
-Next Obligation.
-  splits; auto.
+Next Obligation. (* const_p case *)
+  unfold top;
+    splits; intros;
+      try splits; auto.
   econstructor; eauto.
 Defined.
-Next Obligation.
+Next Obligation. 
   unfold top;
     splits; intros;
       try splits; auto.
   destruct H0.
-  induction G; try econstructor; auto.
-  destruct a as [i sigma].
   subst.
-  econstructor; auto.
-  inversion_clear H; auto.
-  inversion_clear H; auto.
+  auto.
 Defined.
+Next Obligation. (* var_p case *)
+  splits; auto.
+  econstructor.
+  crush.
+  unfold is_schm_instance.
+  exists (nil:inst_subst).
+  reflexivity.
+Defined.
+
+(** ** Many patterns *)
+Program Fixpoint inferPatterns (ps : non_empty_list pat) (G : ctx) {struct ps} :
+  @Infer (fun i => new_tv_ctx G i) (ty * ctx)
+         (fun i x f => i <= f /\ new_tv_ctx (snd x) f /\
+                    new_tv_ty (fst x) f /\
+                    has_type_patterns (snd x) ps (fst x)  ) :=
+  match ps with
+  | one p => inferPat p G
+  | cons' p ps' =>
+      tauG <- inferPat p G ;
+      tauG' <- inferPatterns ps' (snd tauG) ;
+      s <- unify (fst tauG) (fst tauG') ;
+      ret (apply_subst s (fst tauG'), apply_subst_ctx s (snd tauG'))
+  end.
+Next Obligation.
+  edestruct (inferPat p G);
+    crush. 
+  econstructor; eauto.
+Defined.
+Next Obligation.
+  unfold top;
+  splits; crush. 
+Defined.
+Next Obligation.
+  edestruct (inferPat p G >>= _);
+    crush.
+  econstructor; eauto.
+  rewrite <- H11.
+  apply has_type_pat_is_stable_under_substitution.
+ 
+
 
 (** * Completeness theorem definition. *)
 
