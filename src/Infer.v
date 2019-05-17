@@ -24,6 +24,7 @@ Require Import MoreGeneral.
 Require Import SimpleTypes.
 Require Import Subst.
 Require Import MyLtacs.
+Require Import NonEmptyList.
 
 (** * A bunch of auxiliary definitions *)
 
@@ -80,20 +81,31 @@ Unset Implicit Arguments.
 
 (** * The pattern inference *)
 
-(** ** Just one pattern *)
 Program Fixpoint inferPat (p : pat) (G : ctx) {struct p} :
   @Infer (fun i => new_tv_ctx G i) (ty * ctx)
          (fun i x f => i <= f /\ new_tv_ctx (snd x) f /\
                     new_tv_ty (fst x) f /\
-                    has_type_pat (snd x) p (fst x)  ) :=
+                    has_type_pat p (fst x)) :=
   match p with
-  | const_p x => ret ((con x), G)
+  | const_p x => ret ((con x), nil)
 
   | var_p x =>
       alpha <- fresh ;
       G' <- addFreshCtx G x alpha ;
-      ret (var alpha, G')
-  end.
+      ret (var alpha, (x, sc_var alpha)::nil)
+
+  | list_p (x, sigma) ps =>
+      tpsG <- inferPats ps G ;
+      alpha <- fresh ;
+      tau <- schm_inst_dep sigma ;
+      s <- unify tau (List.fold_right arrow (var alpha) (fst tpsG)) ;
+      ret (apply_subst s (return_of_ty tau), snd tpsG)
+  end
+with inferPats (ps : list pat) (G : ctx) : 
+  @Infer (fun i => new_tv_ctx G i) ((list ty) * ctx)
+         (fun i x f => i <= f /\ new_tv_ctx (snd x) f /\
+                    has_type_pats ps (fst x)) :=
+    _.
 Next Obligation.
   unfold top; auto.
 Defined.
@@ -114,11 +126,92 @@ Defined.
 Next Obligation. (* var_p case *)
   splits; auto.
   econstructor.
-  crush.
-  unfold is_schm_instance.
-  exists (nil:inst_subst).
-  reflexivity.
 Defined.
+Next Obligation. 
+  unfold top;
+    splits; intros;
+      try splits; auto.
+Defined.
+Next Obligation.
+  destruct (inferPats ps G >>= _); crush.
+  skip.
+  rename x2 into tau.
+  rename x3 into alpha.
+  rename x1 into taus.
+  rename x4 into s.
+  inverts* H3.
+  - induction sigma.
+    (** var *)
+    + eapply has_type_pat_is_stable_under_substitution.
+      simpl in H1. inverts* H1.
+      econstructor.
+      skip.
+      econstructor.
+    (** con *)
+    + eapply has_type_pat_is_stable_under_substitution.
+      simpl in H1. inverts* H1.
+      econstructor.
+      skip.
+      econstructor.
+    (** gen *)
+    + eapply has_type_pat_is_stable_under_substitution.
+      econstructor.
+      skip.
+      auto.
+      simpl.
+      inverts* H1.
+      apply and_arrow_apply_inst_arrow in H1.
+      exists (nil:inst_subst).
+      reflexivity.
+      econstructor.
+    (** gen *)
+    + eapply has_type_pat_is_stable_under_substitution.
+      econstructor.
+      exists (compute_inst_subst (S alpha) (max_gen_vars (sc_gen i))).
+      simpl. auto.
+    
+    imewrite H8.
+    exists (compute_inst_subst (S x3) (max_gen_vars sigma)).
+    apply H1.
+    assert (x2 = var x3). skip.
+    subst.
+    simpl.
+    econstructor.
+  - eapply has_type_pat_is_stable_under_substitution.
+    econstructor.
+    exists (compute_inst_subst (S x3) (max_gen_vars sigma)).
+    apply H1.
+    destruct x2.
+    
+    rewrite H8.
+    induction x3; try econstructor.
+    simpl.
+
+    econstructor.
+    apply H4.
+    
+    
+    
+    
+
+    
+    rewrite <- H6.
+    rewrite H1.
+    skip.
+    econstructor.
+    apply H4.
+    skip.
+    simpl.
+    destruct (eq_ty_dec tau tau); intuition.
+  -
+    
+    unfold is_schm_instance.
+    exists (compute_inst_subst x2 (max_gen_vars sigma)).
+    rewrite H1.
+    crush.
+
+
+
 
 (** ** Many patterns *)
 Program Fixpoint inferPatterns (ps : non_empty_list pat) (G : ctx) {struct ps} :

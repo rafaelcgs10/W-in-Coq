@@ -56,6 +56,17 @@ Qed.
 
 Hint Resolve apply_subst_ctx_compose.
 
+Lemma apply_subst_ctx_app_ctx : forall G1 G2 s ,
+    apply_subst_ctx s (G1 ++ G2) = apply_subst_ctx s G1 ++ apply_subst_ctx s G2.
+Proof.
+  induction G1; crush.
+  rewrite <- IHG1.
+  reflexivity.
+Qed.
+
+Hint Resolve apply_subst_ctx_app_ctx.
+Hint Rewrite apply_subst_ctx_app_ctx:RE.
+
 Lemma apply_subst_ctx_eq :forall i s tau G,
     (i, apply_subst_schm s tau)::apply_subst_ctx s G =
     apply_subst_ctx s ((i, tau)::G).

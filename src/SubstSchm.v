@@ -305,6 +305,7 @@ Qed.
 Hint Resolve apply_subst_inst_to_ty_to_schm.
 Hint Rewrite apply_subst_inst_to_ty_to_schm:RE.
 
+
 (** * Lemma relating map substitution and apply instance substitution *)
 
 Lemma subst_inst_subst_type_var : forall (is_s : inst_subst) (s: substitution) (i : id),
@@ -742,6 +743,65 @@ Qed.
 
 Hint Resolve apply_subst_inst_make_constant_inst_subst.
 Hint Resolve apply_subst_inst_make_constant_inst_subst:RE.
+
+Lemma is_schm_instance_must_be_var : forall tau i,
+    is_schm_instance tau (sc_var i) -> tau = var i.
+Proof.
+  intros.
+  destruct tau.
+  destruct H.
+  simpl in H.
+  inverts* H.
+  inverts* H.
+  simpl in H0.
+  inverts* H0.
+  inverts* H.
+  simpl in H0.
+  inverts* H0.
+Qed.
+
+Hint Resolve is_schm_instance_must_be_var.
+
+ Lemma is_schm_instance_must_be_con : forall tau i,
+    is_schm_instance tau (sc_con i) -> tau = con i.
+Proof.
+  intros.
+  destruct tau.
+  destruct H.
+  simpl in H.
+  inverts* H.
+  inverts* H.
+  simpl in H0.
+  inverts* H0.
+  inverts* H.
+  simpl in H0.
+  inverts* H0.
+Qed.
+  
+Hint Resolve is_schm_instance_must_be_con.
+
+(*
+Lemma is_schm_instance_apply_subst : forall sigma tau s,
+    is_schm_instance tau sigma -> is_schm_instance (apply_subst s tau) sigma.
+Proof.
+  induction tau; intros; auto.
+  - induction s.
+    simpl. auto.
+    + destruct a.
+      destruct (eq_id_dec i0 i).
+      * subst.
+        crush.
+        destruct IHs.
+        exists x.
+        destruct H.
+        destruct (find_subst s i).
+        skip.
+    inverts* H.
+    simpl in *.
+    exists x.
+    inverts* H0.
+    simpl.
+ *)
 
 Lemma find_some_instance_of_some_sigma : forall (sigma : schm) (tau : ty),
     is_schm_instance (find_instance sigma tau) sigma.

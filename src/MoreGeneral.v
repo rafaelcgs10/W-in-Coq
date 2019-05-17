@@ -25,6 +25,7 @@ Require Import NthErrorTools.
 Require Import ProductList.
 Require Import DisjointTail.
 Require Import LibTactics.
+Require Import NonEmptyList.
 
 Inductive more_general : schm -> schm -> Prop :=
 | more_general_intro : forall sigma1 sigma2 : schm,
@@ -355,27 +356,30 @@ Qed.
 
 Hint Resolve more_general_gen_ty.
 
+(*
 Lemma typing_pat_in_a_more_general_ctx : forall (p : pat) (G2 G1 : ctx) (t : ty),
-    more_general_ctx G1 G2 -> has_type_pat G2 p t -> has_type_pat G1 p t.
+    more_general_ctx G1 G2 -> has_type_pat p t -> has_type_pat p t.
 Proof.
   induction p.
   - induction G2.
     + intros.
-      inverts* H0. crush.
+      inverts* H0. 
     +  destruct a.
        intros.
        inversion_clear H.
        destruct (eq_id_dec i0 i).
-       *
-       subst.
-       inversion_clear H0.
-       apply var_htp with (sigma:=sigma1); eauto.
-       crush.
-       simpl in H. destruct (eq_id_dec i i); intuition.
-       inverts* H.
-       inverts* H2.
+       * subst.
+         inversion_clear H0.
+         apply var_htp with (sigma:=sigma1); eauto.
+         crush.
+         simpl in H. destruct (eq_id_dec i i); intuition.
+         inverts* H.
+         inverts* H2.
+         eapply H.
+         exists x.
+         auto.
        * apply has_type_pat_var_ctx_diff. eauto.
-       eapply IHG2; eauto.
+         eapply IHG2; eauto.
        inverts* H0.
        econstructor; crush.
   - intros.
@@ -401,32 +405,34 @@ Proof.
 Qed.
 
 Hint Resolve typing_patterns_in_a_more_general_ctx.
+*)
 
 Lemma typing_in_a_more_general_ctx : forall (e : term) (G2 G1 : ctx) (t : ty),
     more_general_ctx G1 G2 -> has_type G2 e t -> has_type G1 e t.
 Proof.
   intros.
   apply (has_type_mut
-         (fun (G' : ctx) (e' : term) (t' : ty) (h : has_type G' e' t') => forall t G2 G1,
-                       more_general_ctx G1 G2 -> has_type G2 e' t -> has_type G1 e' t)
-         (fun  (G' : ctx) (l' : non_empty_list term) (t' : ty) (h : has_type_terms G' l' t') => forall t G2 G1,
-                       more_general_ctx G1 G2 -> has_type_terms G2 l' t -> has_type_terms G1 l' t)
-         ) with (c:=G2) (t0:=t) (t:=e) (G2:=G2); auto.
+         (fun (G' : ctx) (e' : term) (t' : ty) => forall tau G2 G1,
+                       more_general_ctx G1 G2 -> has_type G2 e' tau -> has_type G1 e' tau)
+         (fun  (G' : ctx) (l' : non_empty_list (pat * term)) (tau' tau'' : ty) => forall tau1 tau2 G2 G1,
+                       more_general_ctx G1 G2 -> has_type_cases G2 l' tau1 tau2 -> has_type_cases G1 l' tau1 tau2)
+         ) with (c:=G2) (t0:=t) (t:=e) (G2:=G2); intros; auto.
   (** const case *)
-  - intros.
-    inverts* H2.
+  - inverts* H2.
     econstructor.
-  - induction G0.
+  - skip.
+    (*
+    induction G0.
     + intros.
-      inverts* H2.
+      inverts* H4.
       crush.
     + destruct a.
       intros.
-      inversion_clear H1.
+      inversion_clear H4.
       rename i into i', x into i.
-      destruct (eq_id_dec i0 i).
+      destruct (eq_id_dec i' i).
       * subst.
-        inversion_clear H2.
+        inversion_clear H5.
         apply var_ht with (sigma:=sigma1); eauto.
         crush.
         simpl in H1.
@@ -437,38 +443,37 @@ Proof.
         eapply IHG0; eauto.
         inverts* H2.
         econstructor; crush.
+*)
   (** lambda case *)
   - intros.
-    inverts* H3.
+    inverts* H4.
     econstructor; eauto.
-    eapply H1; eauto.
+    eapply H2; eauto.
     econstructor; eauto.
   (** app case *)
   - intros.
-    inverts* H4.
+    inverts* H6.
     econstructor; eauto.
   (** let case *)
   - intros.
-    inverts* H4.
+    inverts* H6.
     econstructor.
-    eapply H1; eauto.
     eapply H2; eauto.
+    eapply H4; eauto.
     auto.
   (** case case *)
   - intros.
     induction cs.
-    + inverts* H4.
+    + inverts* H6.
       econstructor;
       eauto.
-    + inverts* H4.
+    + inverts* H6.
       econstructor; eauto.
   (** terms one case *)
-  - intros.
-    inverts* H3.
+  - inverts* H5.
     econstructor; eauto.
   (** terms many case *)
-  - intros.
-    inverts* H4.
+  - inverts* H6.
     econstructor; eauto.
 Qed.
     

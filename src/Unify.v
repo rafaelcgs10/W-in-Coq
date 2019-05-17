@@ -19,6 +19,7 @@ Require Import NewTypeVariable.
 Require Import MyLtacs.
 Require Import Varctxt.
 Require Import Occurs.
+Require Import NonEmptyList.
 Require Import WellFormed.
 
 (** The size of a type. This is used in by the termination argument of
@@ -417,3 +418,67 @@ Next Obligation.
   eauto.
 Defined.
 
+Program Fixpoint fold_non_empty_unify (tau : ty) (taus : non_empty_list ty) {struct taus} :
+  @Infer (@top id) substitution (fun i mu f =>
+                                 i = f /\
+                                 (forall tau', ty_in_non_empty_list tau' taus ->
+                                          apply_subst mu tau = apply_subst mu tau') ) :=
+  match taus with
+  | one tau' =>
+     mu <- unify tau tau' ;
+     ret mu 
+  | cons' tau' taus' =>
+     mus <- fold_non_empty_unify tau taus' ;
+     mu <- unify (apply_subst mus tau) (apply_subst mus tau') ;
+     ret (compose_subst mus mu)
+  end.
+Next Obligation.
+  destruct (unify tau tau' >>= _). 
+  crush.
+  intros.
+  cases (eq_ty_dec tau'0 tau'); intuition.
+  subst.
+  auto.
+Defined.
+Next Obligation.
+  destruct (fold_non_empty_unify tau taus' >>= _). 
+  crush.
+  intros.
+  cases (eq_ty_dec tau'0 tau'); intuition.
+  subst.
+  repeat rewrite apply_compose_equiv.
+  auto.
+  apply H2 in H4.
+  repeat rewrite apply_compose_equiv.
+  rewrite H4.
+  reflexivity.
+Defined.
+
+Program Fixpoint fold_unify (tau : ty) (taus : list ty) {struct taus} :
+  @Infer (@top id) substitution (fun i mu f =>
+                                 i = f /\
+                                 (forall tau', In tau' taus ->
+                                          apply_subst mu tau = apply_subst mu tau') ) :=
+  match taus with
+  | nil => ret nil
+  | tau'::taus' =>
+      mus <- fold_unify tau taus' ;
+      mu <- unify (apply_subst mus tau) (apply_subst mus tau') ;
+      ret (compose_subst mus mu)
+  end.
+Next Obligation.
+  splits; crush.
+Defined.
+Next Obligation.
+  destruct (fold_unify tau taus' >>= _). 
+  crush.
+  intros.
+  destruct H4.
+  - subst.
+    repeat rewrite apply_compose_equiv.
+    auto.
+  - apply H2 in H4.
+    repeat rewrite apply_compose_equiv.
+    rewrite H4.
+    reflexivity.
+Defined.
