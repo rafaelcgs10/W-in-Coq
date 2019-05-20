@@ -22,6 +22,7 @@ Fixpoint occurs (v : id) (t : ty) : Prop :=
   match t with
     | var n => if eq_id_dec n v then True else False
     | con n => False
+    | appl l r => occurs v l \/ occurs v r
     | SimpleTypes.arrow l r => occurs v l \/ occurs v r
   end.
 
@@ -33,6 +34,13 @@ Definition occurs_dec : forall v t, {occurs v t} +  {~ occurs v t}.
               | var n =>
                   if eq_id_dec n v then left _ _ else right _ _
               | con n => right _ _
+              | appl l r =>
+                  match occurs_dec v l, occurs_dec v r with
+                    | left _, left _ => left _ _
+                    | left _, right _ => left _ _
+                    | right _, left  _ => left _ _
+                    | right _, right _ => right _ _
+                  end
               | SimpleTypes.arrow l r =>
                   match occurs_dec v l, occurs_dec v r with
                     | left _, left _ => left _ _
@@ -54,7 +62,7 @@ Hint Rewrite subst_occurs:RE.
 Lemma occurs_not_apply_subst_single : forall i t, ~ occurs i t -> apply_subst [(i, t)] t = t.
 Proof.
   induction t; intros;
-  mysimp.
+  mysimp;
   erewrite subst_occurs; eauto.
 Qed.
 
@@ -65,20 +73,23 @@ Lemma apply_not_chance_not_occurs : forall a t0 s t, ~ occurs a t0 -> apply_subs
   intros.
   intro.
   induction t.
-  simpl in H0.
-  destruct (eq_id_dec i a); intuition.
+  - simpl in H0.
+    destruct (eq_id_dec i a); intuition.
   subst.
   simpl in *. destruct (eq_id_dec a a); intuition.
   subst.
   simpl in *. destruct (eq_id_dec a a); intuition.
   simpl in *. destruct (eq_id_dec a i); intuition.
   simpl in *. destruct (eq_id_dec i a); intuition.
-  simpl in H1. contradiction.
-  rewrite apply_subst_arrow in H0.
-  inversion H0.
-  auto.
-  simpl in H1.
-  destruct H1.
-  auto.
-  auto.
+  - simpl in H1. contradiction.
+  - rewrite apply_subst_appl in H0.
+    inversion H0.
+    simpl in H1.
+    destruct H1;
+      auto.
+  - rewrite apply_subst_arrow in H0.
+    inversion H0.
+    simpl in H1.
+    destruct H1;
+      auto.
 Qed.  

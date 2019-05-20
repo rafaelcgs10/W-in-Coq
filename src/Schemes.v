@@ -20,6 +20,7 @@ Inductive schm : Type :=
 | sc_var : id -> schm
 | sc_con : id -> schm
 | sc_gen : id -> schm
+| sc_appl : schm -> schm -> schm
 | sc_arrow : schm -> schm -> schm. 
 
 (** * It converts a simple type into a scheme  *)
@@ -28,7 +29,8 @@ Fixpoint ty_to_schm (tau : ty) : schm :=
   match tau with
   | var n => sc_var n
   | con n => sc_con n
-  | arrow t1 t2 => sc_arrow (ty_to_schm t1) (ty_to_schm t2)                 
+  | appl t1 t2 => sc_appl (ty_to_schm t1) (ty_to_schm t2) 
+  | arrow t1 t2 => sc_arrow (ty_to_schm t1) (ty_to_schm t2)               
   end.
 
 (** * Free variables of schemes *)
@@ -37,6 +39,7 @@ Fixpoint FV_schm (sigma : schm) : list id :=
   match sigma with
   | sc_var i => i::nil
   | sc_arrow l r => (FV_schm l) ++ (FV_schm r)
+  | sc_appl l r => (FV_schm l) ++ (FV_schm r)
   | _ => nil
   end.
 
@@ -45,6 +48,7 @@ Fixpoint max_gen_vars (sigma : schm) : nat :=
   | sc_con _ => 0
   | sc_var _ => 0
   | sc_gen i => S i
+  | sc_appl s1 s2 => max (max_gen_vars s1) (max_gen_vars s2)
   | sc_arrow s1 s2 => max (max_gen_vars s1) (max_gen_vars s2)
   end.
 

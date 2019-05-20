@@ -26,7 +26,7 @@ Require Import NonEmptyList.
 Inductive pat : Set :=
 | var_p : id -> pat
 | const_p : id -> pat
-| list_p : (id * schm) -> list pat -> pat.
+| constr_p : id -> list pat -> pat.
 
 (** * Lambda term definition *)
 
@@ -64,15 +64,22 @@ Fixpoint return_of_ty (tau : ty) : ty :=
   | tau' => tau'
   end.
 
-Inductive has_type_pat : pat -> ty -> Prop:=
-| const_htp : forall x, has_type_pat (const_p x) (con x)
-| var_htp : forall x tau, has_type_pat (var_p x) tau
-| list_htp : forall x sigma ps tau, is_schm_instance tau sigma ->
-                               has_type_pats ps (arguments_of_ty tau) -> 
-                               has_type_pat (list_p (x, sigma) ps) (return_of_ty tau)
+Inductive is_constructor_schm : schm -> Prop :=
+| con_is : forall x, is_constructor_schm (sc_con x)
+| arrow_is : forall sigma1 sigma2, is_constructor_schm sigma1 ->
+                              is_constructor_schm (sc_arrow sigma1 sigma2).
+
+Inductive has_type_pat : ctx -> pat -> ty -> Prop:=
+| const_htp : forall x G, has_type_pat G (const_p x) (con x)
+| var_htp : forall x tau, has_type_pat G (var_p x) tau
+| constr_htp : forall x sigma ps tau, in_ctx x G = Some sigma ->
+                                 is_constructor_schm sigma ->
+                                 is_schm_instance tau sigma ->
+                                 has_type_pats ps tau -> 
+                                 has_type_pat (constr_p x ps) (return_of_ty tau)
 with
 has_type_pats : list pat -> list ty -> Prop :=
-| no_pat : has_type_pats nil nil
+| no_pat : has_type_pats nil 
 | many_pat : forall p ps tau taus, has_type_pat p tau ->
                               has_type_pats ps taus  ->
                               has_type_pats (p::ps) (tau::taus).

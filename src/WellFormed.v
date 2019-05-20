@@ -20,6 +20,7 @@ Fixpoint wf_ty (C : varctxt) (t : ty) : Prop :=
   match t with
     | var v => member C v
     | con _ => True
+    | appl l r => wf_ty C l /\ wf_ty C r
     | arrow l r => wf_ty C l /\ wf_ty C r
   end.
 
@@ -131,20 +132,23 @@ Qed.
 Lemma wf_ty_remove_remove : forall t C i j, wf_ty (remove i C) t -> wf_ty (remove j C) t -> wf_ty (remove i (remove j C)) t.
 Proof.
   induction t.
-  induction C; intros; eauto; mysimp; simpl in *; eauto.
-  destruct (eq_id_dec j j); try contradiction; eauto.
-  destruct (eq_id_dec j i0); try contradiction; eauto.
-  simpl in H.
-  destruct (eq_id_dec j i); subst; try contradiction; eauto.
-  destruct (eq_id_dec i0 j); subst; try contradiction; simpl in *; eauto.
-  destruct (eq_id_dec i0 i0); subst; try contradiction; simpl in *; eauto.
-  destruct (eq_id_dec i0 i); subst; try contradiction; simpl in *; eauto.
-  destruct (eq_id_dec a i0); subst; try contradiction; simpl in *; eauto.
-  destruct (eq_id_dec a j); subst; try contradiction; simpl in *; eauto.
-  intros. auto.
-  intros.
-  simpl in *.
-  mysimp.
+  - induction C; intros; eauto; mysimp; simpl in *; eauto.
+    destruct (eq_id_dec j j); try contradiction; eauto.
+    destruct (eq_id_dec j i0); try contradiction; eauto.
+    simpl in H.
+    destruct (eq_id_dec j i); subst; try contradiction; eauto.
+    destruct (eq_id_dec i0 j); subst; try contradiction; simpl in *; eauto.
+    destruct (eq_id_dec i0 i0); subst; try contradiction; simpl in *; eauto.
+    destruct (eq_id_dec i0 i); subst; try contradiction; simpl in *; eauto.
+    destruct (eq_id_dec a i0); subst; try contradiction; simpl in *; eauto.
+    destruct (eq_id_dec a j); subst; try contradiction; simpl in *; eauto.
+  - intros. auto.
+  - intros. 
+    simpl in *.
+    mysimp.
+  - intros. 
+    simpl in *.
+    mysimp.
 Qed.
   
 Hint Resolve wf_ty_remove_remove.
@@ -164,6 +168,13 @@ Proof.
     simpl. rewrite H.
     reflexivity.
   - reflexivity.
+  - rewrite apply_subst_appl.
+    simpl in H. destructs H.
+    fequals.
+    eapply IHt1.
+    apply H.
+    eapply IHt2.
+    apply H0.
   - rewrite apply_subst_arrow.
     simpl in H. destructs H.
     fequals.
@@ -172,7 +183,6 @@ Proof.
     eapply IHt2.
     apply H0.
 Qed.
-
 
 (** ** Relating occurs check and well formedness of types *)
 
@@ -247,14 +257,17 @@ Lemma wf_subst_wf_ty_subst : forall t s C,
     wf_ty C (apply_subst s t).
 Proof.
   induction t; intros; mysimp.
-  rewrite apply_subst_fold.
-  apply wf_subst_wf_ty_subst_var'; auto.
-  destruct H0.
-  auto.
-  destruct H0.
-  auto.
+  - rewrite apply_subst_fold.
+    apply wf_subst_wf_ty_subst_var'; auto.
+  - destruct H0.
+    auto.
+  - destruct H0.
+    auto.
+  - destruct H0.
+    auto.
+  - destruct H0.
+    auto.
 Qed.
-
 
 Lemma wf_subst_remove_comm : forall s C b a,
     wf_subst (remove a (remove b C)) s ->
@@ -319,13 +332,9 @@ Lemma substs_remove : forall t s C,
     wf_ty C t ->
     wf_ty (minus C (dom s)) (apply_subst s t).
 Proof.
-  induction t; intros; mysimp.
-  rewrite apply_subst_fold.
-  apply substs_remove_var; auto.
-  destruct H0.
-  auto.
-  destruct H0.
-  auto.
+  induction t; intros; crush.
+  - rewrite apply_subst_fold.
+    apply substs_remove_var; auto.
 Qed.
 
 Hint Resolve substs_remove wf_subst_wf_ty_subst.
@@ -389,8 +398,8 @@ Proof.
           apply_subst_list (apply_subst_list s1 [(i, t)] ++ [(i, t)]) s2).
   { induction s1. simpl in *. mysimp. erewrite wf_ty_subst_not_in_dom; eauto.
     destruct a. simpl in *. mysimp. erewrite <- IHs1; eauto. fequals. fequals.
-    induction t0; mysimp; eauto. erewrite wf_ty_subst_not_in_dom; eauto. simpl in *.
-    mysimp. fequals; eauto.
+    induction t0; crush; eauto; erewrite wf_ty_subst_not_in_dom; eauto; simpl in *;
+    mysimp; fequals; eauto.
   } 
   rewrite H2.
   fold (compose_subst s1 [(i, t)]) .

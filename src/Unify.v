@@ -28,6 +28,7 @@ Require Import WellFormed.
 Fixpoint size (t : ty) : nat :=
   match t with
   | arrow l r => 1 + size l + size r
+  | appl l r => 1 + size l + size r
   | _ => 1
   end.
 
@@ -107,6 +108,26 @@ Defined.
 
 Hint Resolve arrow_lt_constraints2.
 
+Lemma appl_lt_constraints1: forall C l1 l2 r1 r2,
+    constraints_lt (mk_constraints C l1 l2) (mk_constraints C (appl l1 r1) (appl l2 r2)).
+Proof.
+  intros.
+  apply right_lex ; auto.
+  simpl. omega.
+Qed.
+
+Hint Resolve appl_lt_constraints1.
+
+Lemma appl_lt_constraints2: forall C l1 l2 r1 r2,
+    constraints_lt (mk_constraints C r1 r2) (mk_constraints C (appl l1 r1) (appl l2 r2)).
+Proof.
+  intros ; apply right_lex ; auto.
+  simpl.
+  omega.
+Defined.
+
+Hint Resolve appl_lt_constraints2.
+
 (** * Specification of the Unification Algorithm *)
 
 (** ** Definition of unifier *)
@@ -127,7 +148,7 @@ Lemma unify_ty : forall t v t' s,
     apply_subst s (var v) = apply_subst s t' ->
     apply_subst s t = apply_subst s (apply_subst ((v, t')::nil) t).
 Proof.
-  induction t ; intros ; mysimp.
+  induction t ; intros ; mysimp;
   fequals*.
 Qed.
 
@@ -184,6 +205,16 @@ Program Fixpoint unify' (l : constraints) {wf constraints_lt l} : unify_type l :
           | (con i, con j) => if eq_id_dec i j
                              then inleft _ (@exist substitution _ nil _) 
                              else inright _ 
+          | (appl l1 r1, appl l2 r2) => match unify' (mk_constraints (get_ctxt l) l1 l2) _ with
+                                         | inright E => inright _
+                                         | inleft _ (exist _ s1 HS) =>
+                                           match unify' (mk_constraints (minus (get_ctxt l) (dom s1))
+                                                                        (apply_subst s1 r1) (apply_subst s1 r2)) _ with
+                                           | inright E => inright _
+                                           | inleft _ (exist _ s2 HS') =>
+                                             inleft _ (@exist substitution _ (compose_subst s1 s2) _)
+                                           end
+                                         end
           | (arrow l1 r1, arrow l2 r2) => match unify' (mk_constraints (get_ctxt l) l1 l2) _ with
                                          | inright E => inright _
                                          | inleft _ (exist _ s1 HS) =>
@@ -194,6 +225,10 @@ Program Fixpoint unify' (l : constraints) {wf constraints_lt l} : unify_type l :
                                              inleft _ (@exist substitution _ (compose_subst s1 s2) _)
                                            end
                                          end
+          | (arrow _ _, appl _ _) => inright _
+          | (appl _ _, arrow _ _) => inright _
+          | (appl _ _, con _) => inright _
+          | (con  _, appl _ _) => inright _
           | (arrow _ _, con _) => inright _
           | (con  _, arrow _ _) => inright _
           end.
@@ -309,6 +344,80 @@ Next Obligation.
     reflexivity.
 Defined.
 Next Obligation.
+  unfold wf_constraints in wfl.
+  rewrite <- Heq_anonymous in wfl.
+  simpl in wfl.
+  destruct wfl.
+  erewrite constraints_mk_inversion with (C := get_ctxt l); eauto.
+  repeat rewrite <- Heq_anonymous.
+  crush.
+Defined.
+Next Obligation.
+  unfold wf_constraints in *.
+  rewrite <- Heq_anonymous in *.
+  destruct wfl.
+  crush.
+Defined.
+Next Obligation.  clear e Heq_anonymous unify'.
+  clear n.
+  erewrite constraints_mk_inversion with (C := get_ctxt l); eauto.
+  destruct wfl.
+  repeat rewrite <- Heq_anonymous0 in *.
+  induction s1; simpl in *.
+  apply right_lex ; eauto.
+  repeat rewrite apply_subst_nil.
+  simpl. omega.
+  apply left_lex ; eauto.
+  destruct a; crush.
+  apply member_len_minus_lt. eauto.
+Defined.
+Next Obligation.
+  simpl.
+  clear Heq_anonymous.
+  unfold wf_constraints in *.
+  repeat rewrite <- Heq_anonymous0 in wfl.
+  simpl in wfl.
+  destruct wfl.
+  crush.
+Defined.
+Next Obligation.
+  eauto.
+Defined.
+Next Obligation.
+  clear Heq_anonymous Heq_anonymous0 Heq_anonymous1.
+  unfold unifier in *.
+  splits; crush.
+  - inversion H. inversion H0. subst.
+    eapply new_tv_compose_subst; eauto. eapply n; eauto.
+    splits; eauto. 
+  - intros.
+    inversion H.
+    eapply e0 in u0 as Hl1.
+    eapply e0 in H1 as Hl2.
+    destruct Hl1 as [ss1 Hl1].
+    destruct Hl2 as [ss1' Hl2].
+    rewrite apply_subst_fold2 in *.
+    eapply ext_subst_var_ty in Hl2 as Hl2'.
+    eapply ext_subst_var_ty in Hl2 as Hl2''.
+    rewrite Hl2' in H2.
+    rewrite Hl2'' in H2.
+    repeat rewrite apply_compose_equiv in H2.
+    eapply e in H2.
+    destruct H2 as [ss2 H2].
+    rewrite apply_subst_fold2 in *.
+    sort.
+    exists ss2.
+    rewrite apply_subst_fold2 in *.
+    intros.
+    rewrite Hl2.
+    rewrite apply_compose_assoc_var.
+    rewrite apply_compose_equiv.
+    rewrite apply_compose_equiv.
+    eapply ext_subst_var_ty in H2 as H2'.
+    rewrite <- H2'.
+    reflexivity.
+Defined.
+Next Obligation.
   apply well_founded_constraints_lt.
 Defined.
 
@@ -320,18 +429,20 @@ Definition ids_ty_dep : forall (tau : ty), {l : list id | wf_ty l tau}.
   refine (fix ids_ty_dep (tau : ty) : {t : list id | wf_ty t tau} :=
             match tau with
             | var i => exist _ (i::nil) _
+            | appl l r => match ids_ty_dep l with
+                          | exist _ g' a => match ids_ty_dep r with
+                                           | exist _ g'' b => exist _ (g'++g'') _
+                                           end
+                          end
             | arrow l r => match ids_ty_dep l with
                           | exist _ g' a => match ids_ty_dep r with
                                            | exist _ g'' b => exist _ (g'++g'') _
                                            end
                           end
             | _ => exist _ nil _
-            end).
-  crush.
-  crush.
-  simpl. 
-  splits; eauto.
-  apply wf_ty_app_comm.
+            end);
+  crush;
+  apply wf_ty_app_comm;
   apply wf_ty_app;
     auto.
 Qed.
@@ -341,6 +452,44 @@ Definition ids_ty_dep2 : forall (tau tau' : ty), {l : list id | wf_ty l tau /\ w
   refine (fix ids_ty_dep2 (tau tau' : ty) : {t : list id | wf_ty t tau /\ wf_ty t tau'} :=
             match tau,tau' with
             | var i, var j => exist _ (i::j::nil) _
+            | appl l r, appl l' r' =>
+              match ids_ty_dep2 l l' with
+              | exist _ g' a => match ids_ty_dep2 r r' with
+                               | exist _ g'' b => exist _ (g'++g'') _
+                               end
+              end
+            | arrow l r, appl l' r' =>
+              match ids_ty_dep2 l l' with
+              | exist _ g' a => match ids_ty_dep2 r r' with
+                               | exist _ g'' b => exist _ (g'++g'') _
+                               end
+              end
+            | appl l r, arrow l' r' =>
+              match ids_ty_dep2 l l' with
+              | exist _ g' a => match ids_ty_dep2 r r' with
+                               | exist _ g'' b => exist _ (g'++g'') _
+                               end
+              end
+            | appl l r, (var i) => match ids_ty_dep l with
+                                   | exist _ g' a => match ids_ty_dep r with
+                                                    | exist _ g'' b => exist _ (i::g'++g'') _
+                                                    end
+                                   end
+            | appl l r, (con i) => match ids_ty_dep l with
+                                   | exist _ g' a => match ids_ty_dep r with
+                                                    | exist _ g'' b => exist _ (g'++g'') _
+                                                    end
+                                   end
+            | (var i), appl l r => match ids_ty_dep l with
+                                   | exist _ g' a => match ids_ty_dep r with
+                                                    | exist _ g'' b => exist _ (i::g'++g'') _
+                                                    end
+                                   end
+            | (con i), appl l r => match ids_ty_dep l with
+                                   | exist _ g' a => match ids_ty_dep r with
+                                                    | exist _ g'' b => exist _ (g'++g'') _
+                                                    end
+                                   end
             | arrow l r, arrow l' r' =>
               match ids_ty_dep2 l l' with
               | exist _ g' a => match ids_ty_dep2 r r' with

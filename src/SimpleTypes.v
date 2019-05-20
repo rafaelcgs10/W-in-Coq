@@ -24,12 +24,14 @@ Definition eq_id_dec : forall (v v' : id), {v = v'} + {v <> v'} := eq_nat_dec.
 Inductive ty : Set :=
 | var : id -> ty
 | con : id -> ty
+| appl : ty -> ty -> ty
 | arrow : ty -> ty -> ty.
 
 (** List of ids in a type *)
 Fixpoint ids_ty(tau : ty) : list id :=
   match tau with
   | var i => i::nil
+  | appl l r => (ids_ty l) ++ (ids_ty r) 
   | arrow l r => (ids_ty l) ++ (ids_ty r) 
   | _ => nil
   end.

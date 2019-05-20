@@ -199,6 +199,13 @@ Proof.
   - simpl in H. 
     apply in_list_id_or_append_inversion in H.
     destruct H;
+      rewrite apply_subst_schm_appl;
+      simpl.
+    eapply sublist_of_append1. auto.
+    eapply sublist_of_append2. auto.
+  - simpl in H. 
+    apply in_list_id_or_append_inversion in H.
+    destruct H;
       rewrite apply_subst_schm_arrow;
       simpl.
     eapply sublist_of_append1. auto.

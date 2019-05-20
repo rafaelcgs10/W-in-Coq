@@ -28,6 +28,7 @@ Fixpoint find_subst (s : list (id * ty)) (i : id) : option ty :=
 (** The application substitution operation, which is non-incremental. *)
 Fixpoint apply_subst (s : substitution) (t : ty) : ty :=
   match t with
+  | appl l r => appl (apply_subst s l) (apply_subst s r)
   | arrow l r => arrow (apply_subst s l) (apply_subst s r)
   | var i => match find_subst s i with
             | None => var i
@@ -66,19 +67,24 @@ Lemma ids_ty_apply_subst : forall s t,
 Proof.
   intros.
   induction t; mysimp.
-  rewrite app_nil_r. reflexivity.
-  repeat rewrite map_app.
-  repeat rewrite concat_app.
-  rewrite <- IHt1.
-  rewrite <- IHt2.
-  reflexivity.
+  - rewrite app_nil_r. reflexivity.
+  - repeat rewrite map_app.
+    repeat rewrite concat_app.
+    rewrite <- IHt1.
+    rewrite <- IHt2.
+    reflexivity.
+  - repeat rewrite map_app.
+    repeat rewrite concat_app.
+    rewrite <- IHt1.
+    rewrite <- IHt2.
+    reflexivity.
 Qed.
 
 (** ** Some obvious facts about substitutions **)
 
 Lemma apply_subst_id : forall t, apply_subst nil t = t.
 Proof.
-  induction t ; mysimp.
+  induction t ; mysimp;
   congruence.
 Qed.
 
@@ -93,6 +99,15 @@ Qed.
 Hint Resolve apply_subst_con.
 Hint Rewrite apply_subst_con:RE.
 
+Lemma apply_subst_appl : forall s l r,
+    apply_subst s (appl l r) = appl (apply_subst s l) (apply_subst s r).
+Proof.
+  induction s ; mysimp.
+Qed.
+
+Hint Resolve apply_subst_appl.
+Hint Rewrite apply_subst_appl:RE.
+
 Lemma apply_subst_arrow : forall s l r,
     apply_subst s (arrow l r) = arrow (apply_subst s l) (apply_subst s r).
 Proof.
@@ -104,12 +119,22 @@ Hint Rewrite apply_subst_arrow:RE.
 
 Lemma apply_subst_nil : forall t, apply_subst nil t = t.
 Proof.
-  intros; induction t; mysimp.
+  intros; induction t; mysimp;
   congruence.
 Qed.
 
 Hint Resolve apply_subst_nil.
 Hint Rewrite apply_subst_nil:RE.
+
+Lemma appl_subst_eq : forall l l' r r' s,
+    apply_subst s l = apply_subst s l' ->
+    apply_subst s r = apply_subst s r' ->
+    apply_subst s (appl l r) = apply_subst s (appl l' r').
+Proof.
+  intros ; do 2 rewrite apply_subst_appl ; fequals*.
+Qed.
+
+Hint Resolve appl_subst_eq.
 
 Lemma arrow_subst_eq : forall l l' r r' s,
     apply_subst s l = apply_subst s l' ->
@@ -239,13 +264,14 @@ Lemma apply_compose_equiv : forall s1 s2 t,
     apply_subst (compose_subst s1 s2) t = apply_subst s2 (apply_subst s1 t).
 Proof.
   induction s1; intros; mysimp.
-  repeat rewrite apply_compose_subst_nil_l.  autorewrite with RE using congruence.
-  induction t; mysimp; simpl in *; eauto.
-  repeat rewrite apply_subst_fold.
-  erewrite <- IHs1.
-  simpl.
-  unfold compose_subst. reflexivity.
-  fequals.
+  - repeat rewrite apply_compose_subst_nil_l.  autorewrite with RE using congruence.
+  - induction t; mysimp; simpl in *; eauto.
+    repeat rewrite apply_subst_fold.
+    erewrite <- IHs1.
+    simpl.
+    unfold compose_subst. reflexivity.
+    fequals.
+    fequals.
 Qed.
 
 Hint Resolve apply_compose_equiv.
@@ -348,8 +374,8 @@ Lemma ext_subst_var_ty : forall s s', (forall v, apply_subst s (var v) = apply_s
 Proof.
   intros ; induction t; mysimp;
     try (do 2 rewrite apply_subst_arrow) ;
-    simpl in *; auto; try (do 2 rewrite apply_subst_con); auto.
-  try (rewrite IHt1 ; auto). try (rewrite IHt2 ; auto).
+    simpl in *; auto; try (do 2 rewrite apply_subst_con); auto;
+  try (rewrite IHt1 ; auto); try (rewrite IHt2 ; auto).
 Qed.
 
 (** * Creates a list of type from a list of ids *)

@@ -27,6 +27,12 @@ Fixpoint gen_ty_aux (tau : ty) (G : ctx) (l : list id) : schm * list id :=
               | Some j => (sc_gen j, l)
               end
   | con i => (sc_con i, l)
+  | appl tau' tau'' => match gen_ty_aux tau' G l with
+                       | (sc_tau, l') => match gen_ty_aux tau'' G l' with
+                                        | (sc_tau', l'') =>
+                                          (sc_appl sc_tau  sc_tau', l'')
+                                        end
+                       end
   | arrow tau' tau'' => match gen_ty_aux tau' G l with
                        | (sc_tau, l') => match gen_ty_aux tau'' G l' with
                                         | (sc_tau', l'') =>
@@ -43,6 +49,7 @@ Fixpoint gen_ty_vars (tau : ty) (G : ctx) :=
   match tau with
   | con i => nil
   | var i => if in_list_id i (FV_ctx G) then nil else (i::nil)
+  | appl tau' tau'' => (gen_ty_vars tau' G) ++ (gen_ty_vars tau'' G)
   | arrow tau' tau'' => (gen_ty_vars tau' G) ++ (gen_ty_vars tau'' G)
   end.
 
@@ -59,6 +66,16 @@ Qed.
 Hint Resolve gen_ty_vars_arrow.
 Hint Rewrite gen_ty_vars_arrow:RE.
 
+Lemma gen_ty_vars_appl : forall t1 t2 G, gen_ty_vars (appl t1 t2) G =
+                                     gen_ty_vars t1 G ++ gen_ty_vars t2 G.
+Proof.
+  intros.
+  reflexivity.
+Qed.
+
+Hint Resolve gen_ty_vars_appl.
+Hint Rewrite gen_ty_vars_appl:RE.
+
 Lemma fst_gen_aux_arrow_rewrite : forall (tau tau' : ty) (G : ctx) (l : list id),
     fst (gen_ty_aux (arrow tau tau') G l) = sc_arrow (fst (gen_ty_aux tau G l))
                                             (fst (gen_ty_aux tau' G (snd (gen_ty_aux tau G l)))).
@@ -70,7 +87,6 @@ Qed.
 
 Hint Resolve fst_gen_aux_arrow_rewrite.
 Hint Rewrite fst_gen_aux_arrow_rewrite:RE.
-
 
 (** snd gen_ty_aux distributes over arrow *)
 Lemma snd_gen_ty_aux_arrow_rewrite : forall (tau tau': ty) (G : ctx) (l: list id),
@@ -84,6 +100,31 @@ Qed.
 
 Hint Resolve snd_gen_ty_aux_arrow_rewrite.
 Hint Rewrite snd_gen_ty_aux_arrow_rewrite:RE.
+
+Lemma fst_gen_aux_appl_rewrite : forall (tau tau' : ty) (G : ctx) (l : list id),
+    fst (gen_ty_aux (appl tau tau') G l) = sc_appl (fst (gen_ty_aux tau G l))
+                                            (fst (gen_ty_aux tau' G (snd (gen_ty_aux tau G l)))).
+Proof.
+  intros; crush.
+  destruct (gen_ty_aux tau G l); crush.
+  destruct (gen_ty_aux tau' G l0 ); crush.
+Qed.
+
+Hint Resolve fst_gen_aux_appl_rewrite.
+Hint Rewrite fst_gen_aux_appl_rewrite:RE.
+
+(** snd gen_ty_aux distributes over appl *)
+Lemma snd_gen_ty_aux_appl_rewrite : forall (tau tau': ty) (G : ctx) (l: list id),
+    (snd (gen_ty_aux (appl tau tau') G l)) =
+    (snd (gen_ty_aux tau' G (snd (gen_ty_aux tau G l)))).
+Proof.
+  intros.
+  cases (gen_ty_aux tau G l). simpl. rewrite Eq.
+  cases (gen_ty_aux tau' G l0). reflexivity.
+Qed.
+
+Hint Resolve snd_gen_ty_aux_appl_rewrite.
+Hint Rewrite snd_gen_ty_aux_appl_rewrite:RE.
 
 Lemma free_and_bound_are_disjoints : forall (G : ctx) (tau: ty),
     (are_disjoints (gen_ty_vars tau G ) (FV_ctx G)).
@@ -102,6 +143,13 @@ Proof.
     inversion H.
   - simpl in *.
     inversion H.
+  - simpl in H.
+    apply in_list_id_or_append_inversion in H.
+    destruct H.
+    apply IHtau1.
+    assumption.
+    apply IHtau2.
+    assumption.
   - simpl in H.
     apply in_list_id_or_append_inversion in H.
     destruct H.
@@ -145,6 +193,12 @@ Lemma is_subst_list_gen_vars_aux : forall (rho: ren_subst) (G: ctx) (t: ty),
       intros. simpl in H5. destruct (eq_id_dec (apply_ren_subst rho i) st).
       rewrite <- e0. apply in_list_id_dom_img. auto. intuition.
   - intros. rewrite apply_subst_con. simpl. apply nil_is_sublist.
+  - intros. rewrite apply_subst_appl in *. simpl. simpl in H2.
+    apply append_sublist.
+    + eapply IHt1; auto. eapply sublist_of_append_inversion1.
+      apply H2.
+    + eapply IHt2; auto. eapply sublist_of_append_inversion2.
+      apply H2.
   - intros. rewrite apply_subst_arrow in *. simpl. simpl in H2.
     apply append_sublist.
     + eapply IHt1; auto. eapply sublist_of_append_inversion1.
@@ -192,6 +246,16 @@ Proof.
         destruct (in_list_id i (FV_ctx G)); intuition.
         mysimp.
   - simpl. auto.
+  - generalize dependent l.
+    intros.
+    erewrite snd_gen_ty_aux_appl_rewrite.
+    eapply IHtau2; auto.
+    eapply IHtau1; auto.
+    rewrite gen_ty_vars_appl in H3.
+    eapply sublist_of_append_inversion1.
+    apply H3.
+    eapply sublist_of_append_inversion2.
+    apply H3.
   - generalize dependent l.
     intros.
     erewrite snd_gen_ty_aux_arrow_rewrite.
@@ -281,6 +345,29 @@ Proof.
     inversion H1.
     inversion H2.
     subst.
+    rewrite apply_subst_appl.
+    simpl.
+    rewrite IHtau1; auto.
+    cases (gen_ty_aux tau1 G l).
+    rewrite IHtau2; auto.
+    cases (gen_ty_aux tau2 G l0).
+    simpl.
+    rewrite Eq0.
+    simpl. reflexivity.
+    rewrite gen_ty_vars_appl in H1.
+    apply sublist_of_append_inversion2 in H1.
+    auto.
+    rewrite gen_ty_vars_appl in H1.
+    apply sublist_of_append_inversion1 in H1.
+    rewrite <- Eq.
+    eapply is_sublist_gen_ty_dom_rho; auto.
+    rewrite gen_ty_vars_appl in H1.
+    apply sublist_of_append_inversion1 in H1.
+    auto.
+  - intros.
+    inversion H1.
+    inversion H2.
+    subst.
     rewrite apply_subst_arrow.
     simpl.
     rewrite IHtau1; auto.
@@ -360,6 +447,11 @@ Proof.
     simpl in H.
     apply sublist_of_append_inversion2 in H. auto.
     apply sublist_of_append_inversion1 in H. auto.
+  - erewrite IHtau1.
+    erewrite IHtau2. reflexivity.
+    simpl in H.
+    apply sublist_of_append_inversion2 in H. auto.
+    apply sublist_of_append_inversion1 in H. auto.
 Qed.
 
 Hint Resolve is_not_generalizable.
@@ -396,6 +488,20 @@ Proof.
       apply H. mysimp.
   - rewrite apply_subst_con.
     simpl. reflexivity.
+  - rewrite apply_subst_appl. simpl.
+    erewrite IHtau1; auto.
+    erewrite IHtau2; auto.
+    cases (gen_ty_aux tau1 G l).
+    cases (gen_ty_aux tau2 G l0).
+    simpl. 
+    fequals.
+    fequals.
+    rewrite Eq0. reflexivity.
+    rewrite Eq0. reflexivity.
+    simpl in H. apply disjoint_list_and_append_inversion2 in H. auto.
+    simpl in H0. apply disjoint_list_and_append_inversion2 in H0. auto.
+    simpl in H. apply disjoint_list_and_append_inversion1 in H. auto.
+    simpl in H0. apply disjoint_list_and_append_inversion1 in H0. auto.
   - rewrite apply_subst_arrow. simpl.
     erewrite IHtau1; auto.
     erewrite IHtau2; auto.
@@ -451,6 +557,18 @@ Proof.
     exists (nil : list id).
     crush.
   - intros.
+    rewrite snd_gen_ty_aux_appl_rewrite.
+    edestruct IHtau1.
+    destruct H.
+    rewrite H.
+    edestruct IHtau2.
+    destruct H1.
+    rewrite H1.
+    exists (x ++ x0).
+    split.
+    rewrite app_assoc. reflexivity.
+    eauto.
+  - intros.
     rewrite snd_gen_ty_aux_arrow_rewrite.
     edestruct IHtau1.
     destruct H.
@@ -481,31 +599,42 @@ Lemma length_snd_gen_aux : forall (G : ctx) (tau : ty) (l : list id),
     length (snd (gen_ty_aux tau G l)) = max (length l) (max_gen_vars (fst (gen_ty_aux tau G l))).
 Proof.
   induction tau; crush.
-  cases (in_list_id i (FV_ctx G)); crush.
-  rewrite Nat.max_0_r. reflexivity.
-  cases (index_list_id i l).
-  simpl.
-  symmetry.
-  apply max_l.
-  change (i0 < length l) in |- *.
-  eapply index_lt; eauto.
-  simpl.
-  rewrite app_length.
-  simpl.
-  symmetry.
-  assert (S (length l) = length l + 1). auto with *.
-  rewrite H.
-  apply max_r. auto with *.
-  rewrite Nat.max_0_r. reflexivity.
-  cases (gen_ty_aux tau1 G l).
-  cases (gen_ty_aux tau2 G l0).
-  simpl.
-  specialize IHtau1 with (l:=l).
-  rewrite Eq in IHtau1.
-  specialize IHtau2 with (l:=l0).
-  rewrite Eq0 in IHtau2.
-  simpl in *.
-  rewrite IHtau1 in IHtau2.
-  rewrite Nat.max_assoc.
-  assumption.
+  - cases (in_list_id i (FV_ctx G)); crush.
+    rewrite Nat.max_0_r. reflexivity.
+    cases (index_list_id i l).
+    simpl.
+    symmetry.
+    apply max_l.
+    change (i0 < length l) in |- *.
+    eapply index_lt; eauto.
+    simpl.
+    rewrite app_length.
+    simpl.
+    symmetry.
+    assert (S (length l) = length l + 1). auto with *.
+    rewrite H.
+    apply max_r. auto with *.
+  - rewrite Nat.max_0_r. reflexivity.
+  - cases (gen_ty_aux tau1 G l).
+    cases (gen_ty_aux tau2 G l0).
+    simpl.
+    specialize IHtau1 with (l:=l).
+    rewrite Eq in IHtau1.
+    specialize IHtau2 with (l:=l0).
+    rewrite Eq0 in IHtau2.
+    simpl in *.
+    rewrite IHtau1 in IHtau2.
+    rewrite Nat.max_assoc.
+    assumption.
+  - cases (gen_ty_aux tau1 G l).
+    cases (gen_ty_aux tau2 G l0).
+    simpl.
+    specialize IHtau1 with (l:=l).
+    rewrite Eq in IHtau1.
+    specialize IHtau2 with (l:=l0).
+    rewrite Eq0 in IHtau2.
+    simpl in *.
+    rewrite IHtau1 in IHtau2.
+    rewrite Nat.max_assoc.
+    assumption.
 Qed.

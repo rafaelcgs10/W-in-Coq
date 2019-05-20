@@ -364,6 +364,7 @@ Fixpoint ids_ty_aux (tau : ty) (g : list id) : list id :=
   match tau with
   | var i => if in_list_id i g then g else i::g
   | arrow l r => let g' := (ids_ty_aux l g) in (ids_ty_aux r g')
+  | appl l r => let g' := (ids_ty_aux l g) in (ids_ty_aux r g')
   | _ => nil
   end.
 
@@ -384,15 +385,24 @@ Proof.
       apply in_list_id_and_append_inversion in H0; destruct H0; auto.
     + simpl in *. eapply IHs; eauto. 
       induction t; simpl in *; mysimp; eauto.
-      cases (find_subst s x); simpl in *; eauto. 
-      unfold img_ids in H0. simpl in H0.
-      eauto.
-      destruct (eq_id_dec x st);
-      eauto.
-      unfold img_ids in H0. simpl in H0.
-      eauto.
-      unfold img_ids in H0. simpl in H0.
-      eauto.
+      * cases (find_subst s x); simpl in *; eauto. 
+        unfold img_ids in H0. simpl in H0.
+        eauto.
+        destruct (eq_id_dec x st);
+        eauto.
+        unfold img_ids in H0. simpl in H0.
+        eauto.
+        unfold img_ids in H0. simpl in H0.
+        eauto.
+      * cases (find_subst s x); simpl in *; eauto. 
+        unfold img_ids in H0. simpl in H0.
+        eauto.
+        destruct (eq_id_dec x st);
+        eauto.
+        unfold img_ids in H0. simpl in H0.
+        eauto.
+        unfold img_ids in H0. simpl in H0.
+        eauto.
 Qed.
 
 Hint Resolve not_in_img.

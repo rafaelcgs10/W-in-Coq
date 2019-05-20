@@ -100,8 +100,15 @@ Inductive UnifyFailure : ty -> ty -> Prop :=
 | occ_fail  : forall v t, occurs v t -> UnifyFailure (var v) t
 | occ_fail'  : forall v t, occurs v t -> UnifyFailure t (var v)
 | diff_cons : forall n n', n <> n' -> UnifyFailure (con n) (con n')
+| con_appl   : forall n l r, UnifyFailure (con n) (appl l r)
 | con_arrow   : forall n l r, UnifyFailure (con n) (arrow l r)
+| arrow_appl   : forall l r l' r', UnifyFailure (arrow l r) (appl l' r')
+| appl_arrow   : forall l r l' r', UnifyFailure (appl l r) (arrow l' r')
 | arrow_con   : forall n l r, UnifyFailure (arrow l r) (con n)
+| appl_con   : forall n l r, UnifyFailure (appl l r) (con n)
+| appl_left  : forall l l' r r', UnifyFailure l l' -> UnifyFailure (appl l r) (appl l' r')
+| appl_right  : forall l l' r r' s, UnifyFailure (apply_subst s r) (apply_subst s r') ->
+                                UnifyFailure (appl l r) (appl l' r') 
 | arrow_left  : forall l l' r r', UnifyFailure l l' -> UnifyFailure (arrow l r) (arrow l' r')
 | arrow_right  : forall l l' r r' s, UnifyFailure (apply_subst s r) (apply_subst s r') ->
                                 UnifyFailure (arrow l r) (arrow l' r') .
