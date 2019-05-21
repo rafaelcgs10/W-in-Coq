@@ -25,7 +25,6 @@ Require Import NonEmptyList.
 
 Inductive pat : Set :=
 | var_p : id -> pat
-| const_p : id -> pat
 | constr_p : id -> list pat -> pat.
 
 (** * Lambda term definition *)
@@ -40,126 +39,102 @@ Inductive term : Set :=
 
 (** * Rules for typing patterns *)
 
-Definition not_arrow (tau : ty) : Prop :=
-  match tau with
-  | arrow _ _ => False
-  | _ => True
-  end.
-
-Definition not_arrow_dec (tau : ty) : bool :=
-  match tau with
-  | arrow _ _ => false
-  | _ => true
-  end.
-
-Fixpoint arguments_of_ty (tau : ty) : list ty :=
-  match tau with
-  | arrow tau1 tau2 => tau1::arguments_of_ty tau2
-  | _ => nil
-  end.
-
-Fixpoint return_of_ty (tau : ty) : ty :=
-  match tau with
-  | arrow tau1 tau2 => return_of_ty tau2
-  | tau' => tau'
-  end.
-
 Inductive is_constructor_schm : schm -> Prop :=
 | con_is : forall x, is_constructor_schm (sc_con x)
-| arrow_is : forall sigma1 sigma2, is_constructor_schm sigma1 ->
+| appl_is : forall tau1 tau2, is_constructor_schm (sc_appl tau1 tau2)
+| arrow_is : forall sigma1 sigma2, is_constructor_schm sigma2 ->
                               is_constructor_schm (sc_arrow sigma1 sigma2).
 
 Inductive has_type_pat : ctx -> pat -> ty -> Prop:=
-| const_htp : forall x G, has_type_pat G (const_p x) (con x)
-| var_htp : forall x tau, has_type_pat G (var_p x) tau
-| constr_htp : forall x sigma ps tau, in_ctx x G = Some sigma ->
+| var_htp : forall x G tau, has_type_pat G (var_p x) tau
+| constr_htp : forall G x sigma ps tau tau', in_ctx x G = Some sigma ->
                                  is_constructor_schm sigma ->
                                  is_schm_instance tau sigma ->
-                                 has_type_pats ps tau -> 
-                                 has_type_pat (constr_p x ps) (return_of_ty tau)
+                                 has_type_pats G ps tau tau' -> 
+                                 has_type_pat G (constr_p x ps) tau'
 with
-has_type_pats : list pat -> list ty -> Prop :=
-| no_pat : has_type_pats nil 
-| many_pat : forall p ps tau taus, has_type_pat p tau ->
-                              has_type_pats ps taus  ->
-                              has_type_pats (p::ps) (tau::taus).
-
-Fixpoint get_pats (cs : non_empty_list (pat * term)) : non_empty_list pat :=
-  match cs with
-  | one (p, _) =>  one p
-  | cons' (p, _) cs' => cons' p (get_pats cs')
-  end.
-
-Fixpoint get_terms (cs : non_empty_list (pat * term)) : non_empty_list term :=
-  match cs with
-  | one (_, t) =>  one t
-  | cons' (_, t) cs' => cons' t (get_terms cs')
-  end.
+has_type_pats : ctx -> list pat -> ty -> ty -> Prop :=
+| no_pat_con : forall i G, has_type_pats G nil (con i) (con i) 
+| no_pat_appl : forall tau1 tau2 G, has_type_pats G nil (appl tau1 tau2) (appl tau1 tau2) 
+| many_pat : forall p ps tau1 tau2 tau3 G, has_type_pat G p tau1 ->
+                                    has_type_pats G ps tau2 tau3  ->
+                                    has_type_pats G (p::ps) (arrow tau1 tau2) tau3.
 
 Scheme has_type_pat_mut := Minimality for has_type_pat Sort Prop
 with has_type_pats_mut := Minimality for has_type_pats Sort Prop.
 
-(** has_pat is stable under substitution *)
-Lemma has_type_pat_is_stable_under_substitution : forall p s tau,
-    has_type_pat p tau -> has_type_pat p (apply_subst s tau).
+Lemma in_ctx_stable_is_under_substitution : forall G s sigma x,
+    in_ctx x G = Some sigma -> in_ctx x (apply_subst_ctx s G) = Some (apply_subst_schm s sigma).
+Proof.
+  induction G; intros; crush.
+Qed.
+
+Hint Resolve in_ctx_stable_is_under_substitution.
+
+Lemma is_constructor_schm_is_stable_under_substitution : forall sigma s,
+    is_constructor_schm  sigma -> is_constructor_schm (apply_subst_schm s sigma).
+Proof.
+  induction sigma; intros; try econstructor; try inverts* H; eauto.
+Qed.
+
+Hint Resolve is_constructor_schm_is_stable_under_substitution.
+
+Lemma is_schm_instance_is_stable_under_substitution : forall sigma tau s,
+    is_schm_instance tau sigma ->  is_schm_instance (apply_subst s tau) (apply_subst_schm s sigma).
 Proof.
   intros.
-  Admitted.
-  (*
+  unfold is_schm_instance in *.
+  destruct H.
+  eapply subst_inst_subst_type in H.
+  exists (map_apply_subst_ty s x).
+  apply H.
+Qed.
+
+Hint Resolve is_schm_instance_is_stable_under_substitution.
+
+(** has_pat is stable under substitution *)
+Lemma has_type_pat_is_stable_under_substitution : forall p s tau G,
+    has_type_pat G p tau -> has_type_pat (apply_subst_ctx s G) p (apply_subst s tau).
+Proof.
+  intros.
   apply (has_type_pat_mut
-           (fun (p'': pat) tau => forall s tau',
-                has_type_pat p'' tau' -> has_type_pat p'' (apply_subst s tau'))
-           (fun l (tau : ty) => forall s tau',
-                has_type_pats l tau' -> has_type_pats l (apply_subst s tau'))
+           (fun (G' : ctx) (p'': pat) tau => forall s tau',
+                has_type_pat G' p'' tau' -> has_type_pat (apply_subst_ctx s G') p'' (apply_subst s tau'))
+           (fun (G' : ctx) l (tau : ty) (tau'' : ty) => forall s tau' tau''',
+                has_type_pats G' l tau' tau''' -> has_type_pats (apply_subst_ctx s G') l (apply_subst s tau') (apply_subst s tau'''))
            ) with (p:=p) (t:=tau); intros; eauto.
-  (** const case *)
-  - inverts* H0.
-    econstructor.
   (** var case *)
   - econstructor; eauto.
-  (** list case *)
-  - inverts* H3.
-    apply list_htp with (tau1:=apply_subst s0 tau0).
-    rewrite <- apply_subst_arrow.
-    skip.
-    rewrite <- apply_subst_arrow.
-    eauto.
-  - inverts* H2.
-    econstructor.
-    fold (apply_subst s0 tau0).
-    eauto.
+  (** constr case *)
+  - inverts* H1.
+    + apply is_schm_instance_must_be_con in H2 as H2'.
+      subst.
+      inverts* H3. 
+      inverts* H5. 
+      apply constr_htp with (sigma:= apply_subst_schm s0 sigma) (tau:= apply_subst s0 tau0); eauto.
+    + apply is_schm_instance_must_be_some_appl in H2 as H2'.
+      destruct H2' as [tau1' [tau2' H2']].
+      subst.
+      inverts* H3.
+      inverts* H5.
+      apply constr_htp with (sigma:= apply_subst_schm s0 sigma) (tau:= apply_subst s0 tau0); eauto.
+    + apply is_schm_instance_must_be_some_arrow in H2 as H2'.
+      destruct H2' as [tau1' [tau2' H2']].
+      subst.
+      inverts* H3.
+      inverts* H5.
+      apply constr_htp with (sigma:= apply_subst_schm s0 sigma) (tau:= apply_subst s0 tau0); eauto.
+  - inverts* H0.
+    + econstructor.
+    + econstructor.
+  - inverts* H0.
+    + econstructor.
+    + econstructor.
   - inverts* H4.
-    econstructor.
-    + fold (apply_subst s0 tau0).
-      eauto.
-    + fold (apply_subst s0 tau4).
-      fold (apply_subst s0 tau5).
-      rewrite <- apply_subst_arrow.
-      eauto.
+    econstructor; eauto.
 Qed.
-*)
-      
+     
 Hint Resolve has_type_pat_is_stable_under_substitution.
-
-(** has_patterns is stable under substitution *)
-(*
-Lemma has_type_patterns_is_stable_under_substitution : forall l s tau,
-    has_type_pats l tau -> has_type_pats l (apply_subst s tau).
-Proof.
-Admitted.
-  induction l.
-  - intros. inverts H.
-    econstructor.
-    auto.
-  - intros. 
-    inverts* H.
-    econstructor.
-    auto.
-    auto.
-Qed.    
-
-Hint Resolve has_type_patterns_is_stable_under_substitution.
-*)
 
 (** * Syntax-directed rule system of Damas-Milner *)
 
@@ -181,7 +156,7 @@ Inductive has_type : ctx -> term -> ty -> Prop :=
                                has_type G (case_t e cs) tau'
 with
 has_type_cases : ctx -> non_empty_list (pat * term) -> ty -> ty -> Prop :=
-| one_term : forall G p e tau tau', has_type_pat p tau ->
+| one_term : forall G p e tau tau', has_type_pat G p tau ->
                                   has_type G e tau' -> 
                                   has_type_cases G (one (p, e)) tau tau'
 | many_terms : forall G pe tau tau' cs, has_type_cases G (one pe) tau tau' -> 
@@ -210,29 +185,9 @@ Proof.
   - inverts* H0.
     econstructor.
   (** var case *)
-  - skip.
-    (*
-    inversion H2.
+  - inversion H2.
     subst.
-    rename G into G', G1 into G.
-    rename s into s', s0 into s.
-    rename tau into tau', tau1 into tau.
-    rename i into i', x into i.
-    econstructor.
-    + induction G; simpl in *; mysimp.
-      destruct a.
-      mysimp.
-      apply IHG.
-      econstructor.
-      apply H2.
-      assumption.
-      assumption.
-    + unfold is_schm_instance in *.
-      destruct H4.
-      eapply subst_inst_subst_type in H1.
-      exists (map_apply_subst_ty s x).
-      apply H1.
-*)
+    econstructor; eauto.
   (** lambda case *)
   - inverts* H2.
     rewrite apply_subst_arrow.

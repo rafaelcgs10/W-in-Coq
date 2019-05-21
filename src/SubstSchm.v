@@ -479,6 +479,19 @@ Qed.
 
 Hint Resolve exist_arrow_apply_inst_arrow2.
 
+Lemma exist_appl_apply_inst_appl2 : forall (sigma1 sigma2 : schm) (tau : ty) (is_s : inst_subst),
+    apply_inst_subst is_s (sc_appl sigma1 sigma2) = Some tau ->
+    exists tau1 tau2, (apply_inst_subst is_s sigma1 = Some tau1) /\ (apply_inst_subst is_s sigma2 = Some tau2) /\
+                 appl tau1 tau2 = tau.
+Proof.
+  intros.
+  simpl in H.
+    destruct (apply_inst_subst is_s sigma1); crush.
+    destruct (apply_inst_subst is_s sigma2); crush.
+Qed.
+
+Hint Resolve exist_appl_apply_inst_appl2.
+
 Lemma var_is_not_instance_of_arrow : forall (sigma1 sigma2 : schm) (i : id),
     ~ is_schm_instance (var i) (sc_arrow sigma1 sigma2).
 Proof.
@@ -492,6 +505,19 @@ Proof.
 Qed.
 
 Hint Resolve var_is_not_instance_of_arrow.
+
+Lemma arrow_is_not_instance_of_appl : forall (sigma1 sigma2 : schm) (tau1 tau2 : ty),
+    ~ is_schm_instance (arrow tau1 tau2) (sc_appl sigma1 sigma2).
+Proof.
+  intros. intro.
+  inverts* H.
+  apply exist_appl_apply_inst_appl2 in H0.
+  destruct H0 as [tau1' [tau2' H]].
+  destructs H.
+  inverts* H1.
+Qed.
+
+Hint Resolve arrow_is_not_instance_of_appl.
 
 Lemma appl_is_not_instance_of_arrow : forall (sigma1 sigma2 : schm) (tau1 tau2 : ty),
     ~ is_schm_instance (appl tau1 tau2) (sc_arrow sigma1 sigma2).
@@ -553,19 +579,6 @@ Qed.
 
 Hint Resolve and_appl_apply_inst_appl.
 Hint Rewrite and_appl_apply_inst_appl:RE.
-
-Lemma exist_appl_apply_inst_appl2 : forall (sigma1 sigma2 : schm) (tau : ty) (is_s : inst_subst),
-    apply_inst_subst is_s (sc_appl sigma1 sigma2) = Some tau ->
-    exists tau1 tau2, (apply_inst_subst is_s sigma1 = Some tau1) /\ (apply_inst_subst is_s sigma2 = Some tau2) /\
-                 appl tau1 tau2 = tau.
-Proof.
-  intros.
-  simpl in H.
-    destruct (apply_inst_subst is_s sigma1); crush.
-    destruct (apply_inst_subst is_s sigma2); crush.
-Qed.
-
-Hint Resolve exist_appl_apply_inst_appl2.
 
 Lemma var_is_not_instance_of_appl : forall (sigma1 sigma2 : schm) (i : id),
     ~ is_schm_instance (var i) (sc_appl sigma1 sigma2).
@@ -942,6 +955,40 @@ Qed.
 Hint Resolve apply_subst_inst_make_constant_inst_subst.
 Hint Resolve apply_subst_inst_make_constant_inst_subst:RE.
 
+Lemma is_schm_instance_must_be_some_appl : forall sigma1 sigma2 tau,
+    is_schm_instance tau (sc_appl sigma1 sigma2) -> exists tau1 tau2, tau = appl tau1 tau2.
+Proof.
+  intros.
+  destruct tau.
+  - eapply var_is_not_instance_of_appl in H.
+    contradiction.
+  - eapply con_is_not_instance_of_appl in H.
+    contradiction.
+  - destruct H.
+    exists tau1 tau2. reflexivity.
+  - eapply arrow_is_not_instance_of_appl in H.
+    contradiction.
+Qed.
+
+Hint Resolve is_schm_instance_must_be_some_appl.
+
+Lemma is_schm_instance_must_be_some_arrow : forall sigma1 sigma2 tau,
+    is_schm_instance tau (sc_arrow sigma1 sigma2) -> exists tau1 tau2, tau = arrow tau1 tau2.
+Proof.
+  intros.
+  destruct tau.
+  - eapply var_is_not_instance_of_arrow in H.
+    contradiction.
+  - eapply con_is_not_instance_of_arrow in H.
+    contradiction.
+  - eapply appl_is_not_instance_of_arrow in H.
+    contradiction.
+  - destruct H.
+    exists tau1 tau2. reflexivity.
+Qed.
+
+Hint Resolve is_schm_instance_must_be_some_arrow.
+
 Lemma is_schm_instance_must_be_var : forall tau i,
     is_schm_instance tau (sc_var i) -> tau = var i.
 Proof.
@@ -954,7 +1001,7 @@ Qed.
 
 Hint Resolve is_schm_instance_must_be_var.
 
- Lemma is_schm_instance_must_be_con : forall tau i,
+Lemma is_schm_instance_must_be_con : forall tau i,
     is_schm_instance tau (sc_con i) -> tau = con i.
 Proof.
   intros.
