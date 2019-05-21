@@ -1065,3 +1065,38 @@ Proof.
 Qed.
 
 Hint Resolve inst_arrow_proj_arrow.
+
+(** Lemma about projections a type instance of an arrow. *)
+Lemma inst_appl_proj_appl : forall sigma sigma1 sigma2 : schm,
+    (forall tau : ty, is_schm_instance tau sigma -> is_schm_instance tau (sc_appl sigma1 sigma2)) ->
+    {sig_sig : schm * schm | sigma = sc_appl (fst sig_sig) (snd sig_sig)}.
+Proof.
+  induction sigma. 
+  - cut (is_schm_instance (find_instance (sc_var i) (con i)) (sc_var i)); auto.
+    intros.
+    cut (is_schm_instance (find_instance (sc_var i) (con i)) (sc_appl sigma1 sigma2)); auto.
+    intros.
+    simpl in *.
+    absurd (is_schm_instance (var i) (sc_appl sigma1 sigma2)); auto.
+  - intros.
+    assert (is_schm_instance (con i) (sc_con i)).
+    exists (nil:inst_subst). reflexivity.
+    apply H in H0. 
+    apply con_is_not_instance_of_appl in H0.
+    contradiction.
+  - intros.
+    cut (is_schm_instance (find_instance (sc_gen i) (con i)) (sc_gen i)); auto.
+    intros.
+    cut (is_schm_instance (find_instance (sc_gen i) (con i)) (sc_appl sigma1 sigma2)); auto.
+    intros.
+    absurd (is_schm_instance (con i) (sc_appl sigma1 sigma2)); auto.
+  - intros.
+    exists (sigma1, sigma2). reflexivity.
+  - intros.
+    cut (is_schm_instance (find_instance (sc_arrow sigma1 sigma2) (arrow (con 0) (con 0))) (sc_arrow sigma1 sigma2)); auto; intros.
+    apply H in H0.
+    apply arrow_is_not_instance_of_appl in H0.
+    contradiction.
+Qed.
+
+Hint Resolve inst_appl_proj_appl.

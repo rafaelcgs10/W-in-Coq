@@ -80,6 +80,7 @@ Proof.
   inverts* H3.
   inverts* H3.
   inverts* H3.
+  inverts* H3.
 Qed.  
 
 Hint Resolve sc_var_more_general_than_sigma.
@@ -154,19 +155,96 @@ Qed.
 
 Hint Resolve more_general_arrow_inversion2.
 
+Lemma more_general_appl_inversion1 : forall sigma1 sigma2 sigma1' sigma2' : schm,
+    more_general (sc_appl sigma1 sigma2) (sc_appl sigma1' sigma2') ->
+    more_general sigma1 sigma1'.
+Proof.
+  intros.
+  inverts* H.
+  econstructor.
+  intros.
+  inverts* H.
+  destruct (apply_inst_subst_succeeds sigma2'
+            (x ++ make_constant_inst_subst (max_gen_vars sigma2') (con 0))).
+  rewrite app_length.
+  rewrite length_make_constant_inst_subst.
+  auto with *.
+  cut (is_schm_instance (appl tau x0) (sc_appl sigma1 sigma2)).
+  intros.
+  inverts* H2.
+  exists x1.
+  apply exist_appl_apply_inst_appl2 in H3 as H3'.
+  destruct H3' as [tau1 [tau2 H3']].
+  destructs H3'.
+  inverts* H5.
+  apply H0.
+  exists (x ++ make_constant_inst_subst (max_gen_vars sigma2') (con 0)).
+  simpl.
+  erewrite apply_inst_subst_ge_app; eauto.
+  rewrite H1.
+  rewrite H.
+  reflexivity.
+Qed.
+
+Hint Resolve more_general_appl_inversion1.
+
+Lemma more_general_appl_inversion2 : forall sigma1 sigma2 sigma1' sigma2' : schm,
+    more_general (sc_appl sigma1 sigma2) (sc_appl sigma1' sigma2') ->
+    more_general sigma2 sigma2'.
+Proof.
+  intros.
+  inverts* H.
+  econstructor.
+  intros.
+  inverts* H.
+  destruct (apply_inst_subst_succeeds sigma1'
+            (x ++ make_constant_inst_subst (max_gen_vars sigma1') (con 0))).
+  rewrite app_length.
+  rewrite length_make_constant_inst_subst.
+  auto with *.
+  cut (is_schm_instance (appl x0 tau) (sc_appl sigma1 sigma2)).
+  intros.
+  inverts* H2.
+  exists x1.
+  apply exist_appl_apply_inst_appl2 in H3 as H3'.
+  destruct H3' as [tau1 [tau2 H3']].
+  destructs H3'.
+  inversion H5. 
+  rewrite H7 in *.
+  rewrite H8 in *.
+  apply H4.
+  apply H0.
+  exists (x ++ make_constant_inst_subst (max_gen_vars sigma1') (con 0)).
+  simpl.
+  erewrite apply_inst_subst_ge_app with (sigma:=sigma2'); eauto.
+  rewrite H.
+  rewrite H1.
+  reflexivity.
+Qed.
+
+Hint Resolve more_general_appl_inversion2.
+
 Lemma FV_more_general : forall sigma1 sigma2 : schm,
     more_general sigma1 sigma2 ->
     is_sublist_id (FV_schm sigma1) (FV_schm sigma2).
 Proof.
   induction sigma1; crush.
-  apply sc_var_more_general_than_sigma in H.
-  subst. auto.
-  inverts* H.
-  apply arrow_sigma_more_general_than_arrow in H0 as H0'.
-  destruct H0'.
-  subst.
-  simpl.
-  eapply sublist_of_2_app; eauto.
+  - apply sc_var_more_general_than_sigma in H.
+    subst. auto.
+  - inverts* H.
+    apply inst_appl_proj_appl in H0 as H0'.
+    destruct H0'.
+    destruct x.
+    subst.
+    simpl in *.
+    eapply sublist_of_2_app; eauto.
+  - inverts* H.
+    apply inst_arrow_proj_arrow in H0 as H0'.
+    destruct H0'.
+    destruct x.
+    subst.
+    simpl in *.
+    eapply sublist_of_2_app; eauto.
 Qed.
 
 Hint Resolve FV_more_general.
@@ -257,6 +335,16 @@ Proof.
         { inverts* H0. }
   - crush.
   - intros.
+    rewrite fst_gen_aux_appl_rewrite in H0.
+    apply exist_appl_apply_inst_appl2 in H0.
+    destruct H0 as [tau1 [tau3 H0]].
+    destructs H0.
+    subst.
+    simpl.
+    rewrite snd_gen_ty_aux_appl_rewrite in H1.
+    erewrite (@IHtau1_2 tau3 (snd (gen_ty_aux tau1_1 G l)) L is_s phi); eauto.
+    erewrite (@IHtau1_1 tau1 l L is_s phi); eauto.
+  - intros.
     rewrite fst_gen_aux_arrow_rewrite in H0.
     apply exist_arrow_apply_inst_arrow2 in H0.
     destruct H0 as [tau1 [tau3 H0]].
@@ -322,6 +410,20 @@ Proof.
       crush.
   - crush. 
   - do 11 intro; intros more_gen_hyp disjoint1 disjoint2.
+    rewrite fst_gen_aux_appl_rewrite; intro.
+    destruct (@exist_appl_apply_inst_appl2  
+                (fst (gen_ty_aux t G2 l2)) (fst (gen_ty_aux t0 G2 (snd (gen_ty_aux t G2 l2))))
+                tau2 is_s H1).
+    intros.
+    destruct H2.
+    destructs H2.
+    rewrite <- H7.
+    rewrite snd_gen_ty_aux_appl_rewrite in *.
+    repeat rewrite fst_gen_aux_appl_rewrite.
+    simpl.
+    rewrite (@H x phi l2 l1 L P is_s); eauto.
+    rewrite (@H0 x0 phi (snd (@gen_ty_aux t G2 l2)) (snd (@gen_ty_aux t G1 l1)) L P is_s); eauto.
+  - do 11 intro; intros more_gen_hyp disjoint1 disjoint2.
     rewrite fst_gen_aux_arrow_rewrite; intro.
     destruct (@exist_arrow_apply_inst_arrow2  
                 (fst (gen_ty_aux t G2 l2)) (fst (gen_ty_aux t0 G2 (snd (gen_ty_aux t G2 l2))))
@@ -356,10 +458,12 @@ Qed.
 
 Hint Resolve more_general_gen_ty.
 
-(*
 Lemma typing_pat_in_a_more_general_ctx : forall (p : pat) (G2 G1 : ctx) (t : ty),
-    more_general_ctx G1 G2 -> has_type_pat p t -> has_type_pat p t.
+    more_general_ctx G1 G2 -> has_type_pat G2 p t -> has_type_pat G1 p t.
 Proof.
+  Admitted.
+Hint Resolve typing_pat_in_a_more_general_ctx.
+(*
   induction p.
   - induction G2.
     + intros.
@@ -387,7 +491,6 @@ Proof.
     econstructor; eauto.
 Qed.
 
-Hint Resolve typing_pat_in_a_more_general_ctx.
 
 Lemma typing_patterns_in_a_more_general_ctx : forall (l : non_empty_list pat) (G2 G1 : ctx) (t : ty),
     more_general_ctx G1 G2 -> has_type_patterns G2 l t -> has_type_patterns G1 l t.
@@ -543,6 +646,23 @@ Proof.
         rewrite length_map2.
         eauto.
   - crush.
+  - do 8 intro; intros disjoint1 disjoint2.
+    rewrite apply_subst_appl.
+    rewrite fst_gen_aux_appl_rewrite.
+    intro.
+    apply exist_appl_apply_inst_appl2 in H as H'.
+    destruct H' as [tau1 [tau3 H3]].
+    destructs H3.
+    subst.
+    repeat rewrite snd_gen_ty_aux_appl_rewrite.
+    intros prex prod.
+    rewrite fst_gen_aux_appl_rewrite.
+    rewrite apply_subst_schm_appl.
+    intros.
+    simpl.
+    erewrite (@IHtau1_1 tau1 phi s l1 l2 L P is_s); eauto.
+    erewrite (@IHtau1_2 tau3 phi s) with
+        (l2:= (snd (gen_ty_aux (apply_subst s tau1_1) (apply_subst_ctx s G) l2))); eauto.
   - do 8 intro; intros disjoint1 disjoint2.
     rewrite apply_subst_arrow.
     rewrite fst_gen_aux_arrow_rewrite.

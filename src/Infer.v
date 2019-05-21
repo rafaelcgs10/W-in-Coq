@@ -85,27 +85,37 @@ Program Fixpoint inferPat (p : pat) (G : ctx) {struct p} :
   @Infer (fun i => new_tv_ctx G i) (ty * ctx)
          (fun i x f => i <= f /\ new_tv_ctx (snd x) f /\
                     new_tv_ty (fst x) f /\
-                    has_type_pat p (fst x)) :=
+                    has_type_pat G p (fst x)) :=
   match p with
-  | const_p x => ret ((con x), nil)
-
   | var_p x =>
       alpha <- fresh ;
       G' <- addFreshCtx G x alpha ;
       ret (var alpha, (x, sc_var alpha)::nil)
 
-  | list_p (x, sigma) ps =>
-      tpsG <- inferPats ps G ;
-      alpha <- fresh ;
+  | constr_p x ps =>
+      sigma <- look_dep x G ;
       tau <- schm_inst_dep sigma ;
-      s <- unify tau (List.fold_right arrow (var alpha) (fst tpsG)) ;
-      ret (apply_subst s (return_of_ty tau), snd tpsG)
+      tauG' <- inferPats ps tau G ;
+      ret (fst tauG', snd tauG')
   end
-with inferPats (ps : list pat) (G : ctx) : 
-  @Infer (fun i => new_tv_ctx G i) ((list ty) * ctx)
+with inferPats (pss : list pat) (tau: ty) (G : ctx) {struct pss} : 
+  @Infer (fun i => new_tv_ctx G i) (ty * ctx)
          (fun i x f => i <= f /\ new_tv_ctx (snd x) f /\
-                    has_type_pats ps (fst x)) :=
-    _.
+                    has_type_pats G pss tau (fst x)) :=
+       match pss, tau with
+       | nil, (arrow _ _) => failT _ (ty * ctx)
+       | nil, (var _) => failT _ (ty * ctx)
+       | nil, (con i) => ret (con i, G)
+       | nil, (appl tau1 tau2) => ret (appl tau1 tau2, G)
+       | (p::ps'), (arrow tau1 tau2) =>
+           tauG <- inferPat p G ; 
+           s <- unify tau1 (fst tauG) ;
+           (** tauG' <- inferPats ps' (apply_subst s tau2) (apply_subst_ctx s (snd tauG)) ; *)
+           ret (fst tauG, snd tauG)
+       | (_::_), (var _) => failT _ (ty * ctx)
+       | (_::_), (con _) => failT _ (ty * ctx)
+       | (_::_), (appl _ _) => failT _ (ty * ctx)
+       end.
 Next Obligation.
   unfold top; auto.
 Defined.
