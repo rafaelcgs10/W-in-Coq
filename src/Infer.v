@@ -79,6 +79,31 @@ Defined.
 
 Unset Implicit Arguments.
 
+Program Fixpoint check_is_constructor (sigma : schm) :
+  @Infer (fun i => True) unit
+         (fun i x f => i = f /\ is_constructor_schm sigma) :=
+  match sigma with
+  | sc_con _ => ret tt
+  | sc_appl _ _ => ret tt
+  | sc_arrow _ sigma2 =>
+      u <- check_is_constructor sigma2 ;
+      ret u
+  | sc_var _ => failT _ unit
+  | sc_gen _ => failT _ unit
+  end.
+Next Obligation.
+  splits; eauto.
+  econstructor.
+Defined.
+Next Obligation.
+  splits; eauto.
+  econstructor.
+Defined.
+Next Obligation.
+  destruct (check_is_constructor sigma2 >>= _); crush.
+  econstructor; eauto.
+Defined.
+
 (** * The pattern inference *)
 
 Program Fixpoint inferPat (p : pat) (G : ctx) {struct p} :
@@ -94,37 +119,28 @@ Program Fixpoint inferPat (p : pat) (G : ctx) {struct p} :
 
   | constr_p x ps =>
       sigma <- look_dep x G ;
+      _ <- check_is_constructor sigma ;
       tau <- schm_inst_dep sigma ;
       tauG' <- inferPats ps tau G ;
       ret (fst tauG', snd tauG')
   end
-with inferPats (pss : list pat) (tau: ty) (G : ctx) {struct pss} : 
+with inferPats (pss : pats) (tau: ty) (G : ctx) {struct pss} : 
   @Infer (fun i => new_tv_ctx G i) (ty * ctx)
          (fun i x f => i <= f /\ new_tv_ctx (snd x) f /\
                     has_type_pats G pss tau (fst x)) :=
        match pss, tau with
-       | nil, (arrow _ _) => failT _ (ty * ctx)
-       | nil, (var _) => failT _ (ty * ctx)
-       | nil, (con i) => ret (con i, G)
-       | nil, (appl tau1 tau2) => ret (appl tau1 tau2, G)
-       | (p::ps'), (arrow tau1 tau2) =>
+       | no_pats, (arrow _ _) => failT _ (ty * ctx)
+       | no_pats, (var _) => failT _ (ty * ctx)
+       | no_pats, (con i) => ret (con i, G)
+       | no_pats, (appl tau1 tau2) => ret (appl tau1 tau2, G)
+       | (some_pats p ps'), (arrow tau1 tau2) =>
            tauG <- inferPat p G ; 
-           s <- unify tau1 (fst tauG) ;
-           (** tauG' <- inferPats ps' (apply_subst s tau2) (apply_subst_ctx s (snd tauG)) ; *)
-           ret (fst tauG, snd tauG)
-       | (_::_), (var _) => failT _ (ty * ctx)
-       | (_::_), (con _) => failT _ (ty * ctx)
-       | (_::_), (appl _ _) => failT _ (ty * ctx)
+           tauG' <- inferPats ps' tau2 (snd tauG) ;
+           ret (fst tauG', snd tauG')
+       | (some_pats _ _), (var _) => failT _ (ty * ctx)
+       | (some_pats _ _), (con _) => failT _ (ty * ctx)
+       | (some_pats _ _), (appl _ _) => failT _ (ty * ctx)
        end.
-Next Obligation.
-  unfold top; auto.
-Defined.
-Next Obligation. (* const_p case *)
-  unfold top;
-    splits; intros;
-      try splits; auto.
-  econstructor; eauto.
-Defined.
 Next Obligation. 
   unfold top;
     splits; intros;
@@ -140,120 +156,73 @@ Defined.
 Next Obligation. 
   unfold top;
     splits; intros;
-      try splits; auto.
+      try splits; auto;
+        intros; auto; splits; eauto.
+  destructs H1.
+  destructs H0.
+  intros; splits; auto.
+  destructs H4.
+  subst. auto.
 Defined.
 Next Obligation.
-  destruct (inferPats ps G >>= _); crush.
+  destruct (look_dep x G >>= _); crush.
   skip.
   rename x2 into tau.
   rename x3 into alpha.
-  rename x1 into taus.
-  rename x4 into s.
-  inverts* H3.
+  rename x1 into sigma.
+  rename x4 into tau'.
   - induction sigma.
-    (** var *)
-    + eapply has_type_pat_is_stable_under_substitution.
-      simpl in H1. inverts* H1.
-      econstructor.
-      skip.
-      econstructor.
-    (** con *)
-    + eapply has_type_pat_is_stable_under_substitution.
-      simpl in H1. inverts* H1.
-      econstructor.
-      skip.
-      econstructor.
+    (** sc_var *)
+    + inverts* H3.
+    (** sc_con *)
+    + simpl in H0.
+      inverts* H0.
+      inverts* H7.
+      econstructor; eauto.
+      econstructor; eauto.
     (** gen *)
-    + eapply has_type_pat_is_stable_under_substitution.
-      econstructor.
-      skip.
-      auto.
+    + inverts* H3.
+    (** sc_appl *)
+    + simpl in H0.
+      cases (apply_inst_subst (compute_inst_subst alpha (Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2))) sigma1).
+      cases (apply_inst_subst (compute_inst_subst alpha (Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2))) sigma2).
+      inversion H0.
+      rename t0 into tau1, t2 into tau2.
+      rewrite <- H8 in H7.
+      inverts* H7.
+      eapply constr_htp with (sigma:=(sc_appl sigma1 sigma2)).
+      eauto.
+      eauto.
+      exists ((compute_inst_subst alpha (max_gen_vars (sc_appl sigma1 sigma2)))).
       simpl.
-      inverts* H1.
-      apply and_arrow_apply_inst_arrow in H1.
-      exists (nil:inst_subst).
-      reflexivity.
+      rewrite Eq, Eq0.
+      rewrite H8. reflexivity.
+      rewrite <- H8. 
       econstructor.
-    (** gen *)
-    + eapply has_type_pat_is_stable_under_substitution.
-      econstructor.
-      exists (compute_inst_subst (S alpha) (max_gen_vars (sc_gen i))).
-      simpl. auto.
-    
-    imewrite H8.
-    exists (compute_inst_subst (S x3) (max_gen_vars sigma)).
-    apply H1.
-    assert (x2 = var x3). skip.
-    subst.
-    simpl.
-    econstructor.
-  - eapply has_type_pat_is_stable_under_substitution.
-    econstructor.
-    exists (compute_inst_subst (S x3) (max_gen_vars sigma)).
-    apply H1.
-    destruct x2.
-    
-    rewrite H8.
-    induction x3; try econstructor.
-    simpl.
-
-    econstructor.
-    apply H4.
-    
-    
-    
-    
-
-    
-    rewrite <- H6.
-    rewrite H1.
-    skip.
-    econstructor.
-    apply H4.
-    skip.
-    simpl.
-    destruct (eq_ty_dec tau tau); intuition.
-  -
-    
-    unfold is_schm_instance.
-    exists (compute_inst_subst x2 (max_gen_vars sigma)).
-    rewrite H1.
-    crush.
-
-
-
-
-(** ** Many patterns *)
-Program Fixpoint inferPatterns (ps : non_empty_list pat) (G : ctx) {struct ps} :
-  @Infer (fun i => new_tv_ctx G i) (ty * ctx)
-         (fun i x f => i <= f /\ new_tv_ctx (snd x) f /\
-                    new_tv_ty (fst x) f /\
-                    has_type_patterns (snd x) ps (fst x)  ) :=
-  match ps with
-  | one p => inferPat p G
-  | cons' p ps' =>
-      tauG <- inferPat p G ;
-      tauG' <- inferPatterns ps' (snd tauG) ;
-      s <- unify (fst tauG) (fst tauG') ;
-      ret (apply_subst s (fst tauG'), apply_subst_ctx s (snd tauG'))
-  end.
-Next Obligation.
-  edestruct (inferPat p G);
-    crush. 
-  econstructor; eauto.
-Defined.
-Next Obligation.
-  unfold top;
-  splits; crush. 
-Defined.
-Next Obligation.
-  edestruct (inferPat p G >>= _);
-    crush.
-  econstructor; eauto.
-  rewrite <- H11.
-  apply has_type_pat_is_stable_under_substitution.
- 
-
+      inverts* H0.
+      inverts* H0.
+    (** sc_arrow *)
+    + simpl in H0.
+      cases (apply_inst_subst (compute_inst_subst alpha (Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2))) sigma1).
+      cases (apply_inst_subst (compute_inst_subst alpha (Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2))) sigma2).
+      inversion H0.
+      rename t0 into tau1, t2 into tau2.
+      rewrite <- H8 in H7.
+      inverts* H7.
+      eapply constr_htp with (sigma:=(sc_arrow sigma1 sigma2)).
+      eauto.
+      eauto.
+      exists ((compute_inst_subst alpha (max_gen_vars (sc_appl sigma1 sigma2)))).
+      simpl.
+      rewrite Eq, Eq0.
+      rewrite H8. reflexivity.
+      rewrite <- H8. 
+      econstructor;
+      eauto.
+      inverts* H0.
+      inverts* H0.
+      Unshelve. apply (con 0).
+Defined.      
 
 (** * Completeness theorem definition. *)
 

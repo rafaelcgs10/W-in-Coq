@@ -23,9 +23,12 @@ Require Import NonEmptyList.
 
 (** * Pattern definition *)
 
-Inductive pat : Set :=
+Inductive pat : Type :=
 | var_p : id -> pat
-| constr_p : id -> list pat -> pat.
+| constr_p : id -> pats -> pat
+with pats : Type :=
+     | no_pats : pats
+     | some_pats : pat -> pats -> pats.
 
 (** * Lambda term definition *)
 
@@ -44,6 +47,8 @@ Inductive is_constructor_schm : schm -> Prop :=
 | appl_is : forall tau1 tau2, is_constructor_schm (sc_appl tau1 tau2)
 | arrow_is : forall sigma1 sigma2, is_constructor_schm sigma2 ->
                               is_constructor_schm (sc_arrow sigma1 sigma2).
+                    
+         
 
 Inductive has_type_pat : ctx -> pat -> ty -> Prop:=
 | var_htp : forall x G tau, has_type_pat G (var_p x) tau
@@ -53,12 +58,12 @@ Inductive has_type_pat : ctx -> pat -> ty -> Prop:=
                                  has_type_pats G ps tau tau' -> 
                                  has_type_pat G (constr_p x ps) tau'
 with
-has_type_pats : ctx -> list pat -> ty -> ty -> Prop :=
-| no_pat_con : forall i G, has_type_pats G nil (con i) (con i) 
-| no_pat_appl : forall tau1 tau2 G, has_type_pats G nil (appl tau1 tau2) (appl tau1 tau2) 
+has_type_pats : ctx -> pats -> ty -> ty -> Prop :=
+| no_pat_con : forall i G, has_type_pats G no_pats (con i) (con i) 
+| no_pat_appl : forall tau1 tau2 G, has_type_pats G no_pats (appl tau1 tau2) (appl tau1 tau2) 
 | many_pat : forall p ps tau1 tau2 tau3 G, has_type_pat G p tau1 ->
                                     has_type_pats G ps tau2 tau3  ->
-                                    has_type_pats G (p::ps) (arrow tau1 tau2) tau3.
+                                    has_type_pats G (some_pats p ps) (arrow tau1 tau2) tau3.
 
 Scheme has_type_pat_mut := Minimality for has_type_pat Sort Prop
 with has_type_pats_mut := Minimality for has_type_pats Sort Prop.
