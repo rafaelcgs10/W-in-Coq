@@ -7,8 +7,10 @@ Require Import LibTactics.
 Require Import Program.
 Require Import List.
 Require Import SimpleTypes.
+Require Import Schemes.
 Require Import Occurs.
 Require Import Subst.
+Require Import Typing.
 Require Import Omega.
 
 Section hoare_state_monad.
@@ -120,15 +122,27 @@ Inductive SubstFailure :  Prop :=
 
 Hint Constructors SubstFailure.
 
-Inductive MissingVar : id ->  Prop :=
-| missingVar : forall i, MissingVar i.
+Inductive MissingVarFailure : id ->  Prop :=
+| MissingVar : forall i, MissingVarFailure i.
 
-Hint Constructors MissingVar.
+Hint Constructors MissingVarFailure.
+
+Inductive PatsFailure : ty -> pats -> Prop :=
+| HasPatAppl : forall tau1 tau2 p ps, PatsFailure (appl tau1 tau2) (some_pats p ps)
+| HasPatCon : forall i p ps, PatsFailure (con i) (some_pats p ps)
+| HasPatVar : forall i p ps, PatsFailure (var i) (some_pats p ps)
+| MissingPatVar : forall i, PatsFailure (var i) no_pats
+| MissingPatArrow : forall tau1 tau2, PatsFailure (arrow tau1 tau2) no_pats.
+
+Inductive NotConstructorFailure : schm -> Prop :=
+| NotConstructor : forall sigma, NotConstructorFailure sigma.
 
 Inductive InferFailure : Prop :=
 | SubstFailure' : SubstFailure -> InferFailure
-| UnifyFailure' : forall t1 t2, UnifyFailure t1 t2 -> InferFailure
-| MissingVar' : forall i, MissingVar i -> InferFailure.
+| NotConstructorFailure' : forall sigma, NotConstructorFailure sigma -> InferFailure
+| PatsFailure' : forall tau ps, PatsFailure tau ps -> InferFailure
+| UnifyFailure' : forall tau1 tau2, UnifyFailure tau1 tau2 -> InferFailure
+| MissingVar' : forall i, MissingVarFailure i -> InferFailure.
 
 Hint Constructors InferFailure.
 

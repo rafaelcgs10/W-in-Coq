@@ -60,7 +60,7 @@ Program Definition look_dep (x : id) (G : ctx) :
   @Infer (@top id) schm (fun i k f => i = f /\ in_ctx x G = Some k) :=
   match in_ctx x G with
   | Some sig => ret sig
-  | None => failT (@MissingVar' x (missingVar x)) schm
+  | None => failT (@MissingVar' x (MissingVar x)) schm
   end.
 
 (** Gives you a fresh variable *)
@@ -77,7 +77,6 @@ Next Obligation.
   unfold top; auto.
 Defined.
 
-Unset Implicit Arguments.
 
 Program Fixpoint check_is_constructor (sigma : schm) :
   @Infer (fun i => True) unit
@@ -88,8 +87,8 @@ Program Fixpoint check_is_constructor (sigma : schm) :
   | sc_arrow _ sigma2 =>
       u <- check_is_constructor sigma2 ;
       ret u
-  | sc_var _ => failT _ unit
-  | sc_gen _ => failT _ unit
+  | sc_var i => failT (@NotConstructorFailure' (sc_var i) (NotConstructor (sc_var i))) unit
+  | sc_gen i => failT (@NotConstructorFailure' (sc_gen i) (NotConstructor (sc_gen i))) unit
   end.
 Next Obligation.
   splits; eauto.
@@ -129,17 +128,18 @@ with inferPats (pss : pats) (tau: ty) (G : ctx) {struct pss} :
          (fun i x f => i <= f /\ new_tv_ctx (snd x) f /\
                     has_type_pats G pss tau (fst x)) :=
        match pss, tau with
-       | no_pats, (arrow _ _) => failT _ (ty * ctx)
-       | no_pats, (var _) => failT _ (ty * ctx)
        | no_pats, (con i) => ret (con i, G)
        | no_pats, (appl tau1 tau2) => ret (appl tau1 tau2, G)
        | (some_pats p ps'), (arrow tau1 tau2) =>
            tauG <- inferPat p G ; 
-           tauG' <- inferPats ps' tau2 (snd tauG) ;
-           ret (fst tauG', snd tauG')
-       | (some_pats _ _), (var _) => failT _ (ty * ctx)
-       | (some_pats _ _), (con _) => failT _ (ty * ctx)
-       | (some_pats _ _), (appl _ _) => failT _ (ty * ctx)
+           s <- unify tau1 (fst tauG) ;
+           tauG' <- inferPats ps' (apply_subst s tau2) (snd tauG) ;
+           ret (apply_subst s (fst tauG'), snd tauG')
+       | no_pats, (arrow tau1 tau2) => failT (@PatsFailure' (arrow tau1 tau2) no_pats (MissingPatArrow tau1 tau2)) (ty * ctx)
+       | no_pats, (var i) => failT (@PatsFailure' (var i) no_pats (MissingPatVar i)) (ty * ctx)
+       | (some_pats p ps), (var i) => failT (@PatsFailure' (var i) (some_pats p ps) (HasPatVar i p ps)) (ty * ctx)
+       | (some_pats p ps), (con i) => failT (@PatsFailure' (con i) (some_pats p ps) (HasPatCon i p ps)) (ty * ctx)
+       | (some_pats p ps), (appl tau1 tau2) => failT (@PatsFailure' (appl tau1 tau2) (some_pats p ps) (HasPatAppl tau1 tau2 p ps)) (ty * ctx)
        end.
 Next Obligation. 
   unfold top;
@@ -223,6 +223,41 @@ Next Obligation.
       inverts* H0.
       Unshelve. apply (con 0).
 Defined.      
+Next Obligation.
+  unfold top; auto.
+Defined.      
+Next Obligation.
+  splits; eauto; try econstructor.
+Defined.      
+Next Obligation.
+  unfold top; auto.
+Defined.      
+Next Obligation.
+  splits; eauto; try econstructor.
+Defined.      
+Next Obligation.
+  unfold top; intros;
+    splits; intros;
+      try splits; auto;
+        intros; eauto; splits; eauto.
+  destructs H1.
+  destructs H0.
+  subst.
+  auto.
+Defined.
+Next Obligation.
+  destruct (inferPat p G >>= _); crush.
+  rename x1 into tau, x0 into tau1'.
+  rename x2 into s.
+
+  econstructor.
+  eapply has_type_pat_is_stable_under_substitution with (s:=s) in H4.
+  rewrite <- H7 in H4.
+  skip.
+  eauto.
+    
+  inverts* H7.
+  econstructor; eauto.
 
 (** * Completeness theorem definition. *)
 
@@ -242,8 +277,6 @@ Program Fixpoint W (e : term) (G : ctx) {struct e} :
                     has_type (apply_subst_ctx ((snd x)) G) e (fst x) /\
                     completeness e G (fst x) ((snd x)) i) :=
   match e with
-  | const_t x => ret ((con x), nil)
-
   | var_t x =>
       sigma <- look_dep x G ;
       tau <- schm_inst_dep sigma ;
@@ -267,18 +300,31 @@ Program Fixpoint W (e : term) (G : ctx) {struct e} :
       tau2_s2 <- W e2 ((x,gen_ty (fst tau1_s1)
                       (apply_subst_ctx (snd tau1_s1) G) )::(apply_subst_ctx (snd tau1_s1) G))  ;
       ret (fst tau2_s2, compose_subst (snd tau1_s1) (snd tau2_s2))
-  | case_t e' pts => _  
-  end. 
+
+  | case_t e' cs =>
+      tau1_s1 <- W e' G  ;
+      tau2_s2 <- infer_cases cs (fst tau1_s1) (apply_subst_ctx (snd tau1_s1) G) ;
+      ret (fst tau2_s2, compose_subst (snd tau1_s1) (snd tau2_s2)) 
+  end
+with infer_cases (cs : cases) (tau : ty) (G : ctx) :
+       @Infer (fun i => new_tv_ctx G i) (ty * substitution)
+              (fun i x f => i <= f /\ has_type_cases (apply_subst_ctx (snd x) G) cs (apply_subst (snd x) tau) (fst x)) :=
+       match cs with
+       | one_case p e =>
+          tau_G <- inferPat p G ;
+          tau_s <- W e (snd tau_G) ;
+          s <- unify tau (apply_subst (snd tau_s) (fst tau_G)) ;
+          ret (apply_subst s (fst tau_G), compose (snd tau_s) s)
+       | many_cases p e cs' =>
+          tau_s <- infer_cases (one_case p e) tau G ;
+          tau_s' <- infer_cases cs' (apply_subst (fst tau_s) tau) (apply_subst_ctx (fst tau_s) G) ;
+          s <- unify (fst tau_s) (fst tau_s') ;
+          ret (apply_subst s (fst tau_s'), compose_subst (snd tau_s) (compose_subst (snd tau_s') s))
+       end.
+
+             
+         
 Next Obligation.
-  intros; unfold top; auto.
-Defined.
-Next Obligation.  (* Case: postcondition of const_t *)
-  crush.
-  econstructor.
-  intro. intros.
-  inverts* H0.
-Defined.
-Next Obligation. 
   intros; unfold top; auto.
 Defined.
 Next Obligation.  (* Case: postcondition of var *)
@@ -288,9 +334,8 @@ Next Obligation.  (* Case: postcondition of var *)
     rename x0 into tau', x1 into tau.
   - (* Case: var_t soundness *)
     econstructor; eauto. 
-    rewrite apply_subst_ctx_nil. eauto.
     unfold is_schm_instance. exists (compute_inst_subst st1 (max_gen_vars tau)).
-    assumption.
+    rewrite apply_subst_schm_nil. auto.
   (* Case: var_t completeness *)
   - subst.
     unfold completeness.
@@ -549,6 +594,35 @@ Next Obligation. (* Case : postcondition of let *)
     Unshelve. eauto. eauto.
 Defined.
 Next Obligation.
-  intros.
-
+  unfold top.
+  intros; splits; eauto.
+  intros; splits; eauto.
+  destructs H0;
+    try splits; eauto.
+Defined.
+Next Obligation.
+  destruct (W e' G >>= _); crush.
+  - skip.
+  - skip.
+  - skip.
+  - rename x0 into tau, x2 into tau'.
+    rename t1 into s.
+    rename x into i0.
+    rename x1 into i1, t into i2.
+    inverts* H7.
+    + rewrite apply_subst_ctx_compose.
+      econstructor.
+      apply has_type_is_stable_under_substitution.
+      apply H5.
+      econstructor; eauto.
+    + rewrite apply_subst_ctx_compose.
+      econstructor.
+      apply has_type_is_stable_under_substitution.
+      apply H5.
+      econstructor; eauto.
+  - skip.
+Defined.
+      
+    
+  
 Print Assumptions W.

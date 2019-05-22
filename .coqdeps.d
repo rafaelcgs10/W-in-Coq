@@ -18,12 +18,14 @@ src/Occurs.vo src/Occurs.glob src/Occurs.v.beautified: src/Occurs.v src/SimpleTy
 src/Occurs.vio: src/Occurs.v src/SimpleTypes.vio src/LibTactics.vio src/MyLtacs.vio src/Subst.vio
 src/Varctxt.vo src/Varctxt.glob src/Varctxt.v.beautified: src/Varctxt.v src/LibTactics.vo src/SimpleTypes.vo src/Subst.vo src/MyLtacs.vo
 src/Varctxt.vio: src/Varctxt.v src/LibTactics.vio src/SimpleTypes.vio src/Subst.vio src/MyLtacs.vio
-src/WellFormed.vo src/WellFormed.glob src/WellFormed.v.beautified: src/WellFormed.v src/LibTactics.vo src/SimpleTypes.vo src/Subst.vo src/Varctxt.vo src/Occurs.vo src/MyLtacs.vo
-src/WellFormed.vio: src/WellFormed.v src/LibTactics.vio src/SimpleTypes.vio src/Subst.vio src/Varctxt.vio src/Occurs.vio src/MyLtacs.vio
-src/HoareMonad.vo src/HoareMonad.glob src/HoareMonad.v.beautified: src/HoareMonad.v src/LibTactics.vo src/SimpleTypes.vo src/Occurs.vo src/Subst.vo
-src/HoareMonad.vio: src/HoareMonad.v src/LibTactics.vio src/SimpleTypes.vio src/Occurs.vio src/Subst.vio
 src/NewTypeVariable.vo src/NewTypeVariable.glob src/NewTypeVariable.v.beautified: src/NewTypeVariable.v src/SimpleTypes.vo src/Gen.vo src/Schemes.vo src/Context.vo src/SubstSchm.vo src/MyLtacs.vo src/Subst.vo src/ListIds.vo src/LibTactics.vo
 src/NewTypeVariable.vio: src/NewTypeVariable.v src/SimpleTypes.vio src/Gen.vio src/Schemes.vio src/Context.vio src/SubstSchm.vio src/MyLtacs.vio src/Subst.vio src/ListIds.vio src/LibTactics.vio
+src/WellFormed.vo src/WellFormed.glob src/WellFormed.v.beautified: src/WellFormed.v src/LibTactics.vo src/SimpleTypes.vo src/Subst.vo src/Varctxt.vo src/Occurs.vo src/MyLtacs.vo
+src/WellFormed.vio: src/WellFormed.v src/LibTactics.vio src/SimpleTypes.vio src/Subst.vio src/Varctxt.vio src/Occurs.vio src/MyLtacs.vio
+src/Typing.vo src/Typing.glob src/Typing.v.beautified: src/Typing.v src/LibTactics.vo src/Sublist.vo src/Context.vo src/ListIds.vo src/Schemes.vo src/SubstSchm.vo src/Rename.vo src/Disjoints.vo src/Subst.vo src/Gen.vo src/SimpleTypes.vo src/MyLtacs.vo src/NonEmptyList.vo
+src/Typing.vio: src/Typing.v src/LibTactics.vio src/Sublist.vio src/Context.vio src/ListIds.vio src/Schemes.vio src/SubstSchm.vio src/Rename.vio src/Disjoints.vio src/Subst.vio src/Gen.vio src/SimpleTypes.vio src/MyLtacs.vio src/NonEmptyList.vio
+src/HoareMonad.vo src/HoareMonad.glob src/HoareMonad.v.beautified: src/HoareMonad.v src/LibTactics.vo src/SimpleTypes.vo src/Schemes.vo src/Occurs.vo src/Subst.vo src/Typing.vo
+src/HoareMonad.vio: src/HoareMonad.v src/LibTactics.vio src/SimpleTypes.vio src/Schemes.vio src/Occurs.vio src/Subst.vio src/Typing.vio
 src/Unify.vo src/Unify.glob src/Unify.v.beautified: src/Unify.v src/LibTactics.vo src/HoareMonad.vo src/SimpleTypes.vo src/Subst.vo src/NewTypeVariable.vo src/MyLtacs.vo src/Varctxt.vo src/Occurs.vo src/NonEmptyList.vo src/WellFormed.vo
 src/Unify.vio: src/Unify.v src/LibTactics.vio src/HoareMonad.vio src/SimpleTypes.vio src/Subst.vio src/NewTypeVariable.vio src/MyLtacs.vio src/Varctxt.vio src/Occurs.vio src/NonEmptyList.vio src/WellFormed.vio
 src/Sublist.vo src/Sublist.glob src/Sublist.v.beautified: src/Sublist.v src/LibTactics.vo src/ListIds.vo src/Context.vo src/Schemes.vo src/SubstSchm.vo src/SimpleTypes.vo src/Subst.vo src/MyLtacs.vo src/Disjoints.vo
@@ -38,8 +40,6 @@ src/Rename.vo src/Rename.glob src/Rename.v.beautified: src/Rename.v src/Disjoint
 src/Rename.vio: src/Rename.v src/Disjoints.vio src/Sublist.vio src/ListIds.vio src/SimpleTypes.vio src/Subst.vio src/MyLtacs.vio src/LibTactics.vio
 src/Gen.vo src/Gen.glob src/Gen.v.beautified: src/Gen.v src/LibTactics.vo src/Sublist.vo src/Context.vo src/ListIds.vo src/Schemes.vo src/SubstSchm.vo src/Rename.vo src/Disjoints.vo src/SimpleTypes.vo src/Subst.vo src/MyLtacs.vo
 src/Gen.vio: src/Gen.v src/LibTactics.vio src/Sublist.vio src/Context.vio src/ListIds.vio src/Schemes.vio src/SubstSchm.vio src/Rename.vio src/Disjoints.vio src/SimpleTypes.vio src/Subst.vio src/MyLtacs.vio
-src/Typing.vo src/Typing.glob src/Typing.v.beautified: src/Typing.v src/LibTactics.vo src/Sublist.vo src/Context.vo src/ListIds.vo src/Schemes.vo src/SubstSchm.vo src/Rename.vo src/Disjoints.vo src/Subst.vo src/Gen.vo src/SimpleTypes.vo src/MyLtacs.vo src/NonEmptyList.vo
-src/Typing.vio: src/Typing.v src/LibTactics.vio src/Sublist.vio src/Context.vio src/ListIds.vio src/Schemes.vio src/SubstSchm.vio src/Rename.vio src/Disjoints.vio src/Subst.vio src/Gen.vio src/SimpleTypes.vio src/MyLtacs.vio src/NonEmptyList.vio
 src/ProductList.vo src/ProductList.glob src/ProductList.v.beautified: src/ProductList.v src/Sublist.vo src/ListIds.vo src/Context.vo src/Typing.vo src/Gen.vo src/SimpleTypes.vo src/Schemes.vo src/Subst.vo src/SubstSchm.vo src/MyLtacs.vo src/NthErrorTools.vo src/LibTactics.vo
 src/ProductList.vio: src/ProductList.v src/Sublist.vio src/ListIds.vio src/Context.vio src/Typing.vio src/Gen.vio src/SimpleTypes.vio src/Schemes.vio src/Subst.vio src/SubstSchm.vio src/MyLtacs.vio src/NthErrorTools.vio src/LibTactics.vio
 src/DisjointTail.vo src/DisjointTail.glob src/DisjointTail.v.beautified: src/DisjointTail.v src/SubstSchm.vo src/ListIds.vo src/Context.vo src/Disjoints.vo src/Gen.vo src/SimpleTypes.vo src/Subst.vo src/MyLtacs.vo src/NthErrorTools.vo src/LibTactics.vo

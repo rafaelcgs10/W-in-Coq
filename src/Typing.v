@@ -37,8 +37,10 @@ Inductive term : Set :=
 | app_t   : term -> term -> term
 | let_t   : id -> term -> term -> term
 | lam_t   : id -> term -> term
-| const_t : id -> term
-| case_t  : term ->  non_empty_list (pat * term) -> term.
+| case_t  : term ->  cases -> term
+with cases : Set :=
+ | one_case : pat -> term -> cases
+ | many_cases : pat -> term -> cases -> cases.
 
 (** * Rules for typing patterns *)
 
@@ -48,8 +50,6 @@ Inductive is_constructor_schm : schm -> Prop :=
 | arrow_is : forall sigma1 sigma2, is_constructor_schm sigma2 ->
                               is_constructor_schm (sc_arrow sigma1 sigma2).
                     
-         
-
 Inductive has_type_pat : ctx -> pat -> ty -> Prop:=
 | var_htp : forall x G tau, has_type_pat G (var_p x) tau
 | constr_htp : forall G x sigma ps tau tau', in_ctx x G = Some sigma ->
@@ -141,10 +141,15 @@ Qed.
      
 Hint Resolve has_type_pat_is_stable_under_substitution.
 
+Lemma has_type_pats_is_stable_under_substitution : forall ps s tau tau' G,
+    has_type_pats G ps tau tau' -> has_type_pats (apply_subst_ctx s G) ps (apply_subst s tau) (apply_subst s tau').
+Admitted.
+
+Hint Resolve has_type_pats_is_stable_under_substitution.
+
 (** * Syntax-directed rule system of Damas-Milner *)
 
 Inductive has_type : ctx -> term -> ty -> Prop :=
-| const_ht : forall x G, has_type G (const_t x) (con x)
 | var_ht : forall x G sigma tau, in_ctx x G = Some sigma ->
                             is_schm_instance tau sigma ->
                             has_type G (var_t x) tau
@@ -160,13 +165,13 @@ Inductive has_type : ctx -> term -> ty -> Prop :=
                                has_type_cases G cs tau tau' ->
                                has_type G (case_t e cs) tau'
 with
-has_type_cases : ctx -> non_empty_list (pat * term) -> ty -> ty -> Prop :=
+has_type_cases : ctx -> cases -> ty -> ty -> Prop :=
 | one_term : forall G p e tau tau', has_type_pat G p tau ->
                                   has_type G e tau' -> 
-                                  has_type_cases G (one (p, e)) tau tau'
-| many_terms : forall G pe tau tau' cs, has_type_cases G (one pe) tau tau' -> 
+                                  has_type_cases G (one_case p e) tau tau'
+| many_terms : forall G p e tau tau' cs, has_type_cases G (one_case p e) tau tau' -> 
                                    has_type_cases G cs tau tau' ->
-                                   has_type_cases G (cons' pe cs) tau tau'.
+                                   has_type_cases G (many_cases p e cs) tau tau'.
 
 Scheme has_type_mut := Minimality for has_type Sort Prop
 with has_type_cases_mut := Minimality for has_type_cases Sort Prop.
@@ -183,12 +188,9 @@ Proof.
   apply (has_type_mut
            (fun (G' : ctx) (e' : term) (tau' : ty) => forall s tau G,
                          has_type G e' tau -> has_type (apply_subst_ctx s G) e' (apply_subst s tau))
-           (fun  (G' : ctx) (l' : non_empty_list (pat * term)) (tau' tau'' : ty) => forall s tau1 tau2 G,
+           (fun  (G' : ctx) (l' : cases) (tau' tau'' : ty) => forall s tau1 tau2 G,
               has_type_cases G l' tau1 tau2 -> has_type_cases (apply_subst_ctx s G) l' (apply_subst s tau1) (apply_subst s tau2))
            ) with (c:=G) (t0:=tau); intros.
-  (** const case *)
-  - inverts* H0.
-    econstructor.
   (** var case *)
   - inversion H2.
     subst.

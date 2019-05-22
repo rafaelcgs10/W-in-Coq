@@ -517,12 +517,9 @@ Proof.
   apply (has_type_mut
          (fun (G' : ctx) (e' : term) (t' : ty) => forall tau G2 G1,
                        more_general_ctx G1 G2 -> has_type G2 e' tau -> has_type G1 e' tau)
-         (fun  (G' : ctx) (l' : non_empty_list (pat * term)) (tau' tau'' : ty) => forall tau1 tau2 G2 G1,
+         (fun  (G' : ctx) (l' : cases) (tau' tau'' : ty) => forall tau1 tau2 G2 G1,
                        more_general_ctx G1 G2 -> has_type_cases G2 l' tau1 tau2 -> has_type_cases G1 l' tau1 tau2)
          ) with (c:=G2) (t0:=t) (t:=e) (G2:=G2); intros; auto.
-  (** const case *)
-  - inverts* H2.
-    econstructor.
   - skip.
     (*
     induction G0.

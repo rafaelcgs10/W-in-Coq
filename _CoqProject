@@ -9,9 +9,10 @@
    src/ListIds.v
    src/Occurs.v
    src/Varctxt.v
-   src/WellFormed.v
-   src/HoareMonad.v
    src/NewTypeVariable.v
+   src/WellFormed.v
+   src/Typing.v
+   src/HoareMonad.v
    src/Unify.v
    src/Sublist.v
    src/Context.v
@@ -19,7 +20,6 @@
    src/SubstSchm.v
    src/Rename.v
    src/Gen.v
-   src/Typing.v
    src/ProductList.v
    src/DisjointTail.v
    src/MoreGeneral.v
