@@ -82,6 +82,14 @@ Qed.
 
 Hint Resolve in_ctx_stable_is_under_substitution.
 
+Lemma not_in_ctx_stable_is_under_substitution : forall G s x,
+    in_ctx x G = None -> in_ctx x (apply_subst_ctx s G) = None.
+Proof.
+  induction G; intros; crush.
+Qed.
+
+Hint Resolve not_in_ctx_stable_is_under_substitution.
+
 Lemma is_constructor_schm_is_stable_under_substitution : forall sigma s,
     is_constructor_schm  sigma -> is_constructor_schm (apply_subst_schm s sigma).
 Proof.
@@ -244,6 +252,43 @@ Hint Resolve has_type_pats_is_stable_under_substitution.
 
 (** * Syntax-directed rule system of Damas-Milner *)
 
+Inductive sub_ctx : ctx -> ctx -> Prop:=
+| same_ctx : forall G, sub_ctx G G
+| sub_ctx_cons : forall G1 G2 i sigma, sub_ctx G1 G2 ->
+                                  in_ctx i G2 = None ->
+                                  FV_schm sigma = nil ->
+                                  sub_ctx G1 ((i, sigma)::G2).
+
+Lemma no_free_variable_is_stable_under_substitution : forall s sigma,
+    FV_schm sigma = nil -> FV_schm (apply_subst_schm s sigma) = nil.
+Proof.
+  induction sigma; intros; simpl in *; try reflexivity.
+  - inverts* H.
+  - apply app_eq_nil in H.
+    destruct H.
+    erewrite IHsigma1; eauto.
+  - apply app_eq_nil in H.
+    destruct H.
+    erewrite IHsigma1; eauto.
+Qed.
+
+Hint Resolve no_free_variable_is_stable_under_substitution.
+
+Lemma sub_ctx_is_stable_under_substitution : forall G2 G1 s,
+    sub_ctx G1 G2 -> sub_ctx (apply_subst_ctx s G1) (apply_subst_ctx s G2).
+Proof.
+  induction G2; intros.
+  - inverts* H.
+    econstructor.
+  - inverts* H.
+    + econstructor.
+    + simpl.
+      econstructor;
+      eauto.
+Qed.
+
+Hint Resolve sub_ctx_is_stable_under_substitution.
+
 Inductive has_type : ctx -> term -> ty -> Prop :=
 | var_ht : forall x G sigma tau, in_ctx x G = Some sigma ->
                             is_schm_instance tau sigma ->
@@ -261,8 +306,9 @@ Inductive has_type : ctx -> term -> ty -> Prop :=
                                has_type G (case_t e cs) tau'
 with
 has_type_cases : ctx -> cases -> ty -> ty -> Prop :=
-| one_term : forall G p e tau tau', has_type_pat G p tau ->
-                                  has_type G e tau' -> 
+| one_term : forall G G' p e tau tau', sub_ctx G G' ->
+                                  has_type_pat G p tau ->
+                                  has_type G' e tau' -> 
                                   has_type_cases G (one_case p e) tau tau'
 | many_terms : forall G p e tau tau' cs, has_type_cases G (one_case p e) tau tau' -> 
                                    has_type_cases G cs tau tau' ->
@@ -361,7 +407,7 @@ Proof.
       eapply H1; eauto.
       auto.
     (** terms one case *)
-  - inverts* H3.
+  - inverts* H4.
     econstructor; eauto.
     (** terms many case *)
   - inverts* H4.

@@ -1,4 +1,4 @@
-(** * The algorithm W
+** * The algorithm W
       This file contains the algorithm W, its proofs of soundness and completeness,
       and a bunch of auxiliary definitions.
     *)
@@ -341,24 +341,23 @@ Program Fixpoint W (e : term) (G : ctx) {struct e} :
       tau2_s2 <- infer_cases cs (fst tau1_s1) (apply_subst_ctx (snd tau1_s1) G) ;
       ret (fst tau2_s2, compose_subst (snd tau1_s1) (snd tau2_s2)) 
   end
-with infer_cases (cs : cases) (tau : ty) (G : ctx) :
+with infer_cases (cs : cases) (tau : ty) (G : ctx) {struct cs} :
        @Infer (fun i => new_tv_ctx G i) (ty * substitution)
               (fun i x f => i <= f /\ has_type_cases (apply_subst_ctx (snd x) G) cs (apply_subst (snd x) tau) (fst x)) :=
        match cs with
        | one_case p e =>
-          tau_G <- inferPat p G ;
-          tau_s <- W e (snd tau_G) ;
-          s <- unify tau (apply_subst (snd tau_s) (fst tau_G)) ;
-          ret (apply_subst s (fst tau_G), compose (snd tau_s) s)
+          tau_G_s <- inferPat p G ;
+          tau_s <- W e (snd (fst tau_G_s)) ;
+          s <- unify (apply_subst (snd tau_G_s) tau) (fst (fst tau_G_s)) ;
+          ret (apply_subst s (fst (fst tau_G_s)), compose_subst (snd tau_G_s) s)
        | many_cases p e cs' =>
-          tau_s <- infer_cases (one_case p e) tau G ;
-          tau_s' <- infer_cases cs' (apply_subst (fst tau_s) tau) (apply_subst_ctx (fst tau_s) G) ;
+          tau_G_s <- inferPat p G ;
+          tau_s <- W e (snd (fst tau_G_s)) ;
+          s <- unify tau (apply_subst (snd tau_s) (fst (fst tau_G_s))) ;
+          tau_s' <- infer_cases cs' (apply_subst s tau) (apply_subst_ctx s G) ;
           s <- unify (fst tau_s) (fst tau_s') ;
           ret (apply_subst s (fst tau_s'), compose_subst (snd tau_s) (compose_subst (snd tau_s') s))
        end.
-
-             
-         
 Next Obligation.
   intros; unfold top; auto.
 Defined.
@@ -641,22 +640,43 @@ Next Obligation.
   - skip.
   - skip.
   - rename x0 into tau, x2 into tau'.
-    rename t1 into s.
+    rename t1 into s1, t2 into s2.
     rename x into i0.
     rename x1 into i1, t into i2.
     inverts* H7.
-    + rewrite apply_subst_ctx_compose.
+    + repeat rewrite apply_subst_ctx_compose.
       econstructor.
       apply has_type_is_stable_under_substitution.
       apply H5.
       econstructor; eauto.
-    + rewrite apply_subst_ctx_compose.
+    + repeat rewrite apply_subst_ctx_compose.
       econstructor.
       apply has_type_is_stable_under_substitution.
       apply H5.
       econstructor; eauto.
   - skip.
 Defined.
+Next Obligation.
+  unfold top.
+  intros; splits; eauto.
+  intros; splits; eauto.
+  destructs H0;
+    try splits; eauto.
+Defined.
+Next Obligation.
+  destruct (inferPat p G >>= _); crush.
+  rename t3 into s1, x4 into s2.
+  rename t2 into G'.
+  rename t1 into s'.
+  rename x0 into tau'.
+  rename x2 into tau''.
+  econstructor.
+  - repeat rewrite apply_compose_equiv.
+    repeat rewrite apply_subst_ctx_compose.
+    rewrite H13.
+    apply has_type_pat_is_stable_under_substitution.
+    assumption.
+  -
       
     
   
