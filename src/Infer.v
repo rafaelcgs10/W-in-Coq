@@ -77,7 +77,6 @@ Next Obligation.
   unfold top; auto.
 Defined.
 
-
 Program Fixpoint check_is_constructor (sigma : schm) :
   @Infer (fun i => True) unit
          (fun i x f => i = f /\ is_constructor_schm sigma) :=
@@ -106,40 +105,40 @@ Defined.
 (** * The pattern inference *)
 
 Program Fixpoint inferPat (p : pat) (G : ctx) {struct p} :
-  @Infer (fun i => new_tv_ctx G i) (ty * ctx)
-         (fun i x f => i <= f /\ new_tv_ctx (snd x) f /\
-                    new_tv_ty (fst x) f /\
-                    has_type_pat G p (fst x)) :=
+  @Infer (fun i => new_tv_ctx G i) (ty * ctx * substitution)
+         (fun i x f => i <= f /\ new_tv_ctx (snd (fst x)) f /\
+                    new_tv_ty (fst (fst x)) f /\
+                    has_type_pat (apply_subst_ctx (snd x) G) p (fst (fst x))) :=
   match p with
   | var_p x =>
       alpha <- fresh ;
       G' <- addFreshCtx G x alpha ;
-      ret (var alpha, (x, sc_var alpha)::nil)
+      ret (var alpha, (x, sc_var alpha)::nil, nil)
 
   | constr_p x ps =>
       sigma <- look_dep x G ;
       _ <- check_is_constructor sigma ;
       tau <- schm_inst_dep sigma ;
-      tauG' <- inferPats ps tau G ;
-      ret (fst tauG', snd tauG')
+      sG <- inferPats ps tau G ;
+      ret (apply_subst (fst sG) (return_of_ty tau), apply_subst_ctx (fst sG) (snd sG), fst sG)
   end
 with inferPats (pss : pats) (tau: ty) (G : ctx) {struct pss} : 
-  @Infer (fun i => new_tv_ctx G i) (ty * ctx)
+  @Infer (fun i => new_tv_ctx G i /\ new_tv_ty tau i) (substitution * ctx)
          (fun i x f => i <= f /\ new_tv_ctx (snd x) f /\
-                    has_type_pats G pss tau (fst x)) :=
+                    has_type_pats (apply_subst_ctx (fst x) G) pss (apply_subst (fst x) tau)) :=
        match pss, tau with
-       | no_pats, (con i) => ret (con i, G)
-       | no_pats, (appl tau1 tau2) => ret (appl tau1 tau2, G)
+       | no_pats, (con i) => ret (nil, G)
+       | no_pats, (appl tau1 tau2) => ret (nil, G)
        | (some_pats p ps'), (arrow tau1 tau2) =>
-           tauG <- inferPat p G ; 
-           s <- unify tau1 (fst tauG) ;
-           tauG' <- inferPats ps' (apply_subst s tau2) (snd tauG) ;
-           ret (apply_subst s (fst tauG'), snd tauG')
-       | no_pats, (arrow tau1 tau2) => failT (@PatsFailure' (arrow tau1 tau2) no_pats (MissingPatArrow tau1 tau2)) (ty * ctx)
-       | no_pats, (var i) => failT (@PatsFailure' (var i) no_pats (MissingPatVar i)) (ty * ctx)
-       | (some_pats p ps), (var i) => failT (@PatsFailure' (var i) (some_pats p ps) (HasPatVar i p ps)) (ty * ctx)
-       | (some_pats p ps), (con i) => failT (@PatsFailure' (con i) (some_pats p ps) (HasPatCon i p ps)) (ty * ctx)
-       | (some_pats p ps), (appl tau1 tau2) => failT (@PatsFailure' (appl tau1 tau2) (some_pats p ps) (HasPatAppl tau1 tau2 p ps)) (ty * ctx)
+           tauGs <- inferPat p G ; 
+           s <- unify (apply_subst (snd tauGs) tau1) (fst (fst tauGs)) ;
+           sG <- inferPats ps' (apply_subst s (apply_subst (snd tauGs) tau2)) (apply_subst_ctx s (apply_subst_ctx (snd tauGs) G)) ;
+           ret (compose_subst (snd tauGs) (compose_subst s (fst sG)), snd (fst tauGs))
+       | no_pats, (arrow tau1 tau2) => failT (@PatsFailure' (arrow tau1 tau2) no_pats (MissingPatArrow tau1 tau2)) (substitution * ctx)
+       | no_pats, (var i) => failT (@PatsFailure' (var i) no_pats (MissingPatVar i)) (substitution * ctx)
+       | (some_pats p ps), (var i) => failT (@PatsFailure' (var i) (some_pats p ps) (HasPatVar i p ps)) (substitution * ctx)
+       | (some_pats p ps), (con i) => failT (@PatsFailure' (con i) (some_pats p ps) (HasPatCon i p ps)) (substitution * ctx)
+       | (some_pats p ps), (appl tau1 tau2) => failT (@PatsFailure' (appl tau1 tau2) (some_pats p ps) (HasPatAppl tau1 tau2 p ps)) (substitution * ctx)
        end.
 Next Obligation. 
   unfold top;
@@ -162,24 +161,29 @@ Next Obligation.
   destructs H0.
   intros; splits; auto.
   destructs H4.
-  subst. auto.
+  subst.
+  splits; eauto.
 Defined.
 Next Obligation.
-  destruct (look_dep x G >>= _); crush.
+  destruct (look_dep x G >>= _); crush; clear inferPats; sort.
+  skip.
   skip.
   rename x2 into tau.
   rename x3 into alpha.
   rename x1 into sigma.
-  rename x4 into tau'.
-  - induction sigma.
+  rename x4 into s.
+  rename t2 into G'.
+  - destruct sigma.
     (** sc_var *)
     + inverts* H3.
     (** sc_con *)
     + simpl in H0.
       inverts* H0.
       inverts* H7.
+      eapply has_type_pat_is_stable_under_substitution; eauto.
       econstructor; eauto.
-      econstructor; eauto.
+      exists (nil:inst_subst). reflexivity.
+      econstructor.
     (** gen *)
     + inverts* H3.
     (** sc_appl *)
@@ -187,17 +191,15 @@ Next Obligation.
       cases (apply_inst_subst (compute_inst_subst alpha (Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2))) sigma1).
       cases (apply_inst_subst (compute_inst_subst alpha (Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2))) sigma2).
       inversion H0.
-      rename t0 into tau1, t2 into tau2.
+      rename t0 into tau1, t1 into tau2.
       rewrite <- H8 in H7.
       inverts* H7.
-      eapply constr_htp with (sigma:=(sc_appl sigma1 sigma2)).
-      eauto.
-      eauto.
+      eapply has_type_pat_is_stable_under_substitution; eauto.
+      econstructor; eauto.
       exists ((compute_inst_subst alpha (max_gen_vars (sc_appl sigma1 sigma2)))).
       simpl.
       rewrite Eq, Eq0.
       rewrite H8. reflexivity.
-      rewrite <- H8. 
       econstructor.
       inverts* H0.
       inverts* H0.
@@ -206,22 +208,26 @@ Next Obligation.
       cases (apply_inst_subst (compute_inst_subst alpha (Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2))) sigma1).
       cases (apply_inst_subst (compute_inst_subst alpha (Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2))) sigma2).
       inversion H0.
-      rename t0 into tau1, t2 into tau2.
+      rename t0 into tau1, t1 into tau2.
+      erewrite apply_subst_return_of_ty; eauto.
       rewrite <- H8 in H7.
-      inverts* H7.
-      eapply constr_htp with (sigma:=(sc_arrow sigma1 sigma2)).
+      simpl in H7.
+      eapply constr_htp with (sigma:= (apply_subst_schm s (sc_arrow sigma1 sigma2))).
       eauto.
       eauto.
-      exists ((compute_inst_subst alpha (max_gen_vars (sc_appl sigma1 sigma2)))).
+      exists (map_apply_subst_ty s (compute_inst_subst alpha (max_gen_vars (sc_arrow sigma1 sigma2)))).
+      eapply subst_inst_subst_type in Eq.
+      eapply subst_inst_subst_type in Eq0.
       simpl.
       rewrite Eq, Eq0.
-      rewrite H8. reflexivity.
-      rewrite <- H8. 
-      econstructor;
+      reflexivity.
       eauto.
+      exists ((compute_inst_subst alpha (max_gen_vars (sc_arrow sigma1 sigma2)))).
+      simpl.
+      rewrite Eq, Eq0.
+      reflexivity.
       inverts* H0.
       inverts* H0.
-      Unshelve. apply (con 0).
 Defined.      
 Next Obligation.
   unfold top; auto.
@@ -239,25 +245,54 @@ Next Obligation.
   unfold top; intros;
     splits; intros;
       try splits; auto;
-        intros; eauto; splits; eauto.
-  destructs H1.
+        intros; eauto. 
   destructs H0.
+  destructs H.
+  splits; intros; eauto.
   subst.
-  auto.
+  destruct x0.
+  simpl in *.
+  splits; eauto.
+  eapply new_tv_s_ctx.
+  eapply new_tv_s_ctx.
+  eauto.
+  eauto.
+  skip.
+  skip.
+  skip.
+  Unshelve. auto.
+  Unshelve. auto.
 Defined.
 Next Obligation.
   destruct (inferPat p G >>= _); crush.
-  rename x1 into tau, x0 into tau1'.
-  rename x2 into s.
-
+  rename x1 into s1, x2 into s2.
+  rename t3 into G', t1 into s.
+  rename x0 into tau.
   econstructor.
-  eapply has_type_pat_is_stable_under_substitution with (s:=s) in H4.
-  rewrite <- H7 in H4.
-  skip.
-  eauto.
-    
-  inverts* H7.
-  econstructor; eauto.
+  - repeat erewrite apply_compose_equiv. 
+    repeat erewrite apply_subst_ctx_compose. 
+    crush.
+  - repeat erewrite apply_compose_equiv. 
+    repeat erewrite apply_subst_ctx_compose. 
+    auto.
+Unshelve. auto.
+Unshelve. auto.
+Defined.
+Next Obligation.
+  unfold top; auto.
+Defined.
+Next Obligation.
+  unfold top; auto.
+Defined.
+Next Obligation.
+  unfold top; auto.
+Defined.
+Next Obligation.
+  unfold top; auto.
+Defined.
+Next Obligation.
+  unfold top; auto.
+Defined.
 
 (** * Completeness theorem definition. *)
 

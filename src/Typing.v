@@ -49,21 +49,27 @@ Inductive is_constructor_schm : schm -> Prop :=
 | appl_is : forall tau1 tau2, is_constructor_schm (sc_appl tau1 tau2)
 | arrow_is : forall sigma1 sigma2, is_constructor_schm sigma2 ->
                               is_constructor_schm (sc_arrow sigma1 sigma2).
+
+Fixpoint return_of_ty (tau : ty) : ty :=
+  match tau with
+  | arrow tau1 tau2 => return_of_ty tau2
+  | tau' => tau'
+  end.
                     
 Inductive has_type_pat : ctx -> pat -> ty -> Prop:=
 | var_htp : forall x G tau, has_type_pat G (var_p x) tau
-| constr_htp : forall G x sigma ps tau tau', in_ctx x G = Some sigma ->
+| constr_htp : forall G x sigma ps tau, in_ctx x G = Some sigma ->
                                  is_constructor_schm sigma ->
                                  is_schm_instance tau sigma ->
-                                 has_type_pats G ps tau tau' -> 
-                                 has_type_pat G (constr_p x ps) tau'
+                                 has_type_pats G ps tau -> 
+                                 has_type_pat G (constr_p x ps) (return_of_ty tau)
 with
-has_type_pats : ctx -> pats -> ty -> ty -> Prop :=
-| no_pat_con : forall i G, has_type_pats G no_pats (con i) (con i) 
-| no_pat_appl : forall tau1 tau2 G, has_type_pats G no_pats (appl tau1 tau2) (appl tau1 tau2) 
-| many_pat : forall p ps tau1 tau2 tau3 G, has_type_pat G p tau1 ->
-                                    has_type_pats G ps tau2 tau3  ->
-                                    has_type_pats G (some_pats p ps) (arrow tau1 tau2) tau3.
+has_type_pats : ctx -> pats -> ty -> Prop :=
+| no_pat_con : forall i G, has_type_pats G no_pats (con i) 
+| no_pat_appl : forall tau1 tau2 G, has_type_pats G no_pats (appl tau1 tau2) 
+| many_pat : forall p ps tau1 tau2 G, has_type_pat G p tau1 ->
+                                    has_type_pats G ps tau2 ->
+                                    has_type_pats G (some_pats p ps) (arrow tau1 tau2).
 
 Scheme has_type_pat_mut := Minimality for has_type_pat Sort Prop
 with has_type_pats_mut := Minimality for has_type_pats Sort Prop.
@@ -97,6 +103,90 @@ Qed.
 
 Hint Resolve is_schm_instance_is_stable_under_substitution.
 
+Lemma apply_inst_subst_nill : forall sigma,
+      (exists tau, apply_inst_subst nil sigma = Some tau) \/
+      apply_inst_subst nil sigma = None. 
+Proof.
+  induction sigma; intros.
+  - left.
+    exists (var i).
+    eauto.
+  - left.
+    exists (con i).
+    eauto.
+  - right.
+    simpl.
+    crush.
+  - destruct IHsigma1.
+    destruct IHsigma2.
+    left.
+    destruct H, H0.
+    exists (appl x x0).
+    simpl. rewrite H.
+    rewrite H0. reflexivity.
+    right. simpl.
+    destruct H. rewrite H.
+    rewrite H0. reflexivity.
+    right. destruct IHsigma2. destruct H0.
+    simpl. rewrite H. reflexivity.
+    simpl. rewrite H.
+    reflexivity.
+  - destruct IHsigma1.
+    destruct IHsigma2.
+    left.
+    destruct H, H0.
+    exists (arrow x x0).
+    simpl. rewrite H.
+    rewrite H0. reflexivity.
+    right. simpl.
+    destruct H. rewrite H.
+    rewrite H0. reflexivity.
+    right. destruct IHsigma2. destruct H0.
+    simpl. rewrite H. reflexivity.
+    simpl. rewrite H.
+    reflexivity.
+Qed.
+
+Lemma is_schm_instance_arrow_proj2 : forall sigma2 sigma1 tau1 tau2,
+    is_schm_instance (arrow tau1 tau2) (sc_arrow sigma1 sigma2) ->
+    is_schm_instance tau2 sigma2. 
+Proof.
+  intros.
+  inverts* H.
+  exists x.
+  simpl in *.
+  destruct (apply_inst_subst x sigma1).
+  - destruct (apply_inst_subst x sigma2).
+    inverts* H0.
+    inverts* H0.
+  - inverts* H0.
+Qed.
+  
+Hint Resolve is_schm_instance_arrow_proj2.
+
+Lemma apply_subst_return_of_ty : forall sigma s tau,
+    is_constructor_schm sigma ->
+    is_schm_instance tau sigma ->
+    apply_subst s (return_of_ty tau) = return_of_ty (apply_subst s tau). 
+Proof.
+  induction sigma; intros; try inverts* H.
+  - apply is_schm_instance_must_be_con in H0.
+    subst. reflexivity.
+  - apply is_schm_instance_must_be_some_appl in H0.
+    destruct H0 as [tau1' [tau2' H2]].
+    subst.
+    reflexivity.
+  - apply is_schm_instance_must_be_some_arrow in H0 as H0'.
+    destruct H0' as [tau1' [tau2' H0']].
+    subst.
+    assert (is_schm_instance tau2' sigma2). eauto.
+    simpl.
+    rewrite <- IHsigma2.
+    reflexivity.
+    auto.
+    eauto.
+Qed.    
+
 (** has_pat is stable under substitution *)
 Lemma has_type_pat_is_stable_under_substitution : forall p s tau G,
     has_type_pat G p tau -> has_type_pat (apply_subst_ctx s G) p (apply_subst s tau).
@@ -105,8 +195,8 @@ Proof.
   apply (has_type_pat_mut
            (fun (G' : ctx) (p'': pat) tau => forall s tau',
                 has_type_pat G' p'' tau' -> has_type_pat (apply_subst_ctx s G') p'' (apply_subst s tau'))
-           (fun (G' : ctx) l (tau : ty) (tau'' : ty) => forall s tau' tau''',
-                has_type_pats G' l tau' tau''' -> has_type_pats (apply_subst_ctx s G') l (apply_subst s tau') (apply_subst s tau'''))
+           (fun (G' : ctx) l (tau : ty) => forall s tau', 
+                has_type_pats G' l tau' -> has_type_pats (apply_subst_ctx s G') l (apply_subst s tau'))
            ) with (p:=p) (t:=tau); intros; eauto.
   (** var case *)
   - econstructor; eauto.
@@ -116,19 +206,22 @@ Proof.
       subst.
       inverts* H3. 
       inverts* H5. 
-      apply constr_htp with (sigma:= apply_subst_schm s0 sigma) (tau:= apply_subst s0 tau0); eauto.
+      erewrite apply_subst_return_of_ty; eauto.
+      econstructor; eauto.
     + apply is_schm_instance_must_be_some_appl in H2 as H2'.
       destruct H2' as [tau1' [tau2' H2']].
       subst.
       inverts* H3.
       inverts* H5.
-      apply constr_htp with (sigma:= apply_subst_schm s0 sigma) (tau:= apply_subst s0 tau0); eauto.
+      erewrite apply_subst_return_of_ty; eauto.
+      econstructor; eauto.
     + apply is_schm_instance_must_be_some_arrow in H2 as H2'.
       destruct H2' as [tau1' [tau2' H2']].
       subst.
       inverts* H3.
       inverts* H5.
-      apply constr_htp with (sigma:= apply_subst_schm s0 sigma) (tau:= apply_subst s0 tau0); eauto.
+      erewrite apply_subst_return_of_ty; eauto.
+      econstructor; eauto.
   - inverts* H0.
     + econstructor.
     + econstructor.
@@ -141,8 +234,10 @@ Qed.
      
 Hint Resolve has_type_pat_is_stable_under_substitution.
 
-Lemma has_type_pats_is_stable_under_substitution : forall ps s tau tau' G,
-    has_type_pats G ps tau tau' -> has_type_pats (apply_subst_ctx s G) ps (apply_subst s tau) (apply_subst s tau').
+(** has_pat is stable under substitution inversion *)
+
+Lemma has_type_pats_is_stable_under_substitution : forall ps s tau G,
+    has_type_pats G ps tau -> has_type_pats (apply_subst_ctx s G) ps (apply_subst s tau).
 Admitted.
 
 Hint Resolve has_type_pats_is_stable_under_substitution.
