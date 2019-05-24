@@ -1,4 +1,4 @@
-** * The algorithm W
+(** * The algorithm W
       This file contains the algorithm W, its proofs of soundness and completeness,
       and a bunch of auxiliary definitions.
     *)
@@ -347,17 +347,48 @@ with infer_cases (cs : cases) (tau : ty) (G : ctx) {struct cs} :
        match cs with
        | one_case p e =>
           tau_G_s <- inferPat p G ;
-          tau_s <- W e (snd (fst tau_G_s)) ;
           s <- unify (apply_subst (snd tau_G_s) tau) (fst (fst tau_G_s)) ;
-          ret (apply_subst s (fst (fst tau_G_s)), compose_subst (snd tau_G_s) s)
+          tau_s <- W e (apply_subst_ctx s (apply_subst_ctx (snd tau_G_s) (snd (fst tau_G_s)))) ;
+          ret (fst tau_s, compose_subst (snd tau_G_s) (compose_subst s (snd tau_s)))
        | many_cases p e cs' =>
           tau_G_s <- inferPat p G ;
           tau_s <- W e (snd (fst tau_G_s)) ;
           s <- unify tau (apply_subst (snd tau_s) (fst (fst tau_G_s))) ;
           tau_s' <- infer_cases cs' (apply_subst s tau) (apply_subst_ctx s G) ;
           s <- unify (fst tau_s) (fst tau_s') ;
-          ret (apply_subst s (fst tau_s'), compose_subst (snd tau_s) (compose_subst (snd tau_s') s))
+          ret (apply_subst s (fst tau_s'), compose_subst (snd tau_s) (compose_subst s (snd tau_s')))
        end.
+Obligation 1 of infer_cases.
+  unfold top.
+  intros; splits; eauto.
+  intros; splits; eauto.
+  destructs H0;
+    try split; eauto.
+  destructs H4.
+ skip. 
+Defined.
+Obligation 2 of infer_cases.
+  destruct (inferPat p G >>= _); crush.
+  rename t3 into s1. 
+  rename x0 into tau'.
+  rename x2 into s2.
+  rename t1 into s3.
+  rename t2 into G'.
+  rename x1 into tau''.
+  econstructor.
+  - assert (sub_ctx (apply_subst_ctx (compose_subst s3 (compose_subst s2 s1)) G) (apply_subst_ctx (compose_subst s3 (compose_subst s2 s1)) G')).
+    skip.
+    apply H9.
+  - repeat rewrite apply_compose_equiv.
+    repeat rewrite apply_subst_ctx_compose.
+    rewrite H7.
+    apply has_type_pat_is_stable_under_substitution.
+    apply has_type_pat_is_stable_under_substitution.
+    assumption.
+  - repeat rewrite apply_compose_equiv.
+    repeat rewrite apply_subst_ctx_compose.
+    assumption.
+Defined.      
 Next Obligation.
   intros; unfold top; auto.
 Defined.
@@ -661,21 +692,29 @@ Next Obligation.
   intros; splits; eauto.
   intros; splits; eauto.
   destructs H0;
-    try splits; eauto.
+    try split; eauto.
+  destructs H4.
+ skip. 
 Defined.
 Next Obligation.
   destruct (inferPat p G >>= _); crush.
-  rename t3 into s1, x4 into s2.
-  rename t2 into G'.
-  rename t1 into s'.
+  rename t3 into s1. 
   rename x0 into tau'.
-  rename x2 into tau''.
+  rename x2 into s2.
+  rename t1 into s3.
+  rename t2 into G'.
   econstructor.
+  - assert (sub_ctx (apply_subst_ctx (compose_subst s3 s2) G) (apply_subst_ctx (compose_subst s3 s2) G')). 
+    skip.
+    apply H9.
   - repeat rewrite apply_compose_equiv.
     repeat rewrite apply_subst_ctx_compose.
     rewrite H13.
     apply has_type_pat_is_stable_under_substitution.
     assumption.
+  - repeat rewrite apply_compose_equiv.
+    repeat rewrite apply_subst_ctx_compose.
+    (** aqui *)
   -
       
     

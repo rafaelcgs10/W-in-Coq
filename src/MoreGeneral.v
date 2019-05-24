@@ -517,7 +517,6 @@ Proof.
   induction H.
   inverts* H0.
   econstructor.
-  econstructor; eauto.
 Abort.
 
 Lemma gen_ty_aux_FV_schm : forall tau sigma i l G,
@@ -572,22 +571,165 @@ Proof.
   - inverts* H1.
     econstructor.
     Abort.
-  
+
+Lemma gen_ty_same_FV_ctx : forall tau G1 G2 l, FV_ctx G1 = FV_ctx G2 ->
+                                        gen_ty_aux tau G1 l = gen_ty_aux tau G2 l.
+Proof.
+  induction tau; intros; try reflexivity.
+  - intros.
+    unfold gen_ty.
+    simpl.
+    rewrite H.
+    reflexivity.
+  - simpl.
+    erewrite IHtau1; eauto.
+    destruct (gen_ty_aux tau1 G2 l).
+    erewrite IHtau2; eauto.
+  - simpl.
+    erewrite IHtau1; eauto.
+    destruct (gen_ty_aux tau1 G2 l).
+    erewrite IHtau2; eauto.
+Qed.
+
+Lemma sub_ctx_gen : forall tau G1 G2 i, sub_ctx G1 G2 ->
+                                   sub_ctx ((i, gen_ty tau G1)::G1) ((i, gen_ty tau G2)::G2).
+Proof.
+  induction tau; intros; try (unfold gen_ty; simpl; eauto; fail).
+  - inverts* H.
+    unfold gen_ty.
+    simpl.
+    repeat rewrite H0.
+    cases (in_list_id i (FV_ctx G2)).
+    + econstructor.
+      * simpl.
+        unfold FV_ctx in *.
+        simpl.
+        rewrite H0. reflexivity.
+      * intros.
+        simpl in *.
+        destruct (eq_id_dec i0 i'); auto.
+    + econstructor.
+      * simpl.
+        unfold FV_ctx in *.
+        simpl.
+        rewrite H0. reflexivity.
+      * intros.
+        simpl in *.
+        destruct (eq_id_dec i0 i'); auto.
+  - econstructor;
+    inverts* H.
+    intros.
+    simpl in *.
+    destruct (eq_id_dec i0 i'); auto.
+  - unfold gen_ty.
+    inverts* H.
+    erewrite gen_ty_same_FV_ctx.
+    econstructor.
+    + unfold FV_ctx in *.
+      simpl.
+      rewrite H0.
+      reflexivity.
+    + intros.
+      crush.
+    + auto.
+  - unfold gen_ty.
+    inverts* H.
+    erewrite gen_ty_same_FV_ctx.
+    econstructor.
+    + unfold FV_ctx in *.
+      simpl.
+      rewrite H0.
+      reflexivity.
+    + intros.
+      crush.
+    + auto.
+Qed.
+
+Lemma sub_ctx_ty_to_schm : forall tau G1 G2 i, sub_ctx G1 G2 ->
+                                          sub_ctx ((i, ty_to_schm tau)::G1) ((i, ty_to_schm tau)::G2).
+Proof.
+  induction tau; intros; try 
+  (try inverts* H;
+    econstructor;
+    unfold FV_ctx in *; intros;
+      crush) .
+Qed.
+
+Lemma sub_ctx_has_type_pat : forall (p : pat) (G2 G1 : ctx) (t : ty),
+    more_general_ctx G1 G2 -> has_type_pat G1 p t -> has_type_pat G2 p t.
+Proof.
+  Admitted.
+Hint Resolve sub_ctx_has_type_pat.
 
 Lemma sub_ctx_has_type : forall e tau G2 G1,
     sub_ctx G1 G2 -> has_type G1 e tau -> has_type G2 e tau.
 Proof.
-  induction e; intros.
-  - inverts* H0.
-    inverts* H.
+  intros.
+  Admitted.
+  (**
+  eapply (has_type_mut
+       (fun (G' : ctx) (e' : term) (t' : ty) => forall tau G2 G1,
+                     sub_ctx G1 G2 -> has_type G1 e' tau -> has_type G2 e' tau)
+       (fun  (G' : ctx) (l' : cases) (tau' tau'' : ty) => forall tau1 tau2 G2 G1,
+                     sub_ctx G1 G2 -> has_type_cases G1 l' tau1 tau2 -> has_type_cases G2 l' tau1 tau2)
+       )  ; intros.
+  (** var case *)
+  - inverts* H4.
+    inverts* H3.
     econstructor; eauto.
-    skip.
-  - inverts* H0.
-    econstructor; eauto.
-  - inverts* H0.
+  (** lam case *)
+  - inverts* H4.
     econstructor.
+    eapply H2. 
+    eapply sub_ctx_ty_to_schm. 
+    apply H3.
+    auto.
+  (** app case *)
+  - inverts* H6.
+    econstructor.
+    eapply H2; eauto.
+    eapply H4.
+    apply H5.
+    auto.
+  (** let case *)
+  - inverts* H6.
+    (*
+    econstructor.
+    eapply H2. 
+    apply H5.
+    apply H12.
+    eapply H4.
+    eapply sub_ctx_gen. 
+    apply H5.
+    auto.
+*)
+  (** case case *)
+  - inverts* H6.
+    (*
+    econstructor; eauto.
+*)
+  (** one_case case *)
+  - inverts* H6.
+    (*
+    econstructor. eauto.
+    (** aqui *)
+    skip.
+*)
+  (** many case *)
+  - inverts* H6.
+  - apply H0.
+  - skip.
+  - auto.
+  - auto.
+    Unshelve. apply Type.
+    
+
     eauto.
-    inverts* H.
+
+    eauto.
+    econstructor.
+    eapply IHe2.
+    econstructor.
     eapply IHe2.
     assert (sub_ctx ((i, gen_ty tau0 G1) :: G1) ((i, gen_ty tau0 ((i0, sigma) :: G3)) :: (i0, sigma) :: G3)).
     {
@@ -596,6 +738,7 @@ Proof.
       fold (gen_ty tau0 G3).
       fold (gen_ty tau0 G1).
       econstructor.
+*)
       
     
 
@@ -660,12 +803,15 @@ Proof.
       econstructor; eauto.
   (** terms one case *)
   - inverts* H6.
+    skip.
+    (**
     econstructor.
     assert (sub_ctx G3 G3). econstructor.
     apply H6.
     info_eauto.
     eapply H4.
     apply H5.
+*)
     (**aqui*)
   (** terms many case *)
   - inverts* H6.

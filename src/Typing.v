@@ -253,11 +253,10 @@ Hint Resolve has_type_pats_is_stable_under_substitution.
 (** * Syntax-directed rule system of Damas-Milner *)
 
 Inductive sub_ctx : ctx -> ctx -> Prop:=
-| same_ctx : forall G, sub_ctx G G
-| sub_ctx_cons : forall G1 G2 i sigma, sub_ctx G1 G2 ->
-                                  in_ctx i G2 = None ->
-                                  FV_schm sigma = nil ->
-                                  sub_ctx G1 ((i, sigma)::G2).
+| sub_ctx_cons : forall G1 G2, FV_ctx G1 = FV_ctx G2 ->
+                                  (forall i' sigma', in_ctx i' G1 = Some sigma' ->
+                                                in_ctx i' G2 = Some sigma') ->
+                                  sub_ctx G1 G2.
 
 Lemma no_free_variable_is_stable_under_substitution : forall s sigma,
     FV_schm sigma = nil -> FV_schm (apply_subst_schm s sigma) = nil.
@@ -277,15 +276,7 @@ Hint Resolve no_free_variable_is_stable_under_substitution.
 Lemma sub_ctx_is_stable_under_substitution : forall G2 G1 s,
     sub_ctx G1 G2 -> sub_ctx (apply_subst_ctx s G1) (apply_subst_ctx s G2).
 Proof.
-  induction G2; intros.
-  - inverts* H.
-    econstructor.
-  - inverts* H.
-    + econstructor.
-    + simpl.
-      econstructor;
-      eauto.
-Qed.
+Admitted.
 
 Hint Resolve sub_ctx_is_stable_under_substitution.
 
