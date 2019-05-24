@@ -246,39 +246,21 @@ Hint Resolve has_type_pat_is_stable_under_substitution.
 
 Lemma has_type_pats_is_stable_under_substitution : forall ps s tau G,
     has_type_pats G ps tau -> has_type_pats (apply_subst_ctx s G) ps (apply_subst s tau).
-Admitted.
+Proof.
+  induction ps; intros.
+  - inverts* H.
+    + simpl.
+      econstructor.
+    + simpl.
+      econstructor.
+  - inverts* H.
+    simpl.
+    econstructor; eauto.
+Qed.
 
 Hint Resolve has_type_pats_is_stable_under_substitution.
 
 (** * Syntax-directed rule system of Damas-Milner *)
-
-Inductive sub_ctx : ctx -> ctx -> Prop:=
-| sub_ctx_cons : forall G1 G2, FV_ctx G1 = FV_ctx G2 ->
-                                  (forall i' sigma', in_ctx i' G1 = Some sigma' ->
-                                                in_ctx i' G2 = Some sigma') ->
-                                  sub_ctx G1 G2.
-
-Lemma no_free_variable_is_stable_under_substitution : forall s sigma,
-    FV_schm sigma = nil -> FV_schm (apply_subst_schm s sigma) = nil.
-Proof.
-  induction sigma; intros; simpl in *; try reflexivity.
-  - inverts* H.
-  - apply app_eq_nil in H.
-    destruct H.
-    erewrite IHsigma1; eauto.
-  - apply app_eq_nil in H.
-    destruct H.
-    erewrite IHsigma1; eauto.
-Qed.
-
-Hint Resolve no_free_variable_is_stable_under_substitution.
-
-Lemma sub_ctx_is_stable_under_substitution : forall G2 G1 s,
-    sub_ctx G1 G2 -> sub_ctx (apply_subst_ctx s G1) (apply_subst_ctx s G2).
-Proof.
-Admitted.
-
-Hint Resolve sub_ctx_is_stable_under_substitution.
 
 Inductive has_type : ctx -> term -> ty -> Prop :=
 | var_ht : forall x G sigma tau, in_ctx x G = Some sigma ->
@@ -335,32 +317,22 @@ Proof.
     rewrite apply_subst_ctx_eq.
     auto.
     (** app case *)
-  - skip.
-    (*
-    rename l into e1, rho into e2.
+  - rename l into e1, r into e2.
     rename s into s1, s0 into s.
-    rename H0 into IHe1, H1 into IHe2.
-    inverts* H2.
-    rename tau into tau'', tau1 into tau.
-    rename tau0 into tau1, tau2 into tau0.
-    apply app_ht with (tau:=apply_subst s tau0).
+    inverts* H4.
+    apply app_ht with (tau:=apply_subst s tau2).
     rewrite <- apply_subst_arrow.
-    apply IHe1.
-    assumption.
-    apply IHe2.
-    assumption.
-*)
+    eauto.
+    eauto.
     (** let case *)
-  - skip.
-    (*
-    inverts* H2.
+  - inverts* H4.
+    rename H1 into IHe1, H3 into IHe2.
     rename e0 into e1, e' into e2.
     rename s into s', s0 into s.
     rename tau into tau'', tau1 into tau.
     rename tau0 into tau0', tau2 into tau0.
     rename G into G', G1 into G.
     rename x into i.
-    rename H0 into IHe1, H1 into IHe2.
     destruct (exists_renaming_not_concerned_with (gen_ty_vars tau0 G)
          (FV_ctx G) (FV_subst s)) as [rho].
     inversion r.
@@ -377,7 +349,7 @@ Proof.
     eapply IHe1.
     assumption.
     rewrite dom_rename_to_subst.
-    rewrite H1.
+    rewrite H3.
     apply free_and_bound_are_disjoints.
     rewrite <- r''.
     rewrite apply_subst_ctx_eq.
@@ -385,7 +357,6 @@ Proof.
     erewrite <- gen_ty_renaming.
     assumption.
     apply r.
-*)
   (** case case *)
   - induction cs.
     + inverts* H4.
@@ -423,30 +394,23 @@ Qed.
 
 Hint Resolve has_type_var_ctx_diff.
 
-(*
-Lemma has_type_pat_cons_commm : forall G i j  sigma1 sigma2 tau,
-    i <> j ->
-    has_type_pat ((i, sigma1) :: (j, sigma2) :: G) (var_p i) tau ->
-    has_type_pat ((j, sigma2) :: (i, sigma1) :: G) (var_p i) tau.
-Proof.
-  intros.
-  inversion H0.
-  subst.
-  
-
-Lemma has_type_pat_var_ctx_diff : forall (i j : id) (G : ctx) (tau : ty) (sigma : schm),
-    i <> j -> has_type_pat (var_p i) tau -> has_type_pat ((j, sigma) :: G) (var_p i) tau.
-Proof.
-  intros.
-  inversion_clear H0.
-  econstructor.
-  econstructor; crush.
-Qed.
-
-Hint Resolve has_type_pat_var_ctx_diff.
-*)
-
 Lemma has_type_cases_is_stable_under_substitution : forall cs s tau tau' G,
     has_type_cases G cs tau tau' -> has_type_cases (apply_subst_ctx s G) cs (apply_subst s tau) (apply_subst s tau').
 Proof.
-  Admitted.
+  induction cs; intros.
+  - inverts* H.
+    econstructor.
+    eauto.
+    rewrite <- apply_subst_ctx_app_ctx.
+    apply has_type_is_stable_under_substitution.
+    apply H6.
+  - inverts* H.
+    econstructor.
+    + inverts* H6.
+      econstructor.
+      eauto.
+      rewrite <- apply_subst_ctx_app_ctx.
+      apply has_type_is_stable_under_substitution.
+      apply H5.
+    + eauto.
+Qed.

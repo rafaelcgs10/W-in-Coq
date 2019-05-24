@@ -458,40 +458,51 @@ Qed.
 
 Hint Resolve more_general_gen_ty.
 
+
+Lemma more_general_is_constructor : forall sigma1 sigma2, more_general sigma1 sigma2 ->
+                                                    is_constructor_schm sigma1 ->
+                                                    is_constructor_schm sigma2.
+Proof.
+  Admitted.
+
+Lemma more_genera_ctx_in_ctx_is_constructor : forall G1 G2 i sigma,  more_general_ctx G1 G2 ->
+                                                                in_ctx i G2 = Some sigma ->
+                                                                is_constructor_schm sigma ->
+                                                                (exists sigma', in_ctx i G1 = Some sigma' /\
+                                                                   is_constructor_schm sigma').
+Proof.
+      Admitted.
+
 Lemma typing_pat_in_a_more_general_ctx : forall (p : pat) (G2 G1 : ctx) (t : ty),
     more_general_ctx G1 G2 -> has_type_pat G2 p t -> has_type_pat G1 p t.
 Proof.
-  Admitted.
-Hint Resolve typing_pat_in_a_more_general_ctx.
-(*
-  induction p.
-  - induction G2.
-    + intros.
-      inverts* H0. 
-    +  destruct a.
-       intros.
-       inversion_clear H.
-       destruct (eq_id_dec i0 i).
-       * subst.
-         inversion_clear H0.
-         apply var_htp with (sigma:=sigma1); eauto.
-         crush.
-         simpl in H. destruct (eq_id_dec i i); intuition.
-         inverts* H.
-         inverts* H2.
-         eapply H.
-         exists x.
-         auto.
-       * apply has_type_pat_var_ctx_diff. eauto.
-         eapply IHG2; eauto.
-       inverts* H0.
-       econstructor; crush.
-  - intros.
-    inverts* H0.
+  intros.
+  apply (has_type_pat_mut
+           (fun (G' : ctx) (p'': pat) tau => forall tau' G1' G2',
+                more_general_ctx G1' G2' -> has_type_pat G2' p'' tau' -> has_type_pat G1' p'' tau')
+           (fun (G' : ctx) l (tau : ty) => forall tau' G1' G2', 
+                more_general_ctx G1' G2' -> has_type_pats G2' l tau' -> has_type_pats G1' l tau')
+           ) with (c:=G2) (G2':=G2) (p:=p) (t:=t); intros; try (econstructor; fail); eauto.
+  - inverts* H2.
+    + skip.
+    + skip.
+    + apply is_schm_instance_must_be_some_arrow in H3.
+      destruct H3 as [tau1 [tau2 H3]].
+      subst.
+      inverts* H4.
+      inverts* H7.
+      skip.
+  - inverts* H2.
+    + econstructor.
+    + econstructor.
+  - inverts* H2.
+    + econstructor.
+    + econstructor.
+  - inverts* H6.
     econstructor; eauto.
 Qed.
 
-
+(*
 Lemma typing_patterns_in_a_more_general_ctx : forall (l : non_empty_list pat) (G2 G1 : ctx) (t : ty),
     more_general_ctx G1 G2 -> has_type_patterns G2 l t -> has_type_patterns G1 l t.
 Proof.
@@ -509,151 +520,6 @@ Qed.
 
 Hint Resolve typing_patterns_in_a_more_general_ctx.
 *)
-Lemma more_genera_sub_ctx : forall G1 G2 G3, more_general_ctx G1 G2 ->
-                                        sub_ctx G3 G2 ->
-                                        sub_ctx G3 G1.
-Proof.
-  intros.
-  induction H.
-  inverts* H0.
-  econstructor.
-Abort.
-
-Lemma gen_ty_aux_FV_schm : forall tau sigma i l G,
-    FV_schm sigma = nil ->
-    gen_ty_aux tau ((i, sigma) :: G) l = gen_ty_aux tau G l.
-Proof.
-  induction tau; intros; try reflexivity.
-  - simpl.
-    unfold FV_ctx.
-    simpl.
-    rewrite H.
-    rewrite app_nil_l.
-    reflexivity.
-  - simpl.
-    erewrite IHtau1; eauto.
-    destruct (gen_ty_aux tau1 G l).
-    erewrite IHtau2; eauto.
-  - simpl.
-    erewrite IHtau1; eauto.
-    destruct (gen_ty_aux tau1 G l).
-    erewrite IHtau2; eauto.
-Qed.
-
-Lemma not_in_ctx_has_type : forall e G i sigma tau, in_ctx i G = None ->
-                                               FV_schm sigma = nil ->
-                                               has_type G e tau ->
-                                               has_type ((i, sigma)::G) e tau.
-Proof.
-  induction e; intros. 
-  - destruct (eq_id_dec i i0).
-    + subst.
-      inverts* H1.
-      econstructor.
-      rewrite H in H3.
-      inverts* H3.
-      eauto.
-    + inverts* H1.
-      econstructor;
-      crush.
-  - inverts* H1.
-    econstructor; eauto.
-  - inverts* H1.
-    econstructor.
-    eapply IHe1.
-    apply H.
-    auto.
-    eauto.
-    unfold gen_ty.
-    rewrite gen_ty_aux_FV_schm; eauto.
-    fold (gen_ty tau0 G).
-    skip.
-  - inverts* H1.
-    econstructor.
-    Abort.
-
-Lemma gen_ty_same_FV_ctx : forall tau G1 G2 l, FV_ctx G1 = FV_ctx G2 ->
-                                        gen_ty_aux tau G1 l = gen_ty_aux tau G2 l.
-Proof.
-  induction tau; intros; try reflexivity.
-  - intros.
-    unfold gen_ty.
-    simpl.
-    rewrite H.
-    reflexivity.
-  - simpl.
-    erewrite IHtau1; eauto.
-    destruct (gen_ty_aux tau1 G2 l).
-    erewrite IHtau2; eauto.
-  - simpl.
-    erewrite IHtau1; eauto.
-    destruct (gen_ty_aux tau1 G2 l).
-    erewrite IHtau2; eauto.
-Qed.
-
-Lemma sub_ctx_gen : forall tau G1 G2 i, sub_ctx G1 G2 ->
-                                   sub_ctx ((i, gen_ty tau G1)::G1) ((i, gen_ty tau G2)::G2).
-Proof.
-  induction tau; intros; try (unfold gen_ty; simpl; eauto; fail).
-  - inverts* H.
-    unfold gen_ty.
-    simpl.
-    repeat rewrite H0.
-    cases (in_list_id i (FV_ctx G2)).
-    + econstructor.
-      * simpl.
-        unfold FV_ctx in *.
-        simpl.
-        rewrite H0. reflexivity.
-      * intros.
-        simpl in *.
-        destruct (eq_id_dec i0 i'); auto.
-    + econstructor.
-      * simpl.
-        unfold FV_ctx in *.
-        simpl.
-        rewrite H0. reflexivity.
-      * intros.
-        simpl in *.
-        destruct (eq_id_dec i0 i'); auto.
-  - econstructor;
-    inverts* H.
-    intros.
-    simpl in *.
-    destruct (eq_id_dec i0 i'); auto.
-  - unfold gen_ty.
-    inverts* H.
-    erewrite gen_ty_same_FV_ctx.
-    econstructor.
-    + unfold FV_ctx in *.
-      simpl.
-      rewrite H0.
-      reflexivity.
-    + intros.
-      crush.
-    + auto.
-  - unfold gen_ty.
-    inverts* H.
-    erewrite gen_ty_same_FV_ctx.
-    econstructor.
-    + unfold FV_ctx in *.
-      simpl.
-      rewrite H0.
-      reflexivity.
-    + intros.
-      crush.
-    + auto.
-Qed.
-
-Lemma sub_ctx_ty_to_schm : forall tau G1 G2 i, sub_ctx G1 G2 ->
-                                          sub_ctx ((i, ty_to_schm tau)::G1) ((i, ty_to_schm tau)::G2).
-Proof.
-  induction tau; intros; try 
-  (try inverts* H;
-    econstructor;
-    unfold FV_ctx in *; intros;
-      crush) .
-Qed.
 
 Lemma more_general_ctx_app2 : forall G3 G2 G1, more_general_ctx G2 G1 ->
                                          more_general_ctx (G3 ++ G2) (G3 ++ G1).
