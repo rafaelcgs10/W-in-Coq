@@ -655,92 +655,19 @@ Proof.
       crush) .
 Qed.
 
-Lemma sub_ctx_has_type_pat : forall (p : pat) (G2 G1 : ctx) (t : ty),
-    more_general_ctx G1 G2 -> has_type_pat G1 p t -> has_type_pat G2 p t.
+Lemma more_general_ctx_app2 : forall G3 G2 G1, more_general_ctx G2 G1 ->
+                                         more_general_ctx (G3 ++ G2) (G3 ++ G1).
 Proof.
-  Admitted.
-Hint Resolve sub_ctx_has_type_pat.
-
-Lemma sub_ctx_has_type : forall e tau G2 G1,
-    sub_ctx G1 G2 -> has_type G1 e tau -> has_type G2 e tau.
-Proof.
-  intros.
-  Admitted.
-  (**
-  eapply (has_type_mut
-       (fun (G' : ctx) (e' : term) (t' : ty) => forall tau G2 G1,
-                     sub_ctx G1 G2 -> has_type G1 e' tau -> has_type G2 e' tau)
-       (fun  (G' : ctx) (l' : cases) (tau' tau'' : ty) => forall tau1 tau2 G2 G1,
-                     sub_ctx G1 G2 -> has_type_cases G1 l' tau1 tau2 -> has_type_cases G2 l' tau1 tau2)
-       )  ; intros.
-  (** var case *)
-  - inverts* H4.
-    inverts* H3.
-    econstructor; eauto.
-  (** lam case *)
-  - inverts* H4.
-    econstructor.
-    eapply H2. 
-    eapply sub_ctx_ty_to_schm. 
-    apply H3.
+  induction G3; intros.
+  - repeat rewrite app_nil_l.
     auto.
-  (** app case *)
-  - inverts* H6.
-    econstructor.
-    eapply H2; eauto.
-    eapply H4.
-    apply H5.
-    auto.
-  (** let case *)
-  - inverts* H6.
-    (*
-    econstructor.
-    eapply H2. 
-    apply H5.
-    apply H12.
-    eapply H4.
-    eapply sub_ctx_gen. 
-    apply H5.
-    auto.
-*)
-  (** case case *)
-  - inverts* H6.
-    (*
-    econstructor; eauto.
-*)
-  (** one_case case *)
-  - inverts* H6.
-    (*
-    econstructor. eauto.
-    (** aqui *)
-    skip.
-*)
-  (** many case *)
-  - inverts* H6.
-  - apply H0.
-  - skip.
-  - auto.
-  - auto.
-    Unshelve. apply Type.
-    
-
+  - simpl.
+    destruct a.
+    econstructor;
     eauto.
+Qed.
 
-    eauto.
-    econstructor.
-    eapply IHe2.
-    econstructor.
-    eapply IHe2.
-    assert (sub_ctx ((i, gen_ty tau0 G1) :: G1) ((i, gen_ty tau0 ((i0, sigma) :: G3)) :: (i0, sigma) :: G3)).
-    {
-      unfold gen_ty.
-      repeat rewrite gen_ty_aux_FV_schm; eauto.
-      fold (gen_ty tau0 G3).
-      fold (gen_ty tau0 G1).
-      econstructor.
-*)
-      
-    
+Hint Resolve more_general_ctx_app2.
 
 Lemma typing_in_a_more_general_ctx : forall (e : term) (G2 G1 : ctx) (t : ty),
     more_general_ctx G1 G2 -> has_type G2 e t -> has_type G1 e t.
@@ -802,17 +729,13 @@ Proof.
     + inverts* H6.
       econstructor; eauto.
   (** terms one case *)
-  - inverts* H6.
-    skip.
-    (**
+  - inverts* H5.
     econstructor.
-    assert (sub_ctx G3 G3). econstructor.
-    apply H6.
-    info_eauto.
-    eapply H4.
-    apply H5.
-*)
-    (**aqui*)
+    eauto.
+    eapply H3.
+    eapply more_general_ctx_app2.
+    apply H4.
+    apply H12.
   (** terms many case *)
   - inverts* H6.
     econstructor; eauto.

@@ -348,7 +348,7 @@ with infer_cases (cs : cases) (tau : ty) (G : ctx) {struct cs} :
        | one_case p e =>
           tau_G_s <- inferPat p G ;
           s <- unify (apply_subst (snd tau_G_s) tau) (fst (fst tau_G_s)) ;
-          tau_s <- W e (apply_subst_ctx s (apply_subst_ctx (snd tau_G_s) (snd (fst tau_G_s)))) ;
+          tau_s <- W e (apply_subst_ctx s (apply_subst_ctx (snd tau_G_s) ((snd (fst tau_G_s) ++ G)))) ;
           ret (fst tau_s, compose_subst (snd tau_G_s) (compose_subst s (snd tau_s)))
        | many_cases p e cs' =>
           tau_G_s <- inferPat p G ;
@@ -364,7 +364,11 @@ Obligation 1 of infer_cases.
   intros; splits; eauto.
   destructs H0;
     try split; eauto.
+  destruct x0.
+  destruct p0.
+  simpl in *.
   destructs H4.
+  subst.
  skip. 
 Defined.
 Obligation 2 of infer_cases.
@@ -376,9 +380,6 @@ Obligation 2 of infer_cases.
   rename t2 into G'.
   rename x1 into tau''.
   econstructor.
-  - assert (sub_ctx (apply_subst_ctx (compose_subst s3 (compose_subst s2 s1)) G) (apply_subst_ctx (compose_subst s3 (compose_subst s2 s1)) G')).
-    skip.
-    apply H9.
   - repeat rewrite apply_compose_equiv.
     repeat rewrite apply_subst_ctx_compose.
     rewrite H7.
@@ -387,7 +388,8 @@ Obligation 2 of infer_cases.
     assumption.
   - repeat rewrite apply_compose_equiv.
     repeat rewrite apply_subst_ctx_compose.
-    assumption.
+    repeat rewrite <- apply_subst_ctx_app_ctx.
+    apply H12.
 Defined.      
 Next Obligation.
   intros; unfold top; auto.

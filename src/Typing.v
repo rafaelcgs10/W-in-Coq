@@ -297,9 +297,9 @@ Inductive has_type : ctx -> term -> ty -> Prop :=
                                has_type G (case_t e cs) tau'
 with
 has_type_cases : ctx -> cases -> ty -> ty -> Prop :=
-| one_term : forall G G' p e tau tau', sub_ctx G G' ->
+| one_term : forall G G' p e tau tau', 
                                   has_type_pat G p tau ->
-                                  has_type G' e tau' -> 
+                                  has_type (G' ++ G) e tau' -> 
                                   has_type_cases G (one_case p e) tau tau'
 | many_terms : forall G p e tau tau' cs, has_type_cases G (one_case p e) tau tau' -> 
                                    has_type_cases G cs tau tau' ->
@@ -398,8 +398,12 @@ Proof.
       eapply H1; eauto.
       auto.
     (** terms one case *)
-  - inverts* H4.
-    econstructor; eauto.
+  - inverts* H3.
+    econstructor.
+    eauto.
+    rewrite <- apply_subst_ctx_app_ctx.
+    eapply H2.
+    apply H10.
     (** terms many case *)
   - inverts* H4.
     econstructor; eauto.
