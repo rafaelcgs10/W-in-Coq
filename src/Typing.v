@@ -445,3 +445,8 @@ Qed.
 
 Hint Resolve has_type_pat_var_ctx_diff.
 *)
+
+Lemma has_type_cases_is_stable_under_substitution : forall cs s tau tau' G,
+    has_type_cases G cs tau tau' -> has_type_cases (apply_subst_ctx s G) cs (apply_subst s tau) (apply_subst s tau').
+Proof.
+  Admitted.

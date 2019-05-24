@@ -355,57 +355,11 @@ with infer_cases (cs : cases) (tau : ty) (G : ctx) {struct cs} :
           s <- unify (apply_subst (snd tau_G_s) tau) (fst (fst tau_G_s)) ;
           tau_s <- W e (apply_subst_ctx s (apply_subst_ctx (snd tau_G_s) ((snd (fst tau_G_s) ++ G)))) ;
 
-          tau_s' <- infer_cases cs' (apply_subst s tau) (apply_subst_ctx s G) ;
-          s' <- unify (fst tau_s) (fst tau_s') ;
-          ret (apply_subst s (fst tau_s'), compose_subst (snd tau_G_s) (compose_subst s (snd tau_s)))
+          tau_s' <- infer_cases cs' (apply_subst (compose_subst (snd tau_G_s) (compose_subst s (snd tau_s))) tau)
+                 (apply_subst_ctx (compose_subst (snd tau_G_s) (compose_subst s (snd tau_s))) G) ;
+          s' <- unify (apply_subst (snd tau_s') (fst tau_s)) (fst tau_s') ;
+          ret (apply_subst s' (fst tau_s'), (compose_subst (snd tau_G_s) (compose_subst s (compose_subst (snd tau_s) ((compose_subst (snd tau_s') s'))))))
        end.
-Obligation 1 of infer_cases.
-  unfold top.
-  intros; splits; eauto.
-  intros; splits; eauto.
-  destructs H0;
-    try split; eauto.
-  destruct x0.
-  destruct p0.
-  simpl in *.
-  destructs H4.
-  subst.
- skip. 
-Defined.
-Obligation 2 of infer_cases.
-  destruct (inferPat p G >>= _); crush.
-  rename t3 into s1. 
-  rename x0 into tau'.
-  rename x2 into s2.
-  rename t1 into s3.
-  rename t2 into G'.
-  rename x1 into tau''.
-  econstructor.
-  - repeat rewrite apply_compose_equiv.
-    repeat rewrite apply_subst_ctx_compose.
-    rewrite H7.
-    apply has_type_pat_is_stable_under_substitution.
-    apply has_type_pat_is_stable_under_substitution.
-    assumption.
-  - repeat rewrite apply_compose_equiv.
-    repeat rewrite apply_subst_ctx_compose.
-    repeat rewrite <- apply_subst_ctx_app_ctx.
-    apply H12.
-Defined.      
-Obligation 3 of infer_cases.
-  Admitted.
-Obligation 4 of infer_cases.
-  destruct (inferPat p G >>= _); crush.
-  rename t3 into s1. 
-  rename x2 into s2.
-  rename t1 into s3.
-  rename x1 into tau'.
-  rename x5 into tau''.
-  rename x7 into s4'.
-  econstructor.
-- econstructor.
-  +
-
 Next Obligation.
   intros; unfold top; auto.
 Defined.
@@ -680,28 +634,19 @@ Next Obligation.
   intros; splits; eauto.
   intros; splits; eauto.
   destructs H0;
-    try splits; eauto.
+    try split; eauto.
 Defined.
 Next Obligation.
   destruct (W e' G >>= _); crush.
   - skip.
   - skip.
   - skip.
-  - rename x0 into tau, x2 into tau'.
-    rename t1 into s1, t2 into s2.
-    rename x into i0.
-    rename x1 into i1, t into i2.
-    inverts* H7.
-    + repeat rewrite apply_subst_ctx_compose.
-      econstructor.
-      apply has_type_is_stable_under_substitution.
-      apply H5.
-      econstructor; eauto.
-    + repeat rewrite apply_subst_ctx_compose.
-      econstructor.
-      apply has_type_is_stable_under_substitution.
-      apply H5.
-      econstructor; eauto.
+  - econstructor.
+    repeat rewrite apply_subst_ctx_compose.
+    eapply has_type_is_stable_under_substitution.
+    apply H5.
+    repeat rewrite apply_subst_ctx_compose.
+    assumption.
   - skip.
 Defined.
 Next Obligation.
@@ -710,8 +655,7 @@ Next Obligation.
   intros; splits; eauto.
   destructs H0;
     try split; eauto.
-  destructs H4.
- skip. 
+  skip.
 Defined.
 Next Obligation.
   destruct (inferPat p G >>= _); crush.
@@ -720,20 +664,49 @@ Next Obligation.
   rename x2 into s2.
   rename t1 into s3.
   rename t2 into G'.
+  rename x1 into tau''.
   econstructor.
-  - assert (sub_ctx (apply_subst_ctx (compose_subst s3 s2) G) (apply_subst_ctx (compose_subst s3 s2) G')). 
-    skip.
-    apply H9.
   - repeat rewrite apply_compose_equiv.
     repeat rewrite apply_subst_ctx_compose.
-    rewrite H13.
+    rewrite H7.
+    apply has_type_pat_is_stable_under_substitution.
     apply has_type_pat_is_stable_under_substitution.
     assumption.
   - repeat rewrite apply_compose_equiv.
     repeat rewrite apply_subst_ctx_compose.
-    (** aqui *)
-  -
-      
-    
-  
+    repeat rewrite <- apply_subst_ctx_app_ctx.
+    apply H12.
+Defined.      
+Next Obligation.
+  Admitted.
+Next Obligation.
+  destruct (inferPat p G >>= _); crush.
+  rename t3 into s1. 
+  rename x2 into s2.
+  rename t1 into s3.
+  rename x1 into tau'.
+  rename x5 into tau''.
+  rename x7 into s4'.
+  econstructor.
+- econstructor.
+  + repeat rewrite apply_compose_equiv.
+    repeat rewrite apply_subst_ctx_compose.
+    rewrite H7.
+    repeat apply has_type_pat_is_stable_under_substitution.
+    assumption.
+  + repeat rewrite apply_compose_equiv.
+    repeat rewrite apply_subst_ctx_compose.
+    repeat rewrite <- apply_subst_ctx_app_ctx.
+    rewrite <- H18.
+    apply has_type_is_stable_under_substitution.
+    apply has_type_is_stable_under_substitution.
+    apply H12.
+ - repeat rewrite apply_subst_ctx_compose in *.
+   repeat rewrite apply_compose_equiv.
+   repeat rewrite apply_compose_equiv in H15.
+   (** aqui *)
+    apply has_type_cases_is_stable_under_substitution.
+   apply H15.
+Defined.
+ 
 Print Assumptions W.
