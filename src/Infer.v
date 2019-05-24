@@ -352,11 +352,12 @@ with infer_cases (cs : cases) (tau : ty) (G : ctx) {struct cs} :
           ret (fst tau_s, compose_subst (snd tau_G_s) (compose_subst s (snd tau_s)))
        | many_cases p e cs' =>
           tau_G_s <- inferPat p G ;
-          tau_s <- W e (snd (fst tau_G_s)) ;
-          s <- unify tau (apply_subst (snd tau_s) (fst (fst tau_G_s))) ;
+          s <- unify (apply_subst (snd tau_G_s) tau) (fst (fst tau_G_s)) ;
+          tau_s <- W e (apply_subst_ctx s (apply_subst_ctx (snd tau_G_s) ((snd (fst tau_G_s) ++ G)))) ;
+
           tau_s' <- infer_cases cs' (apply_subst s tau) (apply_subst_ctx s G) ;
-          s <- unify (fst tau_s) (fst tau_s') ;
-          ret (apply_subst s (fst tau_s'), compose_subst (snd tau_s) (compose_subst s (snd tau_s')))
+          s' <- unify (fst tau_s) (fst tau_s') ;
+          ret (apply_subst s (fst tau_s'), compose_subst (snd tau_G_s) (compose_subst s (snd tau_s)))
        end.
 Obligation 1 of infer_cases.
   unfold top.
@@ -391,6 +392,20 @@ Obligation 2 of infer_cases.
     repeat rewrite <- apply_subst_ctx_app_ctx.
     apply H12.
 Defined.      
+Obligation 3 of infer_cases.
+  Admitted.
+Obligation 4 of infer_cases.
+  destruct (inferPat p G >>= _); crush.
+  rename t3 into s1. 
+  rename x2 into s2.
+  rename t1 into s3.
+  rename x1 into tau'.
+  rename x5 into tau''.
+  rename x7 into s4'.
+  econstructor.
+- econstructor.
+  +
+
 Next Obligation.
   intros; unfold top; auto.
 Defined.
