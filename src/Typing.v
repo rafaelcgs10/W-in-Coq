@@ -42,12 +42,51 @@ with cases : Set :=
  | many_cases : pat -> term -> cases -> cases.
 
 (** * Rules for typing patterns *)
+(** * No vars relation to define constructor's types *)
+
+Inductive no_vars : schm -> Prop :=
+| con_no_var : forall x, no_vars (sc_con x)
+| gen_no_var : forall x, no_vars (sc_gen x)
+| appl_no_var : forall sigma1 sigma2, no_vars sigma1 ->
+                                 no_vars sigma2 ->
+                                 no_vars (sc_appl sigma1 sigma2)
+| arrow_no_var : forall sigma1 sigma2, no_vars sigma1 ->
+                                  no_vars sigma2 ->
+                                  no_vars (sc_arrow sigma1 sigma2).
+
+Lemma apply_subts_schm_no_vars : forall sigma s, no_vars sigma ->
+                                            apply_subst_schm s sigma = sigma.
+Proof.
+  induction sigma; intros; try inverts* H; simpl;
+  erewrite IHsigma1; eauto;
+  erewrite IHsigma2; eauto.
+Qed.
+
+Hint Resolve apply_subts_schm_no_vars.
+Hint Rewrite apply_subts_schm_no_vars:RE.
+
+(** * When a type scheme is a type constructor *)
 
 Inductive is_constructor_schm : schm -> Prop :=
 | con_is : forall x, is_constructor_schm (sc_con x)
-| appl_is : forall tau1 tau2, is_constructor_schm (sc_appl tau1 tau2)
-| arrow_is : forall sigma1 sigma2, is_constructor_schm sigma2 ->
+| appl_is : forall sigma1 sigma2, no_vars sigma1 ->
+                             no_vars sigma2 ->
+                             is_constructor_schm (sc_appl sigma1 sigma1)
+| arrow_is : forall sigma1 sigma2, no_vars sigma1 ->
+                              is_constructor_schm sigma2 ->
                               is_constructor_schm (sc_arrow sigma1 sigma2).
+
+Lemma apply_subts_schm_is_constructor : forall sigma s, is_constructor_schm sigma ->
+                                                   apply_subst_schm s sigma = sigma.
+Proof.
+  induction sigma; intros; try inverts* H; simpl.
+  repeat erewrite apply_subts_schm_no_vars; eauto.
+  erewrite IHsigma2; eauto.
+  repeat erewrite apply_subts_schm_no_vars; eauto.
+Qed.
+
+Hint Resolve apply_subts_schm_is_constructor.
+Hint Rewrite apply_subts_schm_is_constructor:RE.
 
 Fixpoint return_of_ty (tau : ty) : ty :=
   match tau with
@@ -93,7 +132,7 @@ Lemma is_constructor_schm_is_stable_under_substitution : forall sigma s,
     is_constructor_schm  sigma -> is_constructor_schm (apply_subst_schm s sigma).
 Proof.
   induction sigma; intros; try econstructor; try inverts* H; eauto.
-Qed.
+  Admitted.
 
 Hint Resolve is_constructor_schm_is_stable_under_substitution.
 
@@ -109,50 +148,6 @@ Proof.
 Qed.
 
 Hint Resolve is_schm_instance_is_stable_under_substitution.
-
-Lemma apply_inst_subst_nill : forall sigma,
-      (exists tau, apply_inst_subst nil sigma = Some tau) \/
-      apply_inst_subst nil sigma = None. 
-Proof.
-  induction sigma; intros.
-  - left.
-    exists (var i).
-    eauto.
-  - left.
-    exists (con i).
-    eauto.
-  - right.
-    simpl.
-    crush.
-  - destruct IHsigma1.
-    destruct IHsigma2.
-    left.
-    destruct H, H0.
-    exists (appl x x0).
-    simpl. rewrite H.
-    rewrite H0. reflexivity.
-    right. simpl.
-    destruct H. rewrite H.
-    rewrite H0. reflexivity.
-    right. destruct IHsigma2. destruct H0.
-    simpl. rewrite H. reflexivity.
-    simpl. rewrite H.
-    reflexivity.
-  - destruct IHsigma1.
-    destruct IHsigma2.
-    left.
-    destruct H, H0.
-    exists (arrow x x0).
-    simpl. rewrite H.
-    rewrite H0. reflexivity.
-    right. simpl.
-    destruct H. rewrite H.
-    rewrite H0. reflexivity.
-    right. destruct IHsigma2. destruct H0.
-    simpl. rewrite H. reflexivity.
-    simpl. rewrite H.
-    reflexivity.
-Qed.
 
 Lemma is_schm_instance_arrow_proj2 : forall sigma2 sigma1 tau1 tau2,
     is_schm_instance (arrow tau1 tau2) (sc_arrow sigma1 sigma2) ->
