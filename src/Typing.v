@@ -71,7 +71,7 @@ Inductive is_constructor_schm : schm -> Prop :=
 | con_is : forall x, is_constructor_schm (sc_con x)
 | appl_is : forall sigma1 sigma2, no_vars sigma1 ->
                              no_vars sigma2 ->
-                             is_constructor_schm (sc_appl sigma1 sigma1)
+                             is_constructor_schm (sc_appl sigma1 sigma2)
 | arrow_is : forall sigma1 sigma2, no_vars sigma1 ->
                               is_constructor_schm sigma2 ->
                               is_constructor_schm (sc_arrow sigma1 sigma2).

@@ -134,11 +134,15 @@ Inductive PatsFailure : ty -> pats -> Prop :=
 | MissingPatVar : forall i, PatsFailure (var i) no_pats
 | MissingPatArrow : forall tau1 tau2, PatsFailure (arrow tau1 tau2) no_pats.
 
+Inductive HasVarFailure : schm -> Prop :=
+| HasVar : forall sigma, HasVarFailure sigma.
+
 Inductive NotConstructorFailure : schm -> Prop :=
 | NotConstructor : forall sigma, NotConstructorFailure sigma.
 
 Inductive InferFailure : Prop :=
 | SubstFailure' : SubstFailure -> InferFailure
+| HasVarFailure' : forall sigma, HasVarFailure sigma -> InferFailure
 | NotConstructorFailure' : forall sigma, NotConstructorFailure sigma -> InferFailure
 | PatsFailure' : forall tau ps, PatsFailure tau ps -> InferFailure
 | UnifyFailure' : forall tau1 tau2, UnifyFailure tau1 tau2 -> InferFailure

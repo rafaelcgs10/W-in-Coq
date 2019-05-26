@@ -77,18 +77,53 @@ Next Obligation.
   unfold top; auto.
 Defined.
 
+Program Fixpoint check_has_no_vars (sigma : schm) {struct sigma} :
+  @Infer (fun i => True) unit
+         (fun i x f => i = f /\ no_vars sigma) := 
+  match sigma with
+  | sc_gen _ => ret tt
+  | sc_con _ => ret tt
+  | sc_appl sigma1 sigma2 =>
+       u <- check_has_no_vars sigma1 ;
+       u' <- check_has_no_vars sigma2 ;
+       ret u'
+  | sc_arrow sigma1 sigma2 =>
+       u <- check_has_no_vars sigma1 ;
+       u' <- check_has_no_vars sigma2 ;
+       ret u'
+  | sc_var i => failT (@HasVarFailure' (sc_var i) (HasVar (sc_var i))) unit
+  end.
+Next Obligation.
+  splits; eauto; econstructor.
+Defined.
+Next Obligation.
+  splits; eauto; econstructor.
+Defined.
+Next Obligation.
+  intros.
+  edestruct (check_has_no_vars sigma1 >>= _); crush.
+  econstructor; eauto.
+Defined.
+Next Obligation.
+  intros.
+  edestruct (check_has_no_vars sigma1 >>= _); crush.
+  econstructor; eauto.
+Defined.
+  
+
 Program Fixpoint check_is_constructor (sigma : schm) {struct sigma} :
   @Infer (fun i => True) unit
-         (fun i x f => i = f /\ is_constructor_schm sigma) := _.
-Next Obligation.
-  Admitted.
-(**
+         (fun i x f => i = f /\ is_constructor_schm sigma) :=
   match sigma with
   | sc_con _ => ret tt
-  | sc_appl _ _ => ret tt
-  | sc_arrow _ sigma2 =>
-      u <- @check_is_constructor sigma2 ;
-      ret u
+  | sc_appl sigma1 sigma2 => 
+      u <- @check_has_no_vars sigma1 ;
+      u' <- @check_has_no_vars sigma2 ;
+      ret u'
+  | sc_arrow sigma1 sigma2 =>
+      u <- @check_has_no_vars sigma1 ;
+      u' <- @check_is_constructor sigma2 ;
+      ret u'
   | sc_var i => failT (@NotConstructorFailure' (sc_var i) (NotConstructor (sc_var i))) unit
   | sc_gen i => failT (@NotConstructorFailure' (sc_gen i) (NotConstructor (sc_gen i))) unit
   end.
@@ -97,13 +132,13 @@ Next Obligation.
   econstructor.
 Defined.
 Next Obligation.
-  splits; eauto.
-  Admitted.
-Next Obligation.
-  destruct (check_is_constructor sigma2 >>= _); crush.
+  destruct (check_has_no_vars sigma1 >>= _); crush.
   econstructor; eauto.
-  Admitted.
-*)
+Defined.
+Next Obligation.
+  destruct (check_has_no_vars sigma1 >>= _); crush.
+  econstructor; eauto.
+Defined.
 
 (** * The pattern inference *)
 
