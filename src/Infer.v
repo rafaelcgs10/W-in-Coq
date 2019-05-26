@@ -77,14 +77,17 @@ Next Obligation.
   unfold top; auto.
 Defined.
 
-Program Fixpoint check_is_constructor (sigma : schm) :
+Program Fixpoint check_is_constructor (sigma : schm) {struct sigma} :
   @Infer (fun i => True) unit
-         (fun i x f => i = f /\ is_constructor_schm sigma) :=
+         (fun i x f => i = f /\ is_constructor_schm sigma) := _.
+Next Obligation.
+  Admitted.
+(**
   match sigma with
   | sc_con _ => ret tt
   | sc_appl _ _ => ret tt
   | sc_arrow _ sigma2 =>
-      u <- check_is_constructor sigma2 ;
+      u <- @check_is_constructor sigma2 ;
       ret u
   | sc_var i => failT (@NotConstructorFailure' (sc_var i) (NotConstructor (sc_var i))) unit
   | sc_gen i => failT (@NotConstructorFailure' (sc_gen i) (NotConstructor (sc_gen i))) unit
@@ -95,12 +98,12 @@ Next Obligation.
 Defined.
 Next Obligation.
   splits; eauto.
-  econstructor.
-Defined.
+  Admitted.
 Next Obligation.
   destruct (check_is_constructor sigma2 >>= _); crush.
   econstructor; eauto.
-Defined.
+  Admitted.
+*)
 
 (** * The pattern inference *)
 
@@ -348,12 +351,12 @@ with infer_cases (cs : cases) (tau : ty) (G J : ctx) {struct cs} :
        | one_case p e =>
           tau_J_s <- inferPat p J ;
           s <- unify (apply_subst (snd tau_J_s) tau) (fst (fst tau_J_s)) ;
-          tau_s <- W e (apply_subst_ctx s (apply_subst_ctx (snd tau_J_s) ((snd (fst tau_J_s) ++ G)))) (apply_subst_ctx s J) ;
+          tau_s <- W e (apply_subst_ctx s (apply_subst_ctx (snd tau_J_s) ((snd (fst tau_J_s) ++ G)))) (apply_subst_ctx s (apply_subst_ctx (snd tau_J_s) J)) ;
           ret (fst tau_s, compose_subst (snd tau_J_s) (compose_subst s (snd tau_s)))
        | many_cases p e cs' =>
           tau_J_s <- inferPat p J ;
           s <- unify (apply_subst (snd tau_J_s) tau) (fst (fst tau_J_s)) ;
-          tau_s <- W e (apply_subst_ctx s (apply_subst_ctx (snd tau_J_s) ((snd (fst tau_J_s) ++ G)))) (apply_subst_ctx s J);
+          tau_s <- W e (apply_subst_ctx s (apply_subst_ctx (snd tau_J_s) ((snd (fst tau_J_s) ++ G)))) (apply_subst_ctx s (apply_subst_ctx (snd tau_J_s) J));
 
           tau_s' <- infer_cases cs' (apply_subst (compose_subst (snd tau_J_s) (compose_subst s (snd tau_s))) tau)
                  (apply_subst_ctx (compose_subst (snd tau_J_s) (compose_subst s (snd tau_s))) G) 
@@ -608,7 +611,10 @@ Next Obligation. (* Case : postcondition of let *)
     rewrite apply_subst_ctx_compose; eauto.
     rewrite <- gen_ty_in_subst_ctx; eauto.
     rewrite <- subst_add_type_scheme; eauto.
-    rewrite <- gen_apply_rename_to_subst; auto.
+    rewrite <- gen_apply_rename_to_subst; eauto.
+    rewrite apply_subst_ctx_compose; eauto.
+    Unshelve. auto.
+    Unshelve. auto.
   (* Subcase : completeness let *)
   - intro. intros.
     rename H5 into SOUND_let.
@@ -637,7 +643,6 @@ Next Obligation. (* Case : postcondition of let *)
     eapply more_general_gen_ty_before_apply_subst.
     rewrite <- PRINC_e11.
     erewrite <- new_tv_compose_subst_ctx; eauto.
-    Unshelve. eauto. eauto.
 Defined.
 Next Obligation.
   unfold top.
@@ -647,7 +652,7 @@ Next Obligation.
     try split; eauto.
 Defined.
 Next Obligation.
-  destruct (W e' G >>= _); crush.
+  destruct (W e' G J >>= _); crush.
   - skip.
   - skip.
   - skip.
@@ -662,18 +667,19 @@ Defined.
 Next Obligation.
   unfold top.
   intros; splits; eauto.
+  skip.
   intros; splits; eauto.
   destructs H0;
     try split; eauto.
   skip.
 Defined.
 Next Obligation.
-  destruct (inferPat p G >>= _); crush.
+  destruct (inferPat p J >>= _); crush.
   rename t3 into s1. 
   rename x0 into tau'.
   rename x2 into s2.
   rename t1 into s3.
-  rename t2 into G'.
+  rename t2 into J'.
   rename x1 into tau''.
   econstructor.
   - repeat rewrite apply_compose_equiv.
@@ -690,7 +696,7 @@ Defined.
 Next Obligation.
   Admitted.
 Next Obligation.
-  destruct (inferPat p G >>= _); crush.
+  destruct (inferPat p J >>= _); crush.
   rename t3 into s1. 
   rename x2 into s2.
   rename t1 into s3.

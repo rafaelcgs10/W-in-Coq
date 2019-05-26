@@ -463,7 +463,7 @@ Lemma more_general_is_constructor : forall sigma1 sigma2, more_general sigma1 si
                                                     is_constructor_schm sigma1 ->
                                                     is_constructor_schm sigma2.
 Proof.
-  Admitted.
+  Abort.
 
 Lemma more_genera_ctx_in_ctx_is_constructor : forall G1 G2 i sigma,  more_general_ctx G1 G2 ->
                                                                 in_ctx i G2 = Some sigma ->
@@ -471,12 +471,13 @@ Lemma more_genera_ctx_in_ctx_is_constructor : forall G1 G2 i sigma,  more_genera
                                                                 (exists sigma', in_ctx i G1 = Some sigma' /\
                                                                    is_constructor_schm sigma').
 Proof.
-      Admitted.
+  Abort.
 
 Lemma typing_pat_in_a_more_general_ctx : forall (p : pat) (G2 G1 : ctx) (t : ty),
     more_general_ctx G1 G2 -> has_type_pat G2 p t -> has_type_pat G1 p t.
 Proof.
   intros.
+  (*
   apply (has_type_pat_mut
            (fun (G' : ctx) (p'': pat) tau => forall tau' G1' G2',
                 more_general_ctx G1' G2' -> has_type_pat G2' p'' tau' -> has_type_pat G1' p'' tau')
@@ -500,7 +501,8 @@ Proof.
     + econstructor.
   - inverts* H6.
     econstructor; eauto.
-Qed.
+*)
+Abort.
 
 (*
 Lemma typing_patterns_in_a_more_general_ctx : forall (l : non_empty_list pat) (G2 G1 : ctx) (t : ty),

@@ -236,6 +236,72 @@ Qed.
      
 Hint Resolve has_type_pat_is_stable_under_substitution.
 
+Lemma stronger_has_type_pat_is_stable_under_substitution : forall p s tau G,
+    has_type_pat G p tau -> has_type_pat G p (apply_subst s tau).
+  intros.
+  apply (has_type_pat_mut
+           (fun (G' : ctx) (p'': pat) tau => forall s tau',
+                has_type_pat G' p'' tau' -> has_type_pat G' p'' (apply_subst s tau'))
+           (fun (G' : ctx) l (tau : ty) => forall s tau', 
+                has_type_pats G' l tau' -> has_type_pats G' l (apply_subst s tau'))
+           ) with (p:=p) (t:=tau); intros; eauto.
+  (** var case *)
+  - econstructor; eauto.
+  (** constr case *)
+  - inverts* H1.
+    + apply is_schm_instance_must_be_con in H2 as H2'.
+      subst.
+      inverts* H3. 
+      inverts* H5. 
+      erewrite apply_subst_return_of_ty; eauto.
+      econstructor; eauto.
+      destruct H9.
+      eapply subst_inst_subst_type in H1.
+      exists (map_apply_subst_ty s0 x1).
+      assert (sigma = apply_subst_schm s0 sigma).
+      { erewrite apply_subts_schm_is_constructor. reflexivity. auto. }
+      rewrite H3.
+      apply H1.
+    + apply is_schm_instance_must_be_some_appl in H2 as H2'.
+      destruct H2' as [tau1' [tau2' H2']].
+      subst.
+      inverts* H3.
+      inverts* H5.
+      erewrite apply_subst_return_of_ty; eauto.
+      econstructor; eauto.
+      destruct H11.
+      eapply subst_inst_subst_type in H1.
+      exists (map_apply_subst_ty s0 x0).
+      assert (sigma = apply_subst_schm s0 sigma).
+      { erewrite apply_subts_schm_is_constructor. reflexivity. auto. }
+      rewrite H3.
+      apply H1.
+    + apply is_schm_instance_must_be_some_arrow in H2 as H2'.
+      destruct H2' as [tau1' [tau2' H2']].
+      subst.
+      inverts* H3.
+      inverts* H5.
+      erewrite apply_subst_return_of_ty; eauto.
+      econstructor; eauto.
+      destruct H13.
+      eapply subst_inst_subst_type in H1.
+      exists (map_apply_subst_ty s0 x0).
+      assert (sigma = apply_subst_schm s0 sigma).
+      { erewrite apply_subts_schm_is_constructor. reflexivity. auto. }
+      rewrite H3.
+      apply H1.
+  - inverts* H0.
+    + econstructor.
+    + econstructor.
+  - inverts* H0.
+    + econstructor.
+    + econstructor.
+  - inverts* H4.
+    econstructor; eauto.
+Qed.
+
+Hint Resolve stronger_has_type_pat_is_stable_under_substitution.
+
 (** has_pat is stable under substitution inversion *)
 
 Lemma has_type_pats_is_stable_under_substitution : forall ps s tau G,
@@ -251,6 +317,24 @@ Proof.
     simpl.
     econstructor; eauto.
 Qed.
+
+Hint Resolve has_type_pats_is_stable_under_substitution.
+
+Lemma stronger_has_type_pats_is_stable_under_substitution : forall ps s tau G,
+    has_type_pats G ps tau -> has_type_pats G ps (apply_subst s tau).
+Proof.
+  induction ps; intros.
+  - inverts* H.
+    + simpl.
+      econstructor.
+    + simpl.
+      econstructor.
+  - inverts* H.
+    simpl.
+    econstructor; eauto.
+Qed.
+
+Hint Resolve stronger_has_type_pats_is_stable_under_substitution.
 
 Hint Resolve has_type_pats_is_stable_under_substitution.
 
