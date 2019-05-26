@@ -76,7 +76,7 @@ Inductive is_constructor_schm : schm -> Prop :=
                               is_constructor_schm sigma2 ->
                               is_constructor_schm (sc_arrow sigma1 sigma2).
 
-Lemma apply_subts_schm_is_constructor : forall sigma s, is_constructor_schm sigma ->
+Lemma apply_subst_schm_is_constructor : forall sigma s, is_constructor_schm sigma ->
                                                    apply_subst_schm s sigma = sigma.
 Proof.
   induction sigma; intros; try inverts* H; simpl.
@@ -85,8 +85,8 @@ Proof.
   repeat erewrite apply_subts_schm_no_vars; eauto.
 Qed.
 
-Hint Resolve apply_subts_schm_is_constructor.
-Hint Rewrite apply_subts_schm_is_constructor:RE.
+Hint Resolve apply_subst_schm_is_constructor.
+Hint Rewrite apply_subst_schm_is_constructor:RE.
 
 Fixpoint return_of_ty (tau : ty) : ty :=
   match tau with
@@ -112,21 +112,13 @@ has_type_pats : ctx -> pats -> ty -> Prop :=
 Scheme has_type_pat_mut := Minimality for has_type_pat Sort Prop
 with has_type_pats_mut := Minimality for has_type_pats Sort Prop.
 
-Lemma in_ctx_stable_is_under_substitution : forall G s sigma x,
+Lemma in_ctx_stable_is_under_substitution1 : forall G s sigma x,
     in_ctx x G = Some sigma -> in_ctx x (apply_subst_ctx s G) = Some (apply_subst_schm s sigma).
 Proof.
   induction G; intros; crush.
 Qed.
 
-Hint Resolve in_ctx_stable_is_under_substitution.
-
-Lemma not_in_ctx_stable_is_under_substitution : forall G s x,
-    in_ctx x G = None -> in_ctx x (apply_subst_ctx s G) = None.
-Proof.
-  induction G; intros; crush.
-Qed.
-
-Hint Resolve not_in_ctx_stable_is_under_substitution.
+Hint Resolve in_ctx_stable_is_under_substitution1.
 
 Lemma is_constructor_schm_is_stable_under_substitution : forall sigma s,
     is_constructor_schm  sigma -> is_constructor_schm (apply_subst_schm s sigma).
@@ -148,6 +140,23 @@ Proof.
 Qed.
 
 Hint Resolve is_schm_instance_is_stable_under_substitution.
+
+Lemma in_ctx_stable_is_under_substitution2 : forall s G sigma x,
+    is_constructor_schm sigma ->
+    in_ctx x (apply_subst_ctx s G) = Some sigma -> in_ctx x G = Some sigma.
+Proof.
+  intros.
+  induction sigma.
+  - inverts* H.
+      Abort.
+
+Lemma not_in_ctx_stable_is_under_substitution : forall G s x,
+    in_ctx x G = None -> in_ctx x (apply_subst_ctx s G) = None.
+Proof.
+  induction G; intros; crush.
+Qed.
+
+Hint Resolve not_in_ctx_stable_is_under_substitution.
 
 Lemma is_schm_instance_arrow_proj2 : forall sigma2 sigma1 tau1 tau2,
     is_schm_instance (arrow tau1 tau2) (sc_arrow sigma1 sigma2) ->
@@ -259,7 +268,7 @@ Lemma stronger_has_type_pat_is_stable_under_substitution : forall p s tau G,
       eapply subst_inst_subst_type in H1.
       exists (map_apply_subst_ty s0 x1).
       assert (sigma = apply_subst_schm s0 sigma).
-      { erewrite apply_subts_schm_is_constructor. reflexivity. auto. }
+      { erewrite apply_subst_schm_is_constructor. reflexivity. auto. }
       rewrite H3.
       apply H1.
     + apply is_schm_instance_must_be_some_appl in H2 as H2'.
@@ -273,7 +282,7 @@ Lemma stronger_has_type_pat_is_stable_under_substitution : forall p s tau G,
       eapply subst_inst_subst_type in H1.
       exists (map_apply_subst_ty s0 x0).
       assert (sigma = apply_subst_schm s0 sigma).
-      { erewrite apply_subts_schm_is_constructor. reflexivity. auto. }
+      { erewrite apply_subst_schm_is_constructor. reflexivity. auto. }
       rewrite H3.
       apply H1.
     + apply is_schm_instance_must_be_some_arrow in H2 as H2'.
@@ -287,7 +296,7 @@ Lemma stronger_has_type_pat_is_stable_under_substitution : forall p s tau G,
       eapply subst_inst_subst_type in H1.
       exists (map_apply_subst_ty s0 x0).
       assert (sigma = apply_subst_schm s0 sigma).
-      { erewrite apply_subts_schm_is_constructor. reflexivity. auto. }
+      { erewrite apply_subst_schm_is_constructor. reflexivity. auto. }
       rewrite H3.
       apply H1.
   - inverts* H0.
@@ -302,6 +311,36 @@ Qed.
 
 Hint Resolve stronger_has_type_pat_is_stable_under_substitution.
 
+Lemma weaker_has_type_pat_is_stable_under_substitution_1 : forall ps s tau G,
+    has_type_pat G ps tau -> has_type_pat (apply_subst_ctx s G) ps tau.
+Proof.
+  intros.
+  apply (has_type_pat_mut
+           (fun (G' : ctx) (p'': pat) tau => forall s tau',
+                has_type_pat G' p'' tau' -> has_type_pat (apply_subst_ctx s G') p'' tau')
+           (fun (G' : ctx) l (tau : ty) => forall s tau', 
+                has_type_pats G' l tau' -> has_type_pats (apply_subst_ctx s G') l tau')
+           ) with (t:=tau); intros; try econstructor; eauto.
+  - inverts* H5.
+    econstructor; eauto.
+    crush.
+  - inverts* H0;
+    econstructor; eauto.
+  - inverts* H0;
+    econstructor; eauto.
+  - inverts* H4;
+    econstructor; eauto.
+Qed.    
+
+Hint Resolve weaker_has_type_pat_is_stable_under_substitution_1.
+
+Lemma weaker_has_type_pat_is_stable_under_substitution_2 : forall ps s tau J,
+    has_type_pat (apply_subst_ctx s J) ps tau -> has_type_pat J ps tau.
+  intros.
+  inverts* H.
+  econstructor.
+  econstructor.
+  Abort.
 (** has_pat is stable under substitution inversion *)
 
 Lemma has_type_pats_is_stable_under_substitution : forall ps s tau G,
@@ -370,18 +409,55 @@ with has_type_cases_mut := Minimality for has_type_cases Sort Prop.
 
 Check has_type_mut.
 
-(** * The Great Substitution Lemma *)
-
-(** has_type is stable under substitution *)
-Lemma has_type_is_stable_under_substitution : forall e s tau G J,
-    has_type G J e tau -> has_type (apply_subst_ctx s G) (apply_subst_ctx s J) e (apply_subst s tau).
+Lemma weaker_has_type_is_stable_under_substitution : forall e s tau G J,
+    has_type G J e tau -> has_type G (apply_subst_ctx s J) e tau.
 Proof.
   intros.
   apply (has_type_mut
            (fun (G' : ctx) (J' : ctx) (e' : term) (tau' : ty) => forall s tau G J,
-                         has_type G J e' tau -> has_type (apply_subst_ctx s G) (apply_subst_ctx s J) e' (apply_subst s tau))
+                         has_type G J e' tau -> has_type G (apply_subst_ctx s J) e' tau)
            (fun  (G' : ctx) (J' : ctx) (l' : cases) (tau' tau'' : ty) => forall s J tau1 tau2 G,
-              has_type_cases G J l' tau1 tau2 -> has_type_cases (apply_subst_ctx s G) (apply_subst_ctx s J) l' (apply_subst s tau1) (apply_subst s tau2))
+              has_type_cases G J l' tau1 tau2 -> has_type_cases G (apply_subst_ctx s J) l' tau1 tau2)
+           ) with (c:=G) (c0:=J) (t0:=tau); intros.
+  - inversion H2.
+    subst.
+    econstructor; eauto.
+  (** lambda case *)
+  - inverts* H2.
+    econstructor; eauto.
+    (** app case *)
+  - inverts* H4.
+    econstructor; eauto.
+    (** let case *)
+  - inverts* H4.
+    econstructor; eauto.
+    (** cases case *)
+  - inverts* H4.
+    econstructor; eauto.
+    (** one case case *)
+  - inverts* H3.
+    econstructor; eauto.
+  - inverts* H4.
+Admitted.
+
+Lemma weaker_has_type_is_stable_under_substitution_2 : forall e s tau G J,
+    has_type G (apply_subst_ctx s J) e tau -> has_type G  J e tau.
+  Abort.
+
+Hint Resolve weaker_has_type_is_stable_under_substitution.
+
+(** * The Great Substitution Lemma *)
+
+(** has_type is stable under substitution *)
+Lemma has_type_is_stable_under_substitution : forall e s tau G J,
+    has_type G J e tau -> has_type (apply_subst_ctx s G) J e (apply_subst s tau).
+Proof.
+  intros.
+  apply (has_type_mut
+           (fun (G' : ctx) (J' : ctx) (e' : term) (tau' : ty) => forall s tau G J,
+                         has_type G J e' tau -> has_type (apply_subst_ctx s G) J e' (apply_subst s tau))
+           (fun  (G' : ctx) (J' : ctx) (l' : cases) (tau' tau'' : ty) => forall s J tau1 tau2 G,
+              has_type_cases G J l' tau1 tau2 -> has_type_cases (apply_subst_ctx s G) J l' (apply_subst s tau1) (apply_subst s tau2))
            ) with (c:=G) (c0:=J) (t0:=tau); intros.
   (** var case *)
   - inversion H2.
@@ -421,16 +497,11 @@ Proof.
     apply hip in r' as r''.
     pose proof (subst_ctx_when_s_disjoint_with_ctx G (rename_to_subst rho)) as Hdis. 
     pose proof (apply_subst_ctx_compose G (rename_to_subst rho) s) as Hcompo.
-    pose proof (subst_ctx_when_s_disjoint_with_ctx J1 (rename_to_subst rho)) as Hdis'. 
-    pose proof (apply_subst_ctx_compose J1 (rename_to_subst rho) s) as Hcompo'.
     apply let_ht with (tau:= apply_subst s (apply_subst (rename_to_subst rho) tau0)).
     erewrite <- Hdis.
-    erewrite <- Hdis'.
     eapply IHe1.
     eapply IHe1.
     assumption.
-    rewrite dom_rename_to_subst.
-    skip.
     rewrite dom_rename_to_subst.
     rewrite H3.
     apply free_and_bound_are_disjoints.

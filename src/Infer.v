@@ -636,7 +636,7 @@ Next Obligation. (* Case : postcondition of let *)
     erewrite <- disj_ctx_subst.
     erewrite <- disj_ctx_subst'.
     eapply has_type_is_stable_under_substitution.
-    assumption.
+    eauto.
     rewrite dom_rename_to_subst.
     rewrite H6.
     skip.
