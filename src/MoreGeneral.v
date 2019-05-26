@@ -535,16 +535,16 @@ Qed.
 
 Hint Resolve more_general_ctx_app2.
 
-Lemma typing_in_a_more_general_ctx : forall (e : term) (G2 G1 : ctx) (t : ty),
-    more_general_ctx G1 G2 -> has_type G2 e t -> has_type G1 e t.
+Lemma typing_in_a_more_general_ctx : forall (e : term) (G2 G1 J : ctx) (t : ty),
+    more_general_ctx G1 G2 -> has_type G2 J e t -> has_type G1 J e t.
 Proof.
   intros.
   apply (has_type_mut
-         (fun (G' : ctx) (e' : term) (t' : ty) => forall tau G2 G1,
-                       more_general_ctx G1 G2 -> has_type G2 e' tau -> has_type G1 e' tau)
-         (fun  (G' : ctx) (l' : cases) (tau' tau'' : ty) => forall tau1 tau2 G2 G1,
-                       more_general_ctx G1 G2 -> has_type_cases G2 l' tau1 tau2 -> has_type_cases G1 l' tau1 tau2)
-         ) with (c:=G2) (t0:=t) (t:=e) (G2:=G2); intros; auto.
+         (fun (G' J' : ctx) (e' : term) (t' : ty) => forall tau G2 G1 J,
+                       more_general_ctx G1 G2 -> has_type G2 J e' tau -> has_type G1 J e' tau)
+         (fun  (G' J' : ctx) (l' : cases) (tau' tau'' : ty) => forall tau1 tau2 G2 G1 J,
+                       more_general_ctx G1 G2 -> has_type_cases G2 J l' tau1 tau2 -> has_type_cases G1 J l' tau1 tau2)
+         ) with (c:=G2) (t0:=t) (t:=e) (G2:=G2) (c0:=J); intros; auto.
   - skip.
     (*
     induction G0.
@@ -601,7 +601,7 @@ Proof.
     eapply H3.
     eapply more_general_ctx_app2.
     apply H4.
-    apply H12.
+    eauto.
   (** terms many case *)
   - inverts* H6.
     econstructor; eauto.

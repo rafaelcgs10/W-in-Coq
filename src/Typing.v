@@ -19,7 +19,6 @@ Require Import Arith.Arith_base.
 Require Import List.
 Require Import SimpleTypes.
 Require Import MyLtacs.
-Require Import NonEmptyList.
 
 (** * Pattern definition *)
 
@@ -57,19 +56,19 @@ Fixpoint return_of_ty (tau : ty) : ty :=
   end.
                     
 Inductive has_type_pat : ctx -> pat -> ty -> Prop:=
-| var_htp : forall x G tau, has_type_pat G (var_p x) tau
-| constr_htp : forall G x sigma ps tau, in_ctx x G = Some sigma ->
-                                 is_constructor_schm sigma ->
-                                 is_schm_instance tau sigma ->
-                                 has_type_pats G ps tau -> 
-                                 has_type_pat G (constr_p x ps) (return_of_ty tau)
+| var_htp : forall x J tau, has_type_pat J (var_p x) tau
+| constr_htp : forall J x sigma ps tau, in_ctx x J = Some sigma ->
+                                   is_constructor_schm sigma ->
+                                   is_schm_instance tau sigma ->
+                                   has_type_pats J ps tau -> 
+                                   has_type_pat J (constr_p x ps) (return_of_ty tau)
 with
 has_type_pats : ctx -> pats -> ty -> Prop :=
-| no_pat_con : forall i G, has_type_pats G no_pats (con i) 
-| no_pat_appl : forall tau1 tau2 G, has_type_pats G no_pats (appl tau1 tau2) 
-| many_pat : forall p ps tau1 tau2 G, has_type_pat G p tau1 ->
-                                    has_type_pats G ps tau2 ->
-                                    has_type_pats G (some_pats p ps) (arrow tau1 tau2).
+| no_pat_con : forall i J, has_type_pats J no_pats (con i) 
+| no_pat_appl : forall tau1 tau2 J, has_type_pats J no_pats (appl tau1 tau2) 
+| many_pat : forall p ps tau1 tau2 J, has_type_pat J p tau1 ->
+                                    has_type_pats J ps tau2 ->
+                                    has_type_pats J (some_pats p ps) (arrow tau1 tau2).
 
 Scheme has_type_pat_mut := Minimality for has_type_pat Sort Prop
 with has_type_pats_mut := Minimality for has_type_pats Sort Prop.
@@ -262,30 +261,30 @@ Hint Resolve has_type_pats_is_stable_under_substitution.
 
 (** * Syntax-directed rule system of Damas-Milner *)
 
-Inductive has_type : ctx -> term -> ty -> Prop :=
-| var_ht : forall x G sigma tau, in_ctx x G = Some sigma ->
+Inductive has_type : ctx -> ctx -> term -> ty -> Prop :=
+| var_ht : forall x G J sigma tau, in_ctx x G = Some sigma ->
                             is_schm_instance tau sigma ->
-                            has_type G (var_t x) tau
-| lam_ht : forall x G tau tau' e, has_type ((x, ty_to_schm tau) :: G) e tau' ->
-                             has_type G (lam_t x e) (arrow tau tau')
-| app_ht : forall G tau tau' l r, has_type G l (arrow tau tau') ->
-                               has_type G r tau ->
-                               has_type G (app_t l r) tau'
-| let_ht : forall G x e e' tau tau', has_type G e tau ->
-                                has_type ((x, gen_ty tau G) :: G) e' tau' ->
-                                has_type G (let_t x e e') tau'
-| case_ht : forall G e tau tau' cs, has_type G e tau ->
-                               has_type_cases G cs tau tau' ->
-                               has_type G (case_t e cs) tau'
+                            has_type G J (var_t x) tau
+| lam_ht : forall x G J tau tau' e, has_type ((x, ty_to_schm tau) :: G) J e tau' ->
+                             has_type G J (lam_t x e) (arrow tau tau')
+| app_ht : forall G J tau tau' l r, has_type G J l (arrow tau tau') ->
+                               has_type G J r tau ->
+                               has_type G J (app_t l r) tau'
+| let_ht : forall G J x e e' tau tau', has_type G J e tau ->
+                                has_type ((x, gen_ty tau G) :: G) J e' tau' ->
+                                has_type G J (let_t x e e') tau'
+| case_ht : forall G J e tau tau' cs, has_type G J e tau ->
+                               has_type_cases G J cs tau tau' ->
+                               has_type G J (case_t e cs) tau'
 with
-has_type_cases : ctx -> cases -> ty -> ty -> Prop :=
-| one_term : forall G G' p e tau tau', 
-                                  has_type_pat G p tau ->
-                                  has_type (G' ++ G) e tau' -> 
-                                  has_type_cases G (one_case p e) tau tau'
-| many_terms : forall G p e tau tau' cs, has_type_cases G (one_case p e) tau tau' -> 
-                                   has_type_cases G cs tau tau' ->
-                                   has_type_cases G (many_cases p e cs) tau tau'.
+has_type_cases : ctx -> ctx -> cases -> ty -> ty -> Prop :=
+| one_term : forall G G' J p e tau tau', 
+                                  has_type_pat J p tau ->
+                                  has_type (G' ++ G) J e tau' -> 
+                                  has_type_cases G J (one_case p e) tau tau'
+| many_terms : forall G J p e tau tau' cs, has_type_cases G J (one_case p e) tau tau' -> 
+                                   has_type_cases G J cs tau tau' ->
+                                   has_type_cases G J (many_cases p e cs) tau tau'.
 
 Scheme has_type_mut := Minimality for has_type Sort Prop
 with has_type_cases_mut := Minimality for has_type_cases Sort Prop.
@@ -295,16 +294,16 @@ Check has_type_mut.
 (** * The Great Substitution Lemma *)
 
 (** has_type is stable under substitution *)
-Lemma has_type_is_stable_under_substitution : forall e s tau G,
-    has_type G e tau -> has_type (apply_subst_ctx s G) e (apply_subst s tau).
+Lemma has_type_is_stable_under_substitution : forall e s tau G J,
+    has_type G J e tau -> has_type (apply_subst_ctx s G) (apply_subst_ctx s J) e (apply_subst s tau).
 Proof.
   intros.
   apply (has_type_mut
-           (fun (G' : ctx) (e' : term) (tau' : ty) => forall s tau G,
-                         has_type G e' tau -> has_type (apply_subst_ctx s G) e' (apply_subst s tau))
-           (fun  (G' : ctx) (l' : cases) (tau' tau'' : ty) => forall s tau1 tau2 G,
-              has_type_cases G l' tau1 tau2 -> has_type_cases (apply_subst_ctx s G) l' (apply_subst s tau1) (apply_subst s tau2))
-           ) with (c:=G) (t0:=tau); intros.
+           (fun (G' : ctx) (J' : ctx) (e' : term) (tau' : ty) => forall s tau G J,
+                         has_type G J e' tau -> has_type (apply_subst_ctx s G) (apply_subst_ctx s J) e' (apply_subst s tau))
+           (fun  (G' : ctx) (J' : ctx) (l' : cases) (tau' tau'' : ty) => forall s J tau1 tau2 G,
+              has_type_cases G J l' tau1 tau2 -> has_type_cases (apply_subst_ctx s G) (apply_subst_ctx s J) l' (apply_subst s tau1) (apply_subst s tau2))
+           ) with (c:=G) (c0:=J) (t0:=tau); intros.
   (** var case *)
   - inversion H2.
     subst.
@@ -343,11 +342,16 @@ Proof.
     apply hip in r' as r''.
     pose proof (subst_ctx_when_s_disjoint_with_ctx G (rename_to_subst rho)) as Hdis. 
     pose proof (apply_subst_ctx_compose G (rename_to_subst rho) s) as Hcompo.
+    pose proof (subst_ctx_when_s_disjoint_with_ctx J1 (rename_to_subst rho)) as Hdis'. 
+    pose proof (apply_subst_ctx_compose J1 (rename_to_subst rho) s) as Hcompo'.
     apply let_ht with (tau:= apply_subst s (apply_subst (rename_to_subst rho) tau0)).
     erewrite <- Hdis.
+    erewrite <- Hdis'.
     eapply IHe1.
     eapply IHe1.
     assumption.
+    rewrite dom_rename_to_subst.
+    skip.
     rewrite dom_rename_to_subst.
     rewrite H3.
     apply free_and_bound_are_disjoints.
@@ -361,9 +365,9 @@ Proof.
   - induction cs.
     + inverts* H4.
       econstructor.
-      eapply H1.
-      apply H8.
-      auto.
+      eapply H1. 
+      apply H9.
+      eauto.
     + inverts* H4.
       econstructor.
       eapply H1; eauto.
@@ -374,7 +378,7 @@ Proof.
     eauto.
     rewrite <- apply_subst_ctx_app_ctx.
     eapply H2.
-    apply H10.
+    eauto.
     (** terms many case *)
   - inverts* H4.
     econstructor; eauto.
@@ -384,8 +388,8 @@ Qed.
     
 Hint Resolve has_type_is_stable_under_substitution.
 
-Lemma has_type_var_ctx_diff : forall (i j : id) (G : ctx) (tau : ty) (sigma : schm),
-    i <> j -> has_type G (var_t i) tau -> has_type ((j, sigma) :: G) (var_t i) tau.
+Lemma has_type_var_ctx_diff : forall (i j : id) (G J : ctx) (tau : ty) (sigma : schm),
+    i <> j -> has_type G J (var_t i) tau -> has_type ((j, sigma) :: G) J (var_t i) tau.
 Proof.
   intros.
   inversion_clear H0.
@@ -394,8 +398,8 @@ Qed.
 
 Hint Resolve has_type_var_ctx_diff.
 
-Lemma has_type_cases_is_stable_under_substitution : forall cs s tau tau' G,
-    has_type_cases G cs tau tau' -> has_type_cases (apply_subst_ctx s G) cs (apply_subst s tau) (apply_subst s tau').
+Lemma has_type_cases_is_stable_under_substitution : forall cs s tau tau' G J,
+    has_type_cases G J cs tau tau' -> has_type_cases (apply_subst_ctx s G) (apply_subst_ctx s J) cs (apply_subst s tau) (apply_subst s tau').
 Proof.
   induction cs; intros.
   - inverts* H.
@@ -403,14 +407,15 @@ Proof.
     eauto.
     rewrite <- apply_subst_ctx_app_ctx.
     apply has_type_is_stable_under_substitution.
-    apply H6.
+    eauto.
   - inverts* H.
     econstructor.
-    + inverts* H6.
+    + inverts* H7.
       econstructor.
       eauto.
       rewrite <- apply_subst_ctx_app_ctx.
       apply has_type_is_stable_under_substitution.
-      apply H5.
+      eauto.
     + eauto.
 Qed.
+

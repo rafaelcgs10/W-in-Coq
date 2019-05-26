@@ -297,19 +297,19 @@ Defined.
 (** * Completeness theorem definition. *)
 
 Definition completeness (e : term) (G : ctx) (tau : ty) (s : substitution) (st : id) :=
-  forall (tau' : ty) (phi : substitution),
-    has_type (apply_subst_ctx phi G) e tau' -> 
+  forall (tau' : ty) (phi : substitution) J,
+    has_type (apply_subst_ctx phi G) J e tau' -> 
     exists s', tau' = apply_subst s' tau /\
-    (forall x : id, x < st -> apply_subst phi (var x) = apply_subst s' (apply_subst s (var x))).
+          (forall x : id, x < st -> apply_subst phi (var x) = apply_subst s' (apply_subst s (var x))).
     
 
 (** * The algorithm W itself *)
 
-Program Fixpoint W (e : term) (G : ctx) {struct e} :
+Program Fixpoint W (e : term) (G J: ctx) {struct e} :
   @Infer (fun i => new_tv_ctx G i) (ty * substitution)
          (fun i x f => i <= f /\ new_tv_subst (snd x) f /\ new_tv_ty (fst x) f /\
                     new_tv_ctx (apply_subst_ctx (snd x) G) f /\
-                    has_type (apply_subst_ctx ((snd x)) G) e (fst x) /\
+                    has_type (apply_subst_ctx ((snd x)) G) (apply_subst_ctx (snd x) J) e (fst x) /\
                     completeness e G (fst x) ((snd x)) i) :=
   match e with
   | var_t x =>
@@ -320,45 +320,46 @@ Program Fixpoint W (e : term) (G : ctx) {struct e} :
   | lam_t x e' =>
       alpha <- fresh ;
       G' <- addFreshCtx G x alpha ;
-      tau_s <- W e' G'  ;
+      tau_s <- W e' G' J ;
       ret ((arrow (apply_subst ((snd tau_s)) (var alpha)) (fst tau_s)), (snd tau_s))
 
   | app_t l r =>
-      tau1_s1 <- W l G  ;
-      tau2_s2 <- W r (apply_subst_ctx (snd tau1_s1) G)  ;
+      tau1_s1 <- W l G J ;
+      tau2_s2 <- W r (apply_subst_ctx (snd tau1_s1) G) (apply_subst_ctx (snd tau1_s1) J) ;
       alpha <- fresh ;
       s <- unify (apply_subst (snd tau2_s2) (fst tau1_s1)) (arrow (fst tau2_s2) (var alpha)) ;
       ret (apply_subst s (var alpha), compose_subst  (snd tau1_s1) (compose_subst (snd tau2_s2) s))
 
   | let_t x e1 e2  =>
-      tau1_s1 <- W e1 G  ;
+      tau1_s1 <- W e1 G J ;
       tau2_s2 <- W e2 ((x,gen_ty (fst tau1_s1)
-                      (apply_subst_ctx (snd tau1_s1) G) )::(apply_subst_ctx (snd tau1_s1) G))  ;
+                      (apply_subst_ctx (snd tau1_s1) G) )::(apply_subst_ctx (snd tau1_s1) G)) (apply_subst_ctx (snd tau1_s1) J) ;
       ret (fst tau2_s2, compose_subst (snd tau1_s1) (snd tau2_s2))
 
   | case_t e' cs =>
-      tau1_s1 <- W e' G  ;
-      tau2_s2 <- infer_cases cs (fst tau1_s1) (apply_subst_ctx (snd tau1_s1) G) ;
+      tau1_s1 <- W e' G J ;
+      tau2_s2 <- infer_cases cs (fst tau1_s1) (apply_subst_ctx (snd tau1_s1) G) (apply_subst_ctx (snd tau1_s1) J);
       ret (fst tau2_s2, compose_subst (snd tau1_s1) (snd tau2_s2)) 
   end
-with infer_cases (cs : cases) (tau : ty) (G : ctx) {struct cs} :
+with infer_cases (cs : cases) (tau : ty) (G J : ctx) {struct cs} :
        @Infer (fun i => new_tv_ctx G i) (ty * substitution)
-              (fun i x f => i <= f /\ has_type_cases (apply_subst_ctx (snd x) G) cs (apply_subst (snd x) tau) (fst x)) :=
+              (fun i x f => i <= f /\ has_type_cases (apply_subst_ctx (snd x) G) (apply_subst_ctx (snd x) J) cs (apply_subst (snd x) tau) (fst x)) :=
        match cs with
        | one_case p e =>
-          tau_G_s <- inferPat p G ;
-          s <- unify (apply_subst (snd tau_G_s) tau) (fst (fst tau_G_s)) ;
-          tau_s <- W e (apply_subst_ctx s (apply_subst_ctx (snd tau_G_s) ((snd (fst tau_G_s) ++ G)))) ;
-          ret (fst tau_s, compose_subst (snd tau_G_s) (compose_subst s (snd tau_s)))
+          tau_J_s <- inferPat p J ;
+          s <- unify (apply_subst (snd tau_J_s) tau) (fst (fst tau_J_s)) ;
+          tau_s <- W e (apply_subst_ctx s (apply_subst_ctx (snd tau_J_s) ((snd (fst tau_J_s) ++ G)))) (apply_subst_ctx s J) ;
+          ret (fst tau_s, compose_subst (snd tau_J_s) (compose_subst s (snd tau_s)))
        | many_cases p e cs' =>
-          tau_G_s <- inferPat p G ;
-          s <- unify (apply_subst (snd tau_G_s) tau) (fst (fst tau_G_s)) ;
-          tau_s <- W e (apply_subst_ctx s (apply_subst_ctx (snd tau_G_s) ((snd (fst tau_G_s) ++ G)))) ;
+          tau_J_s <- inferPat p J ;
+          s <- unify (apply_subst (snd tau_J_s) tau) (fst (fst tau_J_s)) ;
+          tau_s <- W e (apply_subst_ctx s (apply_subst_ctx (snd tau_J_s) ((snd (fst tau_J_s) ++ G)))) (apply_subst_ctx s J);
 
-          tau_s' <- infer_cases cs' (apply_subst (compose_subst (snd tau_G_s) (compose_subst s (snd tau_s))) tau)
-                 (apply_subst_ctx (compose_subst (snd tau_G_s) (compose_subst s (snd tau_s))) G) ;
+          tau_s' <- infer_cases cs' (apply_subst (compose_subst (snd tau_J_s) (compose_subst s (snd tau_s))) tau)
+                 (apply_subst_ctx (compose_subst (snd tau_J_s) (compose_subst s (snd tau_s))) G) 
+                 (apply_subst_ctx (compose_subst (snd tau_J_s) (compose_subst s (snd tau_s))) J) ;
           s' <- unify (apply_subst (snd tau_s') (fst tau_s)) (fst tau_s') ;
-          ret (apply_subst s' (fst tau_s'), (compose_subst (snd tau_G_s) (compose_subst s (compose_subst (snd tau_s) ((compose_subst (snd tau_s') s'))))))
+          ret (apply_subst s' (fst tau_s'), (compose_subst (snd tau_J_s) (compose_subst s (compose_subst (snd tau_s) ((compose_subst (snd tau_s') s'))))))
        end.
 Next Obligation.
   intros; unfold top; auto.
@@ -378,11 +379,11 @@ Next Obligation.  (* Case: postcondition of var *)
     intros.
     inversion H3.
     subst.
-    inversion H7.
+    inversion H8.
     rename x into is_s.
     destruct (@assoc_subst_exists G st0 phi sigma H5) as [sigma' H5'].
     destruct H5' as [H51  H52].
-    destruct H7.
+    destruct H8.
     exists ((compute_subst st1 is_s) ++ phi).
     splits.
     + eapply new_tv_schm_compute_inst_subst with (p := max_gen_vars sigma'). 
@@ -401,7 +402,7 @@ Next Obligation.  (* Case: postcondition of var *)
       rewrite apply_subst_nil.
       rewrite find_subst_some_apply_app_compute_subst.
       reflexivity.
-      assumption.
+      assumption. 
 Defined.
 Next Obligation. 
   splits; intros; unfold top; auto;
@@ -410,7 +411,7 @@ Next Obligation.
 Defined.
 Next Obligation. (* Case: postcondition of lambda  *)
   simpl.
-  destruct (W e' (((x, sc_var x0)) :: G) >>= _);
+  destruct (W e' (((x, sc_var x0)) :: G) J >>= _);
     crush; clear W;
       rename x0 into st0, t1 into s, x1 into tau_r, t into st1.
   (* Subcase : new_tv_ty lambda *)
@@ -456,7 +457,7 @@ Next Obligation. (* Case: postcondition of lambda  *)
     * unfold completeness in H6.
       specialize H6 with (phi := (st0, tau)::phi).
       edestruct H6.
-      assert (sc_var st0 = ty_to_schm (var st0)); auto.
+      assert (sc_var st0 = ty_to_schm (var st0)); eauto.
       erewrite <- add_subst_add_ctx in H7. 
       eauto.
       eauto.
@@ -471,7 +472,7 @@ Next Obligation.
     try splits; auto.
 Defined.
 Next Obligation. (* Case: postcondition of application  *)
-  destruct (W l G  >>= _).
+  destruct (W l G J >>= _).
   crush;
     clear W;
     rename H7 into MGU, H13 into MGU', H15 into MGU'';
@@ -551,7 +552,8 @@ Next Obligation. (* Case: postcondition of application  *)
       apply new_tv_apply_subst_ty; auto.
       eapply new_tv_ty_trans_le; eauto. 
     + eapply COMP_R; eauto.
-      erewrite <- new_tv_compose_subst_ctx; eauto.
+      erewrite <- new_tv_compose_subst_ctx;
+      eauto.
 Defined.
 Next Obligation.
   unfold top.
@@ -561,7 +563,7 @@ Next Obligation.
     try splits; eauto.
 Defined.
 Next Obligation. (* Case : postcondition of let *)
-  destruct (W e1 G >>= _).
+  destruct (W e1 G J >>= _).
   crush;
     clear W;
     rename H11 into SOUND_e2, H5 into SOUND_e1;
@@ -586,12 +588,20 @@ Next Obligation. (* Case : postcondition of let *)
     pose proof (subst_ctx_when_s_disjoint_with_ctx
                   (apply_subst_ctx s1 G) (rename_to_subst rho)) as disj_ctx_subst. 
     pose proof (apply_subst_ctx_compose G (rename_to_subst rho) s1) as rename_compose.
+    pose proof (subst_ctx_when_s_disjoint_with_ctx
+                  (apply_subst_ctx s1 J) (rename_to_subst rho)) as disj_ctx_subst'. 
+    pose proof (apply_subst_ctx_compose J (rename_to_subst rho) s1) as rename_compose'.
     apply let_ht with (tau:= apply_subst s2 (apply_subst (rename_to_subst rho) tau_e1)).
-    rewrite apply_subst_ctx_compose.
+    repeat rewrite apply_subst_ctx_compose.
+    repeat rewrite apply_subst_ctx_compose.
     eapply has_type_is_stable_under_substitution.
     erewrite <- disj_ctx_subst.
+    erewrite <- disj_ctx_subst'.
     eapply has_type_is_stable_under_substitution.
     assumption.
+    rewrite dom_rename_to_subst.
+    rewrite H6.
+    skip.
     rewrite dom_rename_to_subst.
     rewrite H6.
     apply free_and_bound_are_disjoints; eauto.

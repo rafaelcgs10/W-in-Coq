@@ -22,8 +22,8 @@ src/NewTypeVariable.vo src/NewTypeVariable.glob src/NewTypeVariable.v.beautified
 src/NewTypeVariable.vio: src/NewTypeVariable.v src/SimpleTypes.vio src/Gen.vio src/Schemes.vio src/Context.vio src/SubstSchm.vio src/MyLtacs.vio src/Subst.vio src/ListIds.vio src/LibTactics.vio
 src/WellFormed.vo src/WellFormed.glob src/WellFormed.v.beautified: src/WellFormed.v src/LibTactics.vo src/SimpleTypes.vo src/Subst.vo src/Varctxt.vo src/Occurs.vo src/MyLtacs.vo
 src/WellFormed.vio: src/WellFormed.v src/LibTactics.vio src/SimpleTypes.vio src/Subst.vio src/Varctxt.vio src/Occurs.vio src/MyLtacs.vio
-src/Typing.vo src/Typing.glob src/Typing.v.beautified: src/Typing.v src/LibTactics.vo src/Sublist.vo src/Context.vo src/ListIds.vo src/Schemes.vo src/SubstSchm.vo src/Rename.vo src/Disjoints.vo src/Subst.vo src/Gen.vo src/SimpleTypes.vo src/MyLtacs.vo src/NonEmptyList.vo
-src/Typing.vio: src/Typing.v src/LibTactics.vio src/Sublist.vio src/Context.vio src/ListIds.vio src/Schemes.vio src/SubstSchm.vio src/Rename.vio src/Disjoints.vio src/Subst.vio src/Gen.vio src/SimpleTypes.vio src/MyLtacs.vio src/NonEmptyList.vio
+src/Typing.vo src/Typing.glob src/Typing.v.beautified: src/Typing.v src/LibTactics.vo src/Sublist.vo src/Context.vo src/ListIds.vo src/Schemes.vo src/SubstSchm.vo src/Rename.vo src/Disjoints.vo src/Subst.vo src/Gen.vo src/SimpleTypes.vo src/MyLtacs.vo
+src/Typing.vio: src/Typing.v src/LibTactics.vio src/Sublist.vio src/Context.vio src/ListIds.vio src/Schemes.vio src/SubstSchm.vio src/Rename.vio src/Disjoints.vio src/Subst.vio src/Gen.vio src/SimpleTypes.vio src/MyLtacs.vio
 src/HoareMonad.vo src/HoareMonad.glob src/HoareMonad.v.beautified: src/HoareMonad.v src/LibTactics.vo src/SimpleTypes.vo src/Schemes.vo src/Occurs.vo src/Subst.vo src/Typing.vo
 src/HoareMonad.vio: src/HoareMonad.v src/LibTactics.vio src/SimpleTypes.vio src/Schemes.vio src/Occurs.vio src/Subst.vio src/Typing.vio
 src/Unify.vo src/Unify.glob src/Unify.v.beautified: src/Unify.v src/LibTactics.vo src/HoareMonad.vo src/SimpleTypes.vo src/Subst.vo src/NewTypeVariable.vo src/MyLtacs.vo src/Varctxt.vo src/Occurs.vo src/NonEmptyList.vo src/WellFormed.vo
