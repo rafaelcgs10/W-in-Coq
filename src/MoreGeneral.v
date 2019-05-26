@@ -36,35 +36,6 @@ Hint Constructors more_general.
 
 (** ** More general schemes lemmas *)
 
-Lemma more_general_in_list_FV_schm : forall sigma1 sigma2,
-    more_general sigma1 sigma2 ->
-    forall i, in_list_id i (FV_schm sigma1) = true ->
-         in_list_id i (FV_schm sigma2) = true.
-Proof.
-  induction sigma1; eauto.
-  - intros.
-    induction sigma2; eauto.
-    crush.
-    inverts* H.
-    specialize H1 with (tau:=var i1).
-    edestruct H1.
-    unfold is_schm_instance.
-    exists (nil:inst_subst).
-    reflexivity.
-    simpl in *. inverts* H.
-    crush.
-    inverts* H.
-    specialize H1 with (tau:=con i1).
-    edestruct H1.
-    exists (nil:inst_subst).
-    simpl in *. reflexivity.
-    simpl in *. inverts* H.
-    inverts* H.
-    specialize H1 with (tau:=var i1).
-    simpl in *. crush.
-    edestruct H1.
-Abort.
-
 Lemma sc_var_more_general_than_sigma : forall (sigma : schm) (st : id),
     more_general (sc_var st) sigma -> sigma = sc_var st.
 Proof.
@@ -458,71 +429,6 @@ Qed.
 
 Hint Resolve more_general_gen_ty.
 
-
-Lemma more_general_is_constructor : forall sigma1 sigma2, more_general sigma1 sigma2 ->
-                                                    is_constructor_schm sigma1 ->
-                                                    is_constructor_schm sigma2.
-Proof.
-  Abort.
-
-Lemma more_genera_ctx_in_ctx_is_constructor : forall G1 G2 i sigma,  more_general_ctx G1 G2 ->
-                                                                in_ctx i G2 = Some sigma ->
-                                                                is_constructor_schm sigma ->
-                                                                (exists sigma', in_ctx i G1 = Some sigma' /\
-                                                                   is_constructor_schm sigma').
-Proof.
-  Abort.
-
-Lemma typing_pat_in_a_more_general_ctx : forall (p : pat) (G2 G1 : ctx) (t : ty),
-    more_general_ctx G1 G2 -> has_type_pat G2 p t -> has_type_pat G1 p t.
-Proof.
-  intros.
-  (*
-  apply (has_type_pat_mut
-           (fun (G' : ctx) (p'': pat) tau => forall tau' G1' G2',
-                more_general_ctx G1' G2' -> has_type_pat G2' p'' tau' -> has_type_pat G1' p'' tau')
-           (fun (G' : ctx) l (tau : ty) => forall tau' G1' G2', 
-                more_general_ctx G1' G2' -> has_type_pats G2' l tau' -> has_type_pats G1' l tau')
-           ) with (c:=G2) (G2':=G2) (p:=p) (t:=t); intros; try (econstructor; fail); eauto.
-  - inverts* H2.
-    + skip.
-    + skip.
-    + apply is_schm_instance_must_be_some_arrow in H3.
-      destruct H3 as [tau1 [tau2 H3]].
-      subst.
-      inverts* H4.
-      inverts* H7.
-      skip.
-  - inverts* H2.
-    + econstructor.
-    + econstructor.
-  - inverts* H2.
-    + econstructor.
-    + econstructor.
-  - inverts* H6.
-    econstructor; eauto.
-*)
-Abort.
-
-(*
-Lemma typing_patterns_in_a_more_general_ctx : forall (l : non_empty_list pat) (G2 G1 : ctx) (t : ty),
-    more_general_ctx G1 G2 -> has_type_patterns G2 l t -> has_type_patterns G1 l t.
-Proof.
-  induction l.
-  - intros.
-    econstructor.
-    eapply typing_pat_in_a_more_general_ctx.
-    apply H.
-    inverts* H0.
-  - intros.
-    econstructor.
-    inverts* H0.
-    inverts* H0.
-Qed.
-
-Hint Resolve typing_patterns_in_a_more_general_ctx.
-*)
-
 Lemma more_general_ctx_app2 : forall G3 G2 G1, more_general_ctx G2 G1 ->
                                          more_general_ctx (G3 ++ G2) (G3 ++ G1).
 Proof.
@@ -542,35 +448,33 @@ Lemma typing_in_a_more_general_ctx : forall (e : term) (G2 G1 J : ctx) (t : ty),
 Proof.
   intros.
   apply (has_type_mut
-         (fun (G' J' : ctx) (e' : term) (t' : ty) => forall tau G2 G1 J,
-                       more_general_ctx G1 G2 -> has_type G2 J e' tau -> has_type G1 J e' tau)
-         (fun  (G' J' : ctx) (l' : cases) (tau' tau'' : ty) => forall tau1 tau2 G2 G1 J,
-                       more_general_ctx G1 G2 -> has_type_cases G2 J l' tau1 tau2 -> has_type_cases G1 J l' tau1 tau2)
-         ) with (c:=G2) (t0:=t) (t:=e) (G2:=G2) (c0:=J); intros; auto.
-  - skip.
-    (*
-    induction G0.
+         (fun (G' J' : ctx) (e' : term) (t' : ty) => forall tau' G2' G1' J',
+                       more_general_ctx G1' G2' -> has_type G2' J' e' tau' -> has_type G1' J' e' tau')
+         (fun  (G' J' : ctx) (l' : cases) (tau' tau'' : ty) => forall tau1 tau2 G2' G1' J',
+                       more_general_ctx G1' G2' -> has_type_cases G2' J' l' tau1 tau2 -> has_type_cases G1' J' l' tau1 tau2)
+         ) with (c:=G2) (t0:=t) (t:=e) (G2':=G2) (c0:=J); intros; auto.
+  - generalize dependent G1'.
+    induction G2'.
     + intros.
       inverts* H4.
       crush.
     + destruct a.
       intros.
-      inversion_clear H4.
+      inversion_clear H3.
       rename i into i', x into i.
       destruct (eq_id_dec i' i).
       * subst.
-        inversion_clear H5.
+        inversion_clear H4.
         apply var_ht with (sigma:=sigma1); eauto.
         crush.
-        simpl in H1.
+        simpl in H3.
         destruct (eq_id_dec i i); intuition.
-        inverts* H1.
-        inverts* H4.
+        inverts* H3.
+        inverts* H6.
       * apply has_type_var_ctx_diff; eauto.
-        eapply IHG0; eauto.
-        inverts* H2.
+        eapply IHG2'; eauto.
+        inverts* H4.
         econstructor; crush.
-*)
   (** lambda case *)
   - intros.
     inverts* H4.

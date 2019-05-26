@@ -124,7 +124,13 @@ Lemma is_constructor_schm_is_stable_under_substitution : forall sigma s,
     is_constructor_schm  sigma -> is_constructor_schm (apply_subst_schm s sigma).
 Proof.
   induction sigma; intros; try econstructor; try inverts* H; eauto.
-  Admitted.
+  fold (apply_subst_schm s sigma1).
+  rewrite apply_subts_schm_no_vars; eauto.
+  fold (apply_subst_schm s sigma2).
+  rewrite apply_subts_schm_no_vars; eauto.
+  fold (apply_subst_schm s sigma1).
+  rewrite apply_subts_schm_no_vars; eauto.
+Qed.
 
 Hint Resolve is_constructor_schm_is_stable_under_substitution.
 
@@ -140,15 +146,6 @@ Proof.
 Qed.
 
 Hint Resolve is_schm_instance_is_stable_under_substitution.
-
-Lemma in_ctx_stable_is_under_substitution2 : forall s G sigma x,
-    is_constructor_schm sigma ->
-    in_ctx x (apply_subst_ctx s G) = Some sigma -> in_ctx x G = Some sigma.
-Proof.
-  intros.
-  induction sigma.
-  - inverts* H.
-      Abort.
 
 Lemma not_in_ctx_stable_is_under_substitution : forall G s x,
     in_ctx x G = None -> in_ctx x (apply_subst_ctx s G) = None.
@@ -311,7 +308,7 @@ Qed.
 
 Hint Resolve stronger_has_type_pat_is_stable_under_substitution.
 
-Lemma weaker_has_type_pat_is_stable_under_substitution_1 : forall ps s tau G,
+Lemma weaker_has_type_pat_is_stable_under_substitution : forall ps s tau G,
     has_type_pat G ps tau -> has_type_pat (apply_subst_ctx s G) ps tau.
 Proof.
   intros.
@@ -332,17 +329,9 @@ Proof.
     econstructor; eauto.
 Qed.    
 
-Hint Resolve weaker_has_type_pat_is_stable_under_substitution_1.
+Hint Resolve weaker_has_type_pat_is_stable_under_substitution.
 
-Lemma weaker_has_type_pat_is_stable_under_substitution_2 : forall ps s tau J,
-    has_type_pat (apply_subst_ctx s J) ps tau -> has_type_pat J ps tau.
-  intros.
-  inverts* H.
-  econstructor.
-  econstructor.
-  Abort.
 (** has_pat is stable under substitution inversion *)
-
 Lemma has_type_pats_is_stable_under_substitution : forall ps s tau G,
     has_type_pats G ps tau -> has_type_pats (apply_subst_ctx s G) ps (apply_subst s tau).
 Proof.
@@ -418,7 +407,7 @@ Proof.
                          has_type G J e' tau -> has_type G (apply_subst_ctx s J) e' tau)
            (fun  (G' : ctx) (J' : ctx) (l' : cases) (tau' tau'' : ty) => forall s J tau1 tau2 G,
               has_type_cases G J l' tau1 tau2 -> has_type_cases G (apply_subst_ctx s J) l' tau1 tau2)
-           ) with (c:=G) (c0:=J) (t0:=tau); intros.
+           ) with (c:=G) (c0:=J) (t0:=tau); intros; eauto.
   - inversion H2.
     subst.
     econstructor; eauto.
@@ -438,11 +427,8 @@ Proof.
   - inverts* H3.
     econstructor; eauto.
   - inverts* H4.
-Admitted.
-
-Lemma weaker_has_type_is_stable_under_substitution_2 : forall e s tau G J,
-    has_type G (apply_subst_ctx s J) e tau -> has_type G  J e tau.
-  Abort.
+    econstructor; eauto.
+Qed.
 
 Hint Resolve weaker_has_type_is_stable_under_substitution.
 

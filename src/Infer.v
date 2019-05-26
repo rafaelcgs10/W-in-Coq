@@ -634,12 +634,7 @@ Next Obligation. (* Case : postcondition of let *)
     repeat rewrite apply_subst_ctx_compose.
     eapply has_type_is_stable_under_substitution.
     erewrite <- disj_ctx_subst.
-    erewrite <- disj_ctx_subst'.
-    eapply has_type_is_stable_under_substitution.
     eauto.
-    rewrite dom_rename_to_subst.
-    rewrite H6.
-    skip.
     rewrite dom_rename_to_subst.
     rewrite H6.
     apply free_and_bound_are_disjoints; eauto.
@@ -693,10 +688,9 @@ Next Obligation.
   - skip.
   - econstructor.
     repeat rewrite apply_subst_ctx_compose.
-    eapply has_type_is_stable_under_substitution.
-    apply H5.
+    eauto.
     repeat rewrite apply_subst_ctx_compose.
-    assumption.
+    eauto.
   - skip.
 Defined.
 Next Obligation.
@@ -751,12 +745,11 @@ Next Obligation.
     rewrite <- H18.
     apply has_type_is_stable_under_substitution.
     apply has_type_is_stable_under_substitution.
-    apply H12.
+    eauto.
  - repeat rewrite apply_subst_ctx_compose in *.
    repeat rewrite apply_compose_equiv.
    repeat rewrite apply_compose_equiv in H15.
-   (** aqui *)
-    apply has_type_cases_is_stable_under_substitution.
+   apply has_type_cases_is_stable_under_substitution.
    apply H15.
 Defined.
  
