@@ -569,3 +569,5 @@ Proof.
     + eauto.
 Qed.
 
+Lemma weaker_has_type_cases_is_stable_under_substitution : forall e s tau G J,
+    has_type_cases G J cs tau tau' -> has_type_cases (apply_subst_ctx s G) (apply_subst_ctx s J) cs (apply_subst s tau) (apply_subst s tau').

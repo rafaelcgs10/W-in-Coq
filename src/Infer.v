@@ -350,7 +350,12 @@ Definition completeness (e : term) (G J : ctx) (tau : ty) (s : substitution) (st
     has_type (apply_subst_ctx phi G) J e tau' -> 
     exists s', tau' = apply_subst s' tau /\
           (forall x : id, x < st -> apply_subst phi (var x) = apply_subst s' (apply_subst s (var x))).
-    
+
+Definition completeness_cases (cs : cases) (G J : ctx) (tau1 tau2 : ty) (s : substitution) (st : id) :=
+  forall (tau' : ty) (phi : substitution),
+    has_type_cases (apply_subst_ctx phi G) J cs (apply_subst phi tau1) tau' ->
+    exists s', tau' = apply_subst s' tau2 /\
+          (forall x : id, x < st -> apply_subst phi (var x) = apply_subst s' (apply_subst s (var x))).
 
 (** * The algorithm W itself *)
 
@@ -399,7 +404,8 @@ Program Fixpoint W (e : term) (G J: ctx) {struct e} :
 with infer_cases (cs : cases) (tau : ty) (G J : ctx) {struct cs} :
        @Infer (fun i => new_tv_ctx G i /\ new_tv_ctx J i /\ new_tv_ty tau i) (ty * substitution)
               (fun i x f => i <= f /\ new_tv_ty (fst x) f /\ new_tv_subst (snd x) f /\
-                         has_type_cases (apply_subst_ctx (snd x) G) (apply_subst_ctx (snd x) J) cs (apply_subst (snd x) tau) (fst x)) :=
+                         has_type_cases (apply_subst_ctx (snd x) G) (apply_subst_ctx (snd x) J) cs (apply_subst (snd x) tau) (fst x) /\
+                         completeness_cases cs G J tau (fst x) (snd x) i) :=
        match cs with
        | one_case p e =>
           tau_J_s <- inferPat p J ;
@@ -746,7 +752,10 @@ Next Obligation.
     try split; eauto.
 Defined.
 Next Obligation.
-  destruct (W e' G J >>= _); crush.
+  destruct (W e' G J >>= _); crush;
+    rename x2 into tau, x0 into tau';
+    rename x into i0, x1 into i1, t into i2;
+    rename t2 into s2, t1 into s1.
   - repeat rewrite apply_subst_ctx_compose;
     eauto.
   - repeat rewrite apply_subst_ctx_compose;
@@ -756,7 +765,24 @@ Next Obligation.
     eauto.
     repeat rewrite apply_subst_ctx_compose.
     eauto.
-  - skip.
+  - intro. intros.
+    rename H8 into SOUND_case.
+    rename H6 into COMPL_e', H5 into SOUND_e'.
+    rename H11 into COMPL_cs, H10 into SOUND_cs.
+    inverts SOUND_case.
+    rename H11 into SOUND_e'2, H13 into SOUND_cs_2.
+    unfold completeness_cases in COMPL_cs.
+    edestruct COMPL_e' as [s'' [PRINC_e1 PRINC_e2]].
+    {eauto. }
+    edestruct COMPL_cs as [s' [PRINC_cs1 PRINC_cs2]].
+    {skip. }
+    exists s'.
+    split.
+    + eauto.
+    + intros.
+      repeat rewrite apply_compose_equiv.
+      erewrite <- (new_tv_compose_subst_type s'' s2 s'); eauto.
+    (** aqui *)
     Unshelve. auto.
     Unshelve. auto.
     Unshelve. auto.
