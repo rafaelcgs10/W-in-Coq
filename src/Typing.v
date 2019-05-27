@@ -32,6 +32,7 @@ with pats : Type :=
 (** * Lambda term definition *)
 
 Inductive term : Set :=
+| constr_t   : id -> term
 | var_t   : id -> term
 | app_t   : term -> term -> term
 | let_t   : id -> term -> term -> term
@@ -369,6 +370,10 @@ Hint Resolve has_type_pats_is_stable_under_substitution.
 (** * Syntax-directed rule system of Damas-Milner *)
 
 Inductive has_type : ctx -> ctx -> term -> ty -> Prop :=
+| constr_ht : forall x G J sigma tau, in_ctx x J = Some sigma ->
+                            is_constructor_schm sigma ->
+                            is_schm_instance tau sigma ->
+                            has_type G J (constr_t x) tau
 | var_ht : forall x G J sigma tau, in_ctx x G = Some sigma ->
                             is_schm_instance tau sigma ->
                             has_type G J (var_t x) tau
@@ -408,6 +413,12 @@ Proof.
            (fun  (G' : ctx) (J' : ctx) (l' : cases) (tau' tau'' : ty) => forall s J tau1 tau2 G,
               has_type_cases G J l' tau1 tau2 -> has_type_cases G (apply_subst_ctx s J) l' tau1 tau2)
            ) with (c:=G) (c0:=J) (t0:=tau); intros; eauto.
+  (** constr case *)
+  - inverts* H3.
+    econstructor;
+    eauto.
+    crush.
+  (** var case *)
   - inversion H2.
     subst.
     econstructor; eauto.
@@ -445,6 +456,15 @@ Proof.
            (fun  (G' : ctx) (J' : ctx) (l' : cases) (tau' tau'' : ty) => forall s J tau1 tau2 G,
               has_type_cases G J l' tau1 tau2 -> has_type_cases (apply_subst_ctx s G) J l' (apply_subst s tau1) (apply_subst s tau2))
            ) with (c:=G) (c0:=J) (t0:=tau); intros.
+  (** constr case *)
+  - inverts* H3.
+    econstructor.
+    apply H5.
+    eauto.
+    inverts* H9.
+    exists (map_apply_subst_ty s0 x0).
+    eapply subst_inst_subst_type in H3.
+    crush.
   (** var case *)
   - inversion H2.
     subst.

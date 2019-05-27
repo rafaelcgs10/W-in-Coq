@@ -453,6 +453,8 @@ Proof.
          (fun  (G' J' : ctx) (l' : cases) (tau' tau'' : ty) => forall tau1 tau2 G2' G1' J',
                        more_general_ctx G1' G2' -> has_type_cases G2' J' l' tau1 tau2 -> has_type_cases G1' J' l' tau1 tau2)
          ) with (c:=G2) (t0:=t) (t:=e) (G2':=G2) (c0:=J); intros; auto.
+  - inverts* H5.
+    econstructor; eauto.
   - generalize dependent G1'.
     induction G2'.
     + intros.

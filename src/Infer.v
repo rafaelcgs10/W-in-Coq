@@ -334,8 +334,8 @@ Defined.
 
 (** * Completeness theorem definition. *)
 
-Definition completeness (e : term) (G : ctx) (tau : ty) (s : substitution) (st : id) :=
-  forall (tau' : ty) (phi : substitution) J,
+Definition completeness (e : term) (G J : ctx) (tau : ty) (s : substitution) (st : id) :=
+  forall (tau' : ty) (phi : substitution),
     has_type (apply_subst_ctx phi G) J e tau' -> 
     exists s', tau' = apply_subst s' tau /\
           (forall x : id, x < st -> apply_subst phi (var x) = apply_subst s' (apply_subst s (var x))).
@@ -344,12 +344,18 @@ Definition completeness (e : term) (G : ctx) (tau : ty) (s : substitution) (st :
 (** * The algorithm W itself *)
 
 Program Fixpoint W (e : term) (G J: ctx) {struct e} :
-  @Infer (fun i => new_tv_ctx G i) (ty * substitution)
+  @Infer (fun i => new_tv_ctx G i /\ new_tv_ctx J i) (ty * substitution)
          (fun i x f => i <= f /\ new_tv_subst (snd x) f /\ new_tv_ty (fst x) f /\
                     new_tv_ctx (apply_subst_ctx (snd x) G) f /\
+                    new_tv_ctx (apply_subst_ctx (snd x) J) f /\
                     has_type (apply_subst_ctx ((snd x)) G) (apply_subst_ctx (snd x) J) e (fst x) /\
-                    completeness e G (fst x) ((snd x)) i) :=
+                    completeness e G J (fst x) ((snd x)) i) :=
   match e with
+  | constr_t x =>
+      sigma <- look_dep x J ;
+      _ <- check_is_constructor sigma ;
+      tau <- schm_inst_dep sigma ;
+      ret (tau, nil)
   | var_t x =>
       sigma <- look_dep x G ;
       tau <- schm_inst_dep sigma ;
@@ -380,7 +386,7 @@ Program Fixpoint W (e : term) (G J: ctx) {struct e} :
       ret (fst tau2_s2, compose_subst (snd tau1_s1) (snd tau2_s2)) 
   end
 with infer_cases (cs : cases) (tau : ty) (G J : ctx) {struct cs} :
-       @Infer (fun i => new_tv_ctx G i) (ty * substitution)
+       @Infer (fun i => new_tv_ctx G i /\ new_tv_ctx J i) (ty * substitution)
               (fun i x f => i <= f /\ has_type_cases (apply_subst_ctx (snd x) G) (apply_subst_ctx (snd x) J) cs (apply_subst (snd x) tau) (fst x)) :=
        match cs with
        | one_case p e =>
@@ -402,6 +408,41 @@ with infer_cases (cs : cases) (tau : ty) (G J : ctx) {struct cs} :
 Next Obligation.
   intros; unfold top; auto.
 Defined.
+Next Obligation.  (* Case: postcondition of constr *)
+  edestruct (look_dep x J >>= _); crush;
+    rename x into st0, x2 into st1;
+    rename x0 into tau', x1 into sigma'.
+  - (* Case: constr_t soundness *)
+    econstructor; eauto. 
+    unfold is_schm_instance. exists (compute_inst_subst x3 (max_gen_vars sigma')).
+    rewrite apply_subst_schm_nil. auto.
+  (* Case: constr_t completeness *)
+  - subst.
+    unfold completeness.
+    intros.
+    inverts* H3.
+    inverts* H9.
+    rewrite H5 in H1.
+    inverts* H1.
+    rename x into is_s.
+    exists ((compute_subst x3 is_s) ++ phi).
+    splits.
+    + eapply new_tv_schm_compute_inst_subst with (p := max_gen_vars sigma'). 
+      * eapply new_tv_ctx_implies_new_tv_schm; 
+          crush.
+      * reflexivity.
+      * auto.
+      * sort.
+        crush.
+    + intros.
+      rewrite apply_subst_nil.
+      rewrite find_subst_some_apply_app_compute_subst.
+      reflexivity.
+      assumption. 
+Defined.
+Next Obligation.
+  intros; unfold top; auto.
+Defined.
 Next Obligation.  (* Case: postcondition of var *)
   edestruct (look_dep x G >>= _);
     crush; 
@@ -415,27 +456,25 @@ Next Obligation.  (* Case: postcondition of var *)
   - subst.
     unfold completeness.
     intros.
-    inversion H3.
+    inversion H2.
     subst.
-    inversion H8.
+    inversion H7.
     rename x into is_s.
-    destruct (@assoc_subst_exists G st0 phi sigma H5) as [sigma' H5'].
-    destruct H5' as [H51  H52].
-    destruct H8.
+    destruct (@assoc_subst_exists G st0 phi sigma H4) as [sigma' H4'].
+    destruct H4' as [H41  H42].
+    destruct H7.
     exists ((compute_subst st1 is_s) ++ phi).
     splits.
     + eapply new_tv_schm_compute_inst_subst with (p := max_gen_vars sigma'). 
       * eapply new_tv_ctx_implies_new_tv_schm; 
           crush.
       * reflexivity.
-      * rewrite H2 in H51.
-        inversion H51. subst.
-        assumption.
+      * rewrite H1 in H41.
+        inverts* H41.
       * sort.
-        rewrite H2 in H51.
-        inversion H51.
-        subst.
-        assumption.
+        rewrite H1 in H41.
+        inverts* H41.
+        crush.
     + intros.
       rewrite apply_subst_nil.
       rewrite find_subst_some_apply_app_compute_subst.
@@ -445,7 +484,8 @@ Defined.
 Next Obligation. 
   splits; intros; unfold top; auto;
     crush. intros. crush. 
-  destructs H0; eauto.
+  destructs H; eauto.
+  splits; crush.
 Defined.
 Next Obligation. (* Case: postcondition of lambda  *)
   simpl.
@@ -456,7 +496,7 @@ Next Obligation. (* Case: postcondition of lambda  *)
   - destruct (find_subst s st0).
     + rename t into tau_l.
       econstructor; eauto.
-      inversion H4.
+      inversion H3.
       subst.
       eapply new_tv_ty_to_schm; eauto.
     + econstructor; eauto.
@@ -470,20 +510,20 @@ Next Obligation. (* Case: postcondition of lambda  *)
   (* Subcase : completeness lambda *)
   - unfold completeness. 
     intros.
-    inversion_clear H2.
+    inversion_clear H1.
     fold (apply_subst s (var st0)).
     cut (exists s' : substitution,
             tau'0 = apply_subst s' tau_r /\
             (forall x' : id, x' < S st0 ->  apply_subst (((st0, tau):: phi)) (var x') =
                                       apply_subst s' (apply_subst s (var x'))) ) .
     intros.
-    destruct H2; auto.
-    destruct H2; auto.
+    destruct H1; auto.
+    destruct H1; auto.
     rename x0 into s'.
     exists s'.
     split.
     * rewrite apply_subst_arrow.
-      rewrite H2 at 1.
+      rewrite H1 at 1.
       specialize H8 with (x' := st0).
       simpl in *.
       destruct (eq_id_dec st0 st0); intuition.
@@ -506,17 +546,17 @@ Next Obligation.
   unfold top.
   intros; splits; auto.
   intros; splits; auto.
-  destructs H0;
+  destructs H;
     try splits; auto.
 Defined.
 Next Obligation. (* Case: postcondition of application  *)
-  destruct (W l G J >>= _).
+  destruct (W l G J >>= _);
   crush;
     clear W;
-    rename H7 into MGU, H13 into MGU', H15 into MGU'';
+    rename H7 into MGU, H14 into MGU', H16 into MGU'';
     rename x4 into alpha, x into st0, x1 into st1;
     rename x3 into mu, t1 into s1, t2 into s2;
-    rename H6 into COMP_L, H12 into COMP_R;
+    rename H6 into COMP_L, H13 into COMP_R;
     rename x2 into tauL, x0 into tauLR.
   (* Subcase : new_tv_subst application *)
   - apply new_tv_compose_subst; eauto.
@@ -531,7 +571,15 @@ Next Obligation. (* Case: postcondition of application  *)
     apply MGU'; eauto.
     splits; eauto.
     econstructor; eauto.
-  (* Subcase : new_tv_ctx application *)
+  (* Subcase : new_tv_ctx G application *)
+  - subst.
+    eapply new_tv_s_ctx; eauto.
+    apply new_tv_compose_subst; eauto.
+    apply new_tv_compose_subst; eauto.
+    eapply MGU'.
+    splits; eauto.
+    econstructor; eauto.
+  (* Subcase : new_tv_ctx J application *)
   - subst.
     eapply new_tv_s_ctx; eauto.
     apply new_tv_compose_subst; eauto.
@@ -597,20 +645,22 @@ Next Obligation.
   unfold top.
   intros; splits; eauto.
   intros; splits; eauto.
-  destructs H0;
+  destructs H;
     try splits; eauto.
 Defined.
 Next Obligation. (* Case : postcondition of let *)
   destruct (W e1 G J >>= _).
   crush;
     clear W;
-    rename H11 into SOUND_e2, H5 into SOUND_e1;
-    rename H6 into COMP_e1, H12 into COMP_e2;
+    rename H12 into SOUND_e2, H5 into SOUND_e1;
+    rename H6 into COMP_e1, H13 into COMP_e2;
     rename x into st0, t into st3;
     rename x3 into tau_e2, t2 into s2, x2 into st2;
     rename x1 into tau_e1, t1 into s1, x0 into st1;
     eauto.
-  (* Subcase : new_tv_ctx let *)
+  (* Subcase : new_tv_ctx G let *)
+  - eapply new_tv_s_ctx; eauto. 
+  (* Subcase : new_tv_ctx J let *)
   - eapply new_tv_s_ctx; eauto. 
   (* Subcase : soundness let *)
   - pose proof exists_renaming_not_concerned_with (gen_ty_vars tau_e1 (apply_subst_ctx s1 G))
@@ -643,8 +693,6 @@ Next Obligation. (* Case : postcondition of let *)
     rewrite <- subst_add_type_scheme; eauto.
     rewrite <- gen_apply_rename_to_subst; eauto.
     rewrite apply_subst_ctx_compose; eauto.
-    Unshelve. auto.
-    Unshelve. auto.
   (* Subcase : completeness let *)
   - intro. intros.
     rename H5 into SOUND_let.
@@ -673,16 +721,21 @@ Next Obligation. (* Case : postcondition of let *)
     eapply more_general_gen_ty_before_apply_subst.
     rewrite <- PRINC_e11.
     erewrite <- new_tv_compose_subst_ctx; eauto.
+    Unshelve. auto.
+    Unshelve. auto.
+    Unshelve. auto.
+    Unshelve. auto.
 Defined.
 Next Obligation.
   unfold top.
   intros; splits; eauto.
   intros; splits; eauto.
-  destructs H0;
+  destructs H;
     try split; eauto.
 Defined.
 Next Obligation.
   destruct (W e' G J >>= _); crush.
+  - skip.
   - skip.
   - skip.
   - skip.
@@ -694,12 +747,13 @@ Next Obligation.
   - skip.
 Defined.
 Next Obligation.
-  unfold top.
-  intros; splits; eauto.
-  skip.
-  intros; splits; eauto.
-  destructs H0;
+  unfold top;
+  repeat (intros; splits; eauto); 
+  destructs H;
     try split; eauto.
+  destructs H0; subst;
+    try split; eauto.
+  skip.
   skip.
 Defined.
 Next Obligation.
@@ -713,7 +767,7 @@ Next Obligation.
   econstructor.
   - repeat rewrite apply_compose_equiv.
     repeat rewrite apply_subst_ctx_compose.
-    rewrite H7.
+    rewrite H6.
     apply has_type_pat_is_stable_under_substitution.
     apply has_type_pat_is_stable_under_substitution.
     assumption.
@@ -736,7 +790,7 @@ Next Obligation.
 - econstructor.
   + repeat rewrite apply_compose_equiv.
     repeat rewrite apply_subst_ctx_compose.
-    rewrite H7.
+    rewrite H6.
     repeat apply has_type_pat_is_stable_under_substitution.
     assumption.
   + repeat rewrite apply_compose_equiv.
