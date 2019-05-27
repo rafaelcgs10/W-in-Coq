@@ -807,6 +807,18 @@ Qed.
 
 Hint Resolve new_tv_s_ctx.
 
+Lemma new_tv_ctx_app : forall G1 G2 i, new_tv_ctx G1 i -> new_tv_ctx G2 i -> new_tv_ctx (G1 ++ G2) i.
+Proof.
+  induction G1; crush.
+  inverts* H.
+Qed.
+
+Lemma new_tv_ty_return_of_ty : forall tau i, new_tv_ty tau i -> new_tv_ty (return_of_ty tau) i.
+Proof.
+  induction tau; crush.
+  inverts* H.
+Qed.
+
 Lemma new_tv_subst_trans : forall (s : substitution) (i1 i2 : id),
   new_tv_subst s i1 -> i1 <= i2 -> new_tv_subst s i2.
 Proof.

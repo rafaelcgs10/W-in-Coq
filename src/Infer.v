@@ -145,7 +145,7 @@ Defined.
 Program Fixpoint inferPat (p : pat) (G : ctx) {struct p} :
   @Infer (fun i => new_tv_ctx G i) (ty * ctx * substitution)
          (fun i x f => i <= f /\ new_tv_ctx (snd (fst x)) f /\
-                    new_tv_ty (fst (fst x)) f /\
+                    new_tv_ty (fst (fst x)) f /\ new_tv_subst (snd x) f /\
                     has_type_pat (apply_subst_ctx (snd x) G) p (fst (fst x))) :=
   match p with
   | var_p x =>
@@ -162,7 +162,7 @@ Program Fixpoint inferPat (p : pat) (G : ctx) {struct p} :
   end
 with inferPats (pss : pats) (tau: ty) (G : ctx) {struct pss} : 
   @Infer (fun i => new_tv_ctx G i /\ new_tv_ty tau i) (substitution * ctx)
-         (fun i x f => i <= f /\ new_tv_ctx (snd x) f /\
+         (fun i x f => i <= f /\ new_tv_ctx (snd x) f /\ new_tv_subst (fst x) f /\
                     has_type_pats (apply_subst_ctx (fst x) G) pss (apply_subst (fst x) tau)) :=
        match pss, tau with
        | no_pats, (con i) => ret (nil, G)
@@ -203,21 +203,23 @@ Next Obligation.
   splits; eauto.
 Defined.
 Next Obligation.
-  destruct (look_dep x G >>= _); crush; clear inferPats; sort.
-  skip.
-  skip.
-  rename x2 into tau.
-  rename x3 into alpha.
-  rename x1 into sigma.
-  rename x4 into s.
+  destruct (look_dep x G >>= _); crush; clear inferPats; sort;
+  rename x2 into tau;
+  rename x3 into alpha;
+  rename x1 into sigma;
+  rename x4 into s;
   rename t2 into G'.
+  - eapply new_tv_apply_subst_ty. 
+    apply new_tv_ty_return_of_ty.
+    eapply new_tv_ty_trans_le; eauto.
+    auto.
   - destruct sigma.
     (** sc_var *)
     + inverts* H3.
     (** sc_con *)
     + simpl in H0.
       inverts* H0.
-      inverts* H7.
+      inverts* H8.
       eapply has_type_pat_is_stable_under_substitution; eauto.
       econstructor; eauto.
       exists (nil:inst_subst). reflexivity.
@@ -230,14 +232,14 @@ Next Obligation.
       cases (apply_inst_subst (compute_inst_subst alpha (Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2))) sigma2).
       inversion H0.
       rename t0 into tau1, t1 into tau2.
-      rewrite <- H8 in H7.
-      inverts* H7.
+      rewrite <- H9 in H8.
+      inverts* H8.
       eapply has_type_pat_is_stable_under_substitution; eauto.
       econstructor; eauto.
       exists ((compute_inst_subst alpha (max_gen_vars (sc_appl sigma1 sigma2)))).
       simpl.
       rewrite Eq, Eq0.
-      rewrite H8. reflexivity.
+      rewrite H9. reflexivity.
       econstructor.
       inverts* H0.
       inverts* H0.
@@ -248,8 +250,8 @@ Next Obligation.
       inversion H0.
       rename t0 into tau1, t1 into tau2.
       erewrite apply_subst_return_of_ty; eauto.
-      rewrite <- H8 in H7.
-      simpl in H7.
+      rewrite <- H9 in H8.
+      simpl in H8.
       eapply constr_htp with (sigma:= (apply_subst_schm s (sc_arrow sigma1 sigma2))).
       eauto.
       eauto.
@@ -291,30 +293,39 @@ Next Obligation.
   destruct x0.
   simpl in *.
   splits; eauto.
-  eapply new_tv_s_ctx.
-  eapply new_tv_s_ctx.
-  eauto.
-  eauto.
-  skip.
-  skip.
-  skip.
+  eapply new_tv_s_ctx; eauto.
+  eapply H2; eauto.
+  crush.
+  eapply new_tv_apply_subst_ty; eauto.
+  eapply new_tv_ty_trans_le; auto.
+  inverts* n0.
+  eapply new_tv_apply_subst_ty; eauto.
+  inverts* n0.
+  eapply H2; crush.
+  inverts* n0.
   Unshelve. auto.
   Unshelve. auto.
 Defined.
 Next Obligation.
   destruct (inferPat p G >>= _); crush.
-  rename x1 into s1, x2 into s2.
-  rename t3 into G', t1 into s.
+  rename x1 into s1, x2 into s2;
+  rename t3 into G', t1 into s;
   rename x0 into tau.
-  econstructor.
-  - repeat erewrite apply_compose_equiv. 
-    repeat erewrite apply_subst_ctx_compose. 
-    crush.
-  - repeat erewrite apply_compose_equiv. 
-    repeat erewrite apply_subst_ctx_compose. 
-    auto.
-Unshelve. auto.
-Unshelve. auto.
+  - eapply new_tv_compose_subst; eauto. 
+    eapply new_tv_compose_subst; eauto. 
+    eapply new_tv_subst_trans; eauto.
+    apply H6; crush.
+    eapply new_tv_apply_subst_ty; eauto.
+    inverts* n0.
+  - econstructor.
+    + repeat erewrite apply_compose_equiv. 
+      repeat erewrite apply_subst_ctx_compose. 
+      crush.
+    + repeat erewrite apply_compose_equiv. 
+      repeat erewrite apply_subst_ctx_compose. 
+      auto.
+      Unshelve. auto.
+      Unshelve. auto.
 Defined.
 Next Obligation.
   unfold top; auto.
@@ -386,8 +397,9 @@ Program Fixpoint W (e : term) (G J: ctx) {struct e} :
       ret (fst tau2_s2, compose_subst (snd tau1_s1) (snd tau2_s2)) 
   end
 with infer_cases (cs : cases) (tau : ty) (G J : ctx) {struct cs} :
-       @Infer (fun i => new_tv_ctx G i /\ new_tv_ctx J i) (ty * substitution)
-              (fun i x f => i <= f /\ has_type_cases (apply_subst_ctx (snd x) G) (apply_subst_ctx (snd x) J) cs (apply_subst (snd x) tau) (fst x)) :=
+       @Infer (fun i => new_tv_ctx G i /\ new_tv_ctx J i /\ new_tv_ty tau i) (ty * substitution)
+              (fun i x f => i <= f /\ new_tv_ty (fst x) f /\ new_tv_subst (snd x) f /\
+                         has_type_cases (apply_subst_ctx (snd x) G) (apply_subst_ctx (snd x) J) cs (apply_subst (snd x) tau) (fst x)) :=
        match cs with
        | one_case p e =>
           tau_J_s <- inferPat p J ;
@@ -735,76 +747,140 @@ Next Obligation.
 Defined.
 Next Obligation.
   destruct (W e' G J >>= _); crush.
-  - skip.
-  - skip.
-  - skip.
-  - skip.
+  - repeat rewrite apply_subst_ctx_compose;
+    eauto.
+  - repeat rewrite apply_subst_ctx_compose;
+    eauto.
   - econstructor.
     repeat rewrite apply_subst_ctx_compose.
     eauto.
     repeat rewrite apply_subst_ctx_compose.
     eauto.
   - skip.
+    Unshelve. auto.
+    Unshelve. auto.
+    Unshelve. auto.
+    Unshelve. auto.
 Defined.
 Next Obligation.
   unfold top;
   repeat (intros; splits; eauto); 
   destructs H;
-    try split; eauto.
+    try split; eauto;
   destructs H0; subst;
     try split; eauto.
-  skip.
-  skip.
+  - destruct x0. simpl. destruct p0. simpl in *.
+    repeat rewrite apply_subst_ctx_app_ctx.
+    eapply new_tv_ctx_app.
+    eapply new_tv_s_ctx; eauto.
+    eapply new_tv_s_ctx; eauto.
+  - destruct x0. simpl. destruct p0. simpl in *.
+    repeat rewrite apply_subst_ctx_app_ctx.
+    eapply new_tv_s_ctx; eauto.
+    Unshelve. auto.
+    Unshelve. auto.
+    Unshelve. auto.
+    Unshelve. auto.
 Defined.
 Next Obligation.
-  destruct (inferPat p J >>= _); crush.
-  rename t3 into s1. 
-  rename x0 into tau'.
-  rename x2 into s2.
-  rename t1 into s3.
-  rename t2 into J'.
+  destruct (inferPat p J >>= _); crush;
+  rename t3 into s1; 
+  rename x0 into tau';
+  rename x2 into s2;
+  rename t1 into s3;
+  rename t2 into J';
   rename x1 into tau''.
-  econstructor.
-  - repeat rewrite apply_compose_equiv.
-    repeat rewrite apply_subst_ctx_compose.
-    rewrite H6.
-    apply has_type_pat_is_stable_under_substitution.
-    apply has_type_pat_is_stable_under_substitution.
-    assumption.
-  - repeat rewrite apply_compose_equiv.
-    repeat rewrite apply_subst_ctx_compose.
-    repeat rewrite <- apply_subst_ctx_app_ctx.
-    apply H12.
+  - eapply new_tv_compose_subst; eauto.
+    eapply new_tv_compose_subst; eauto.
+    eapply new_tv_subst_trans;
+    eauto. 
+  - econstructor.
+    + repeat rewrite apply_compose_equiv.
+      repeat rewrite apply_subst_ctx_compose.
+      rewrite H7.
+      apply has_type_pat_is_stable_under_substitution.
+      apply has_type_pat_is_stable_under_substitution.
+      assumption.
+    + repeat rewrite apply_compose_equiv.
+      repeat rewrite apply_subst_ctx_compose.
+      repeat rewrite <- apply_subst_ctx_app_ctx.
+      eauto.
 Defined.      
 Next Obligation.
-  Admitted.
+  intros. simpl. unfold top;
+  repeat (intros; splits; intros; subst; eauto);
+  destruct x0, p0; simpl;
+  destructs H0; subst; eauto;
+  destructs H; subst; eauto.
+  - simpl in *.
+    repeat rewrite apply_subst_ctx_app_ctx.
+    eapply new_tv_ctx_app.
+    eapply new_tv_s_ctx; eauto.
+    eapply new_tv_s_ctx; eauto.
+  - eapply new_tv_s_ctx; eauto.
+  - destruct x2. simpl in *.
+    destructs H1.
+    repeat rewrite apply_subst_ctx_compose. 
+    eapply new_tv_s_ctx; eauto.
+    eapply new_tv_s_ctx; eauto.
+    eapply new_tv_subst_trans.
+    apply H3.
+    crush. auto.
+  - destruct x2. simpl in *.
+    destructs H1.
+    repeat rewrite apply_subst_ctx_compose. 
+    eapply new_tv_s_ctx; eauto.
+    eapply new_tv_s_ctx; eauto.
+    eapply new_tv_subst_trans.
+    eapply H3; eauto.
+    auto.
+  - destruct x2. simpl in *.
+    destructs H1.
+    repeat rewrite apply_compose_equiv. 
+    eapply new_tv_apply_subst_ty; eauto.
+    eapply new_tv_apply_subst_ty; eauto.
+    eapply new_tv_subst_trans.
+    eapply H3; eauto.
+    auto.
+    Unshelve. auto.
+    Unshelve. auto.
+    Unshelve. auto.
+    Unshelve. auto.
+Defined.
 Next Obligation.
-  destruct (inferPat p J >>= _); crush.
-  rename t3 into s1. 
-  rename x2 into s2.
-  rename t1 into s3.
-  rename x1 into tau'.
-  rename x5 into tau''.
+  destruct (inferPat p J >>= _); crush;
+  rename t3 into s1; 
+  rename x2 into s2;
+  rename t1 into s3;
+  rename x1 into tau';
+  rename x5 into tau'';
   rename x7 into s4'.
-  econstructor.
-- econstructor.
-  + repeat rewrite apply_compose_equiv.
-    repeat rewrite apply_subst_ctx_compose.
-    rewrite H6.
-    repeat apply has_type_pat_is_stable_under_substitution.
-    assumption.
-  + repeat rewrite apply_compose_equiv.
-    repeat rewrite apply_subst_ctx_compose.
-    repeat rewrite <- apply_subst_ctx_app_ctx.
-    rewrite <- H18.
-    apply has_type_is_stable_under_substitution.
-    apply has_type_is_stable_under_substitution.
-    eauto.
- - repeat rewrite apply_subst_ctx_compose in *.
-   repeat rewrite apply_compose_equiv.
-   repeat rewrite apply_compose_equiv in H15.
-   apply has_type_cases_is_stable_under_substitution.
-   apply H15.
+  - eapply new_tv_apply_subst_ty; eauto.
+  - eapply new_tv_compose_subst; eauto.
+    eapply new_tv_compose_subst; eauto.
+    eapply new_tv_subst_trans;
+    eauto. omega.
+    eapply new_tv_compose_subst; eauto.
+    eapply new_tv_compose_subst; eauto.
+  - econstructor.
+    + econstructor.
+      * repeat rewrite apply_compose_equiv.
+        repeat rewrite apply_subst_ctx_compose.
+        rewrite H7.
+        repeat apply has_type_pat_is_stable_under_substitution.
+        assumption.
+      * repeat rewrite apply_compose_equiv.
+        repeat rewrite apply_subst_ctx_compose.
+        repeat rewrite <- apply_subst_ctx_app_ctx.
+        rewrite <- H21.
+        apply has_type_is_stable_under_substitution.
+        apply has_type_is_stable_under_substitution.
+        eauto.
+    + repeat rewrite apply_subst_ctx_compose in *.
+      repeat rewrite apply_compose_equiv.
+      repeat rewrite apply_compose_equiv in H18.
+      apply has_type_cases_is_stable_under_substitution.
+      eauto.
 Defined.
  
 Print Assumptions W.

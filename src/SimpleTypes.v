@@ -43,3 +43,8 @@ Definition eq_ty_dec : forall (t t' : ty), {t = t'} + {t <> t'}.
   decide equality.
 Defined.
 
+Fixpoint return_of_ty (tau : ty) : ty :=
+  match tau with
+  | arrow tau1 tau2 => return_of_ty tau2
+  | tau' => tau'
+  end.

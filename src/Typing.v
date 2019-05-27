@@ -89,12 +89,6 @@ Qed.
 Hint Resolve apply_subst_schm_is_constructor.
 Hint Rewrite apply_subst_schm_is_constructor:RE.
 
-Fixpoint return_of_ty (tau : ty) : ty :=
-  match tau with
-  | arrow tau1 tau2 => return_of_ty tau2
-  | tau' => tau'
-  end.
-                    
 Inductive has_type_pat : ctx -> pat -> ty -> Prop:=
 | var_htp : forall x J tau, has_type_pat J (var_p x) tau
 | constr_htp : forall J x sigma ps tau, in_ctx x J = Some sigma ->
