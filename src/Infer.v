@@ -140,13 +140,65 @@ Next Obligation.
   econstructor; eauto.
 Defined.
 
+(** * Completeness for pattern *)
+
+Definition completeness_pat (p : pat) (J : ctx) (tau : ty) (s : substitution) (st : id) :=
+  forall (tau' : ty) (phi : substitution),
+    has_type_pat (apply_subst_ctx phi J) p tau' -> 
+    exists s', tau' = apply_subst s' tau /\
+          (forall x : id, x < st -> apply_subst phi (var x) = apply_subst s' (apply_subst s (var x))).
+
+Definition completeness_pats (ps : pats) (J : ctx) (tau : ty) (s : substitution) (st : id) :=
+  forall (tau' : ty) (phi : substitution),
+    has_type_pats (apply_subst_ctx phi J) ps tau' -> 
+    exists s', tau' = apply_subst s' tau /\
+          (forall x : id, x < st -> apply_subst phi (var x) = apply_subst s' (apply_subst s (var x))).
+
+Lemma is_constructor_schm_return_of_ty : forall tau sigma, is_constructor_schm sigma ->
+                                                      is_schm_instance tau sigma ->
+                                                      exists s, return_of_ty tau = return_of_ty (apply_subst s tau).
+Proof.
+  induction tau; intros.
+  - exists (nil:substitution). reflexivity.
+  - exists (nil:substitution). reflexivity.
+  - exists (nil:substitution). crush.
+  - inverts* H.
+    + inverts* H0.
+      simpl in H. inverts H.
+    + inverts* H0.
+      simpl in H.
+      cases (apply_inst_subst x sigma1).
+      cases (apply_inst_subst x sigma2).
+      inverts* H.
+      inverts* H.
+      inverts* H.
+    + edestruct IHtau2 with (sigma:=sigma2); auto.
+      eauto.
+      exists x.
+      simpl.
+      auto.
+Qed.      
+
+Lemma completeness_pat_returno_of_ty : forall tau s i x ps J sigma,
+    is_constructor_schm sigma -> is_schm_instance tau sigma ->
+    completeness_pat (constr_p x ps) J tau s i -> completeness_pat (constr_p x ps) J (return_of_ty tau) s i.
+Proof.
+  intros. intro. intros.
+  edestruct H1 as [s' [P1 P2]].
+  { eauto. }
+  edestruct is_constructor_schm_return_of_ty as [s'' ]; eauto.
+  exists s''.
+  split.
+  - Abort.      
+
 (** * The pattern inference *)
 
 Program Fixpoint inferPat (p : pat) (J : ctx) {struct p} :
   @Infer (fun i => new_tv_ctx J i /\ is_constructor_ctx J) (ty * ctx * substitution)
          (fun i x f => i <= f /\ new_tv_ctx (snd (fst x)) f /\
                     new_tv_ty (fst (fst x)) f /\ new_tv_subst (snd x) f /\
-                    has_type_pat J p (fst (fst x))) :=
+                    has_type_pat J p (fst (fst x)) /\
+                    completeness_pat p J (fst (fst x)) (snd x) i) :=
   match p with
   | var_p x =>
       alpha <- fresh ;
@@ -162,7 +214,8 @@ Program Fixpoint inferPat (p : pat) (J : ctx) {struct p} :
 with inferPats (pss : pats) (tau: ty) (J : ctx) {struct pss} : 
   @Infer (fun i => new_tv_ctx J i /\ new_tv_ty tau i /\ is_constructor_ctx J) (substitution * ctx)
          (fun i x f => i <= f /\ new_tv_ctx (snd x) f /\ new_tv_subst (fst x) f /\
-                    has_type_pats J pss (apply_subst (fst x) tau)) :=
+                    has_type_pats J pss (apply_subst (fst x) tau) /\
+                    completeness_pats pss J (apply_subst (fst x) tau) (fst x) i) :=
        match pss, tau with
        | no_pats, (con i) => ret (nil, nil)
        | no_pats, (appl tau1 tau2) => ret (nil, nil)
@@ -185,6 +238,14 @@ Defined.
 Next Obligation. (* var_p case *)
   splits; auto.
   econstructor.
+  intro. intros.
+  exists ((x0, tau')::phi).
+  split.
+  - crush.
+  - intros.
+    simpl.
+    destruct (eq_id_dec x0 x1); try omega.
+    reflexivity.
 Defined.
 Next Obligation. 
   unfold top;
@@ -230,14 +291,14 @@ Next Obligation.
       cases (apply_inst_subst (compute_inst_subst alpha (Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2))) sigma2).
       inversion H.
       rename t0 into tau1, t1 into tau2.
-      rewrite <- H8 in H7.
+      rewrite <- H9 in H7.
       inverts* H7.
       apply stronger_has_type_pat_is_stable_under_substitution.
       econstructor; eauto.
       exists ((compute_inst_subst alpha (max_gen_vars (sc_appl sigma1 sigma2)))).
       simpl.
       rewrite Eq, Eq0.
-      rewrite H8. reflexivity.
+      rewrite H9. reflexivity.
       econstructor.
       inverts* H.
       inverts* H.
@@ -258,7 +319,7 @@ Next Obligation.
       eapply subst_inst_subst_type in Eq0.
       rewrite Eq, Eq0.
       reflexivity.
-      rewrite <- H8 in H7.
+      rewrite <- H9 in H7.
       eauto.
       exists ((compute_inst_subst alpha (max_gen_vars (sc_arrow sigma1 sigma2)))).
       simpl.
@@ -266,6 +327,78 @@ Next Obligation.
       reflexivity.
       inverts H.
       inverts H.
+   - (* Case: constr_t completeness *)
+     intro. intros.
+     unfold completeness_pats in *.
+     rename H8 into COMPL_ps, H7 into SOUND_ps.
+     inverts H5.
+     inverts H12.
+     erewrite apply_subst_ctx_is_constructor in H9; eauto.
+     rewrite H9 in H1.
+     inverts H1.
+     rename x1 into is_s.
+          edestruct is_constructor_schm_return_of_ty as [ss Hj].
+     { apply H10. }
+     { exists (is_s).
+       apply H5. }
+     edestruct COMPL_ps as [s' [PRINC_ps1 PRINC_ps2]].
+     { eapply stronger_has_type_pats_is_stable_under_substitution in H14. apply H14. }
+     exists s'.
+     splits.
+     {
+       - erewrite apply_subst_return_of_ty; auto.
+         + erewrite apply_subst_return_of_ty; auto.
+           * rewrite PRINC_ps1 in Hj.
+             rewrite Hj.
+             reflexivity.
+           * erewrite <- apply_subst_schm_is_constructor in H10.
+             apply H10.
+             apply H10.
+           * exists (map_apply_subst_ty s (compute_inst_subst alpha (max_gen_vars sigma))).
+             apply subst_inst_subst_type; auto.
+         + eauto.
+         + exists (compute_inst_subst alpha (max_gen_vars sigma)).
+           eauto.
+        }
+     {
+
+       * fequal.
+         (** aqui *)
+         eapply new_tv_schm_compute_inst_subst with (p := max_gen_vars sigma). 
+         skip.
+         reflexivity.
+         eauto.
+
+       * apply H10.
+       * rewrite PRINC_ps1 in H5.
+         
+         eapply is_schm_instance_is_stable_under_substitution; eauto.
+         exists (map_apply_subst_ty (compose_subst s s') is_s).
+         
+         rewrite apply_compose_equiv.
+         skip.
+       *
+     + intros.
+       crush.
+
+       eapply new_tv_schm_compute_inst_subst with (p := max_gen_vars sigma). 
+       * eapply new_tv_ctx_implies_new_tv_schm; 
+           crush.
+       * reflexivity.
+       * 
+         subst_inst_subst_type
+         simpl.
+       * sort.
+         crush.
+     + intros.
+       rewrite apply_subst_nil.
+       rewrite find_subst_some_apply_app_compute_subst.
+       reflexivity.
+       assumption. 
+*)
+
+
+     skip.
 Defined.      
 Next Obligation.
   unfold top; auto.
@@ -306,7 +439,7 @@ Next Obligation.
   - eapply new_tv_compose_subst; eauto. 
     eapply new_tv_compose_subst; eauto. 
     eapply new_tv_subst_trans; eauto.
-    apply H6; crush.
+    apply H7; crush.
     eapply new_tv_apply_subst_ty; eauto.
     inverts* n0.
   - econstructor.
@@ -832,7 +965,19 @@ Next Obligation.
       repeat rewrite apply_subst_ctx_compose.
       repeat rewrite <- apply_subst_ctx_app_ctx.
       eauto.
-  - skip.
+  - intro. intros.
+    rename x3 into tau0.
+    rename H14 into COMPL_e, H13 into SOUND_e.
+    rename H9 into SOUND_pe.
+    inverts SOUND_pe.
+    edestruct COMPL_e as [s' [PRINC_e1 PRINC_e2]].
+    { eauto. }
+    exists s'.
+    split.
+    + eauto.
+      skip.
+    + intros.
+      skip.
 Defined.      
 Next Obligation.
   intros. simpl. unfold top;
