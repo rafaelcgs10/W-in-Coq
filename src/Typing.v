@@ -596,3 +596,26 @@ Proof.
 Qed.
 
 Hint Resolve has_type_cases_is_stable_under_substitution.
+
+Lemma stronger_has_type_cases_is_stable_under_substitution : forall cs s tau tau' G J,
+    has_type_cases G J cs tau tau' -> has_type_cases (apply_subst_ctx s G) J cs (apply_subst s tau) (apply_subst s tau').
+Proof.
+  induction cs; intros.
+  - inverts* H.
+    econstructor.
+    eauto.
+    rewrite <- apply_subst_ctx_app_ctx.
+    apply has_type_is_stable_under_substitution.
+    eauto.
+  - inverts* H.
+    econstructor.
+    + inverts* H7.
+      econstructor.
+      eauto.
+      rewrite <- apply_subst_ctx_app_ctx.
+      apply has_type_is_stable_under_substitution.
+      eauto.
+    + eauto.
+Qed.
+
+Hint Resolve stronger_has_type_cases_is_stable_under_substitution.

@@ -355,7 +355,7 @@ Program Fixpoint W (e : term) (G J: ctx) {struct e} :
          (fun i x f => i <= f /\ new_tv_subst (snd x) f /\ new_tv_ty (fst x) f /\
                     new_tv_ctx (apply_subst_ctx (snd x) G) f /\
                     new_tv_ctx (apply_subst_ctx (snd x) J) f /\
-                    has_type (apply_subst_ctx ((snd x)) G) (apply_subst_ctx (snd x) J) e (fst x) /\
+                    has_type (apply_subst_ctx ((snd x)) G) J e (fst x) /\
                     completeness e G J (fst x) ((snd x)) i) :=
   match e with
   | constr_t x =>
@@ -393,25 +393,25 @@ Program Fixpoint W (e : term) (G J: ctx) {struct e} :
       ret (fst tau2_s2, compose_subst (snd tau1_s1) (snd tau2_s2)) 
   end
 with infer_cases (cs : cases) (tau : ty) (G J : ctx) {struct cs} :
-       @Infer (fun i => new_tv_ctx G i /\ new_tv_ctx J i /\ new_tv_ty tau i) (ty * substitution)
+       @Infer (fun i => new_tv_ctx G i /\ new_tv_ctx J i /\ new_tv_ty tau i /\ is_constructor_ctx J) (ty * substitution)
               (fun i x f => i <= f /\ new_tv_ty (fst x) f /\ new_tv_subst (snd x) f /\
-                         has_type_cases (apply_subst_ctx (snd x) G) (apply_subst_ctx (snd x) J) cs (apply_subst (snd x) tau) (fst x) /\
+                         has_type_cases (apply_subst_ctx (snd x) G) J cs (apply_subst (snd x) tau) (fst x) /\
                          completeness_cases cs G J tau (fst x) (snd x) i) :=
        match cs with
        | one_case p e =>
-          tau_J_s <- inferPat p J ;
-          s <- unify (apply_subst (snd tau_J_s) tau) (fst (fst tau_J_s)) ;
-          tau_s <- W e (apply_subst_ctx s (apply_subst_ctx (snd tau_J_s) ((snd (fst tau_J_s) ++ G)))) J ;
-          ret (fst tau_s, compose_subst (snd tau_J_s) (compose_subst s (snd tau_s)))
+          tau_G_s <- inferPat p J ;
+          s <- unify (apply_subst (snd tau_G_s) tau) (fst (fst tau_G_s)) ;
+          tau_s <- W e (apply_subst_ctx s (apply_subst_ctx (snd tau_G_s) ((snd (fst tau_G_s) ++ G)))) J ;
+          ret (fst tau_s, compose_subst (snd tau_G_s) (compose_subst s (snd tau_s)))
        | many_cases p e cs' =>
-          tau_J_s <- inferPat p J ;
-          s <- unify (apply_subst (snd tau_J_s) tau) (fst (fst tau_J_s)) ;
-          tau_s <- W e (apply_subst_ctx s (apply_subst_ctx (snd tau_J_s) ((snd (fst tau_J_s) ++ G)))) J;
+          tau_G_s <- inferPat p J ;
+          s <- unify (apply_subst (snd tau_G_s) tau) (fst (fst tau_G_s)) ;
+          tau_s <- W e (apply_subst_ctx s (apply_subst_ctx (snd tau_G_s) ((snd (fst tau_G_s) ++ G)))) J;
 
-          tau_s' <- infer_cases cs' (apply_subst (compose_subst (snd tau_J_s) (compose_subst s (snd tau_s))) tau)
-                   (apply_subst_ctx (compose_subst (snd tau_J_s) (compose_subst s (snd tau_s))) G) J ;
+          tau_s' <- infer_cases cs' (apply_subst (compose_subst (snd tau_G_s) (compose_subst s (snd tau_s))) tau)
+                   (apply_subst_ctx (compose_subst (snd tau_G_s) (compose_subst s (snd tau_s))) G) J ;
           s' <- unify (apply_subst (snd tau_s') (fst tau_s)) (fst tau_s') ;
-          ret (apply_subst s' (fst tau_s'), (compose_subst (snd tau_J_s) (compose_subst s (compose_subst (snd tau_s) ((compose_subst (snd tau_s') s'))))))
+          ret (apply_subst s' (fst tau_s'), (compose_subst (snd tau_G_s) (compose_subst s (compose_subst (snd tau_s) ((compose_subst (snd tau_s') s'))))))
        end.
 Next Obligation.
   intros; unfold top; auto.
@@ -423,7 +423,7 @@ Next Obligation.  (* Case: postcondition of constr *)
   - (* Case: constr_t soundness *)
     econstructor; eauto. 
     unfold is_schm_instance. exists (compute_inst_subst x3 (max_gen_vars sigma')).
-    rewrite apply_subst_schm_nil. auto.
+    eauto.
   (* Case: constr_t completeness *)
   - subst.
     unfold completeness.
@@ -605,8 +605,6 @@ Next Obligation. (* Case: postcondition of application  *)
     apply app_ht with (tau := apply_subst mu tauL); eauto.
     rewrite <- MGU'';
       eauto.
-    apply has_type_is_stable_under_substitution.
-    erewrite (@apply_subst_ctx_is_constructor J); eauto.
   (* Subcase : completeness application *)
   - subst.
     unfold completeness. intros.
@@ -707,12 +705,6 @@ Next Obligation. (* Case : postcondition of let *)
     rewrite <- gen_ty_in_subst_ctx; eauto.
     rewrite <- subst_add_type_scheme; eauto.
     rewrite <- gen_apply_rename_to_subst; eauto.
-    rewrite apply_subst_ctx_compose; eauto.
-    erewrite (@apply_subst_ctx_is_constructor J); eauto.
-    Unshelve. auto.
-    Unshelve. auto.
-    Unshelve. auto.
-    Unshelve. auto.
   (* Subcase : completeness let *)
   - intro. intros.
     rename H5 into SOUND_let.
@@ -741,6 +733,10 @@ Next Obligation. (* Case : postcondition of let *)
     eapply more_general_gen_ty_before_apply_subst.
     rewrite <- PRINC_e11.
     erewrite <- new_tv_compose_subst_ctx; eauto.
+    Unshelve. auto.
+    Unshelve. auto.
+    Unshelve. auto.
+    Unshelve. auto.
 Defined.
 Next Obligation.
   unfold top.
@@ -748,8 +744,6 @@ Next Obligation.
   intros; splits; eauto.
   destructs H;
     try split; eauto.
-    Unshelve. auto.
-    Unshelve. auto.
 Defined.
 Next Obligation.
   destruct (W e' G J >>= _); crush;
@@ -765,7 +759,6 @@ Next Obligation.
     eauto.
     repeat rewrite apply_subst_ctx_compose.
     eauto.
-    erewrite (@apply_subst_ctx_is_constructor J); eauto.
   - intro. intros.
     rename H8 into SOUND_case.
     rename H6 into COMPL_e', H5 into SOUND_e'.
@@ -776,17 +769,21 @@ Next Obligation.
     edestruct COMPL_e' as [s'' [PRINC_e1 PRINC_e2]].
     {eauto. }
     edestruct COMPL_cs as [s' [PRINC_cs1 PRINC_cs2]].
-    {erewrite <- (@apply_subst_ctx_is_constructor J).
-     eapply has_type_cases_is_stable_under_substitution.
-
-     eauto.  }
+    { assert (apply_subst_ctx s'' (apply_subst_ctx s1 G) = apply_subst_ctx phi G).
+      { rewrite <- apply_subst_ctx_compose. eapply new_tv_ctx_apply_subst_lt.
+        apply n. intros.
+        rewrite apply_compose_equiv. symmetry. eapply PRINC_e2.
+        auto.
+      }
+      rewrite H5.
+      rewrite <- PRINC_e1.
+      apply SOUND_cs_2. }
     exists s'.
     split.
     + eauto.
     + intros.
       repeat rewrite apply_compose_equiv.
       erewrite <- (new_tv_compose_subst_type s'' s2 s'); eauto.
-    (** aqui *)
     Unshelve. auto.
     Unshelve. auto.
     Unshelve. auto.
@@ -804,13 +801,15 @@ Next Obligation.
     eapply new_tv_ctx_app.
     eapply new_tv_s_ctx; eauto.
     eapply new_tv_s_ctx; eauto.
+    Unshelve. auto.
+    Unshelve. auto.
+    Unshelve. auto.
+    Unshelve. auto.
+    (**
   - destruct x0. simpl. destruct p0. simpl in *.
     repeat rewrite apply_subst_ctx_app_ctx.
     eapply new_tv_s_ctx; eauto.
-    Unshelve. auto.
-    Unshelve. auto.
-    Unshelve. auto.
-    Unshelve. auto.
+*)
 Defined.
 Next Obligation.
   destruct (inferPat p J >>= _); crush;
@@ -828,13 +827,12 @@ Next Obligation.
     + repeat rewrite apply_compose_equiv.
       repeat rewrite apply_subst_ctx_compose.
       rewrite H7.
-      apply has_type_pat_is_stable_under_substitution.
-      apply has_type_pat_is_stable_under_substitution.
-      assumption.
+      eauto.
     + repeat rewrite apply_compose_equiv.
       repeat rewrite apply_subst_ctx_compose.
       repeat rewrite <- apply_subst_ctx_app_ctx.
       eauto.
+  - skip.
 Defined.      
 Next Obligation.
   intros. simpl. unfold top;
@@ -848,30 +846,23 @@ Next Obligation.
     eapply new_tv_s_ctx; eauto.
     eapply new_tv_s_ctx; eauto.
   - eapply new_tv_s_ctx; eauto.
+    destructs* H1.
+    destructs* H1.
+    eapply new_tv_compose_subst; eauto.
+    eapply new_tv_compose_subst; eauto.
+    eapply new_tv_subst_trans; eauto.
   - destruct x2. simpl in *.
-    destructs H1.
-    repeat rewrite apply_subst_ctx_compose. 
-    eapply new_tv_s_ctx; eauto.
-    eapply new_tv_s_ctx; eauto.
-    eapply new_tv_subst_trans.
-    apply H3.
-    crush. auto.
+    destructs* H1.
   - destruct x2. simpl in *.
-    destructs H1.
-    repeat rewrite apply_subst_ctx_compose. 
-    eapply new_tv_s_ctx; eauto.
-    eapply new_tv_s_ctx; eauto.
-    eapply new_tv_subst_trans.
-    eapply H3; eauto.
-    auto.
-  - destruct x2. simpl in *.
-    destructs H1.
+    destructs* H1.
     repeat rewrite apply_compose_equiv. 
     eapply new_tv_apply_subst_ty; eauto.
     eapply new_tv_apply_subst_ty; eauto.
-    eapply new_tv_subst_trans.
-    eapply H3; eauto.
-    auto.
+    eapply new_tv_subst_trans; eauto.
+    Unshelve. auto.
+    Unshelve. auto.
+    Unshelve. auto.
+    Unshelve. auto.
     Unshelve. auto.
     Unshelve. auto.
     Unshelve. auto.
@@ -897,20 +888,17 @@ Next Obligation.
       * repeat rewrite apply_compose_equiv.
         repeat rewrite apply_subst_ctx_compose.
         rewrite H7.
-        repeat apply has_type_pat_is_stable_under_substitution.
-        assumption.
+        eauto.
       * repeat rewrite apply_compose_equiv.
         repeat rewrite apply_subst_ctx_compose.
         repeat rewrite <- apply_subst_ctx_app_ctx.
-        rewrite <- H21.
-        apply has_type_is_stable_under_substitution.
-        apply has_type_is_stable_under_substitution.
+        rewrite <- H22.
         eauto.
     + repeat rewrite apply_subst_ctx_compose in *.
       repeat rewrite apply_compose_equiv.
       repeat rewrite apply_compose_equiv in H18.
-      apply has_type_cases_is_stable_under_substitution.
       eauto.
+  - skip.
 Defined.
  
 Print Assumptions W.

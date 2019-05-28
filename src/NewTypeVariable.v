@@ -807,6 +807,50 @@ Qed.
 
 Hint Resolve new_tv_s_ctx.
 
+Lemma new_tv_schm_apply_subst_lt : forall sigma i s s', new_tv_schm sigma i ->
+                                                   (forall i0, i0 < i -> apply_subst s (var i0) = apply_subst s' (var i0)) ->
+                                                   apply_subst_schm s sigma = apply_subst_schm s' sigma.
+Proof.
+  induction sigma; intros.
+  - inverts* H. crush.
+  - crush.
+  - crush.
+  - simpl.
+    inverts* H.
+    erewrite <- IHsigma1.  
+    erewrite <- IHsigma2.
+    reflexivity.
+    eauto.
+    intros. crush.
+    eauto.
+    intros. crush.
+  - simpl.
+    inverts* H.
+    erewrite <- IHsigma1.  
+    erewrite <- IHsigma2.
+    reflexivity.
+    eauto.
+    intros. crush.
+    eauto.
+    intros. crush.
+Qed.
+
+Lemma new_tv_ctx_apply_subst_lt : forall G i s s', new_tv_ctx G i ->
+                                              (forall i0, i0 < i -> apply_subst s (var i0) = apply_subst s' (var i0)) ->
+                                              apply_subst_ctx s G = apply_subst_ctx s' G.
+Proof.
+  induction G; intros.
+  - crush.
+  - destruct a.
+    inverts* H.
+    rename s0 into sigma.
+    simpl.
+    erewrite new_tv_schm_apply_subst_lt; eauto.
+    erewrite <- IHG; eauto.
+    intros.
+    crush.
+Qed.
+
 Lemma new_tv_ctx_app : forall G1 G2 i, new_tv_ctx G1 i -> new_tv_ctx G2 i -> new_tv_ctx (G1 ++ G2) i.
 Proof.
   induction G1; crush.
