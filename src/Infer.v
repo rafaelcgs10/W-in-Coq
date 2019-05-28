@@ -142,36 +142,35 @@ Defined.
 
 (** * The pattern inference *)
 
-Program Fixpoint inferPat (p : pat) (G : ctx) {struct p} :
-  @Infer (fun i => new_tv_ctx G i) (ty * ctx * substitution)
+Program Fixpoint inferPat (p : pat) (J : ctx) {struct p} :
+  @Infer (fun i => new_tv_ctx J i /\ is_constructor_ctx J) (ty * ctx * substitution)
          (fun i x f => i <= f /\ new_tv_ctx (snd (fst x)) f /\
                     new_tv_ty (fst (fst x)) f /\ new_tv_subst (snd x) f /\
-                    has_type_pat (apply_subst_ctx (snd x) G) p (fst (fst x))) :=
+                    has_type_pat J p (fst (fst x))) :=
   match p with
   | var_p x =>
       alpha <- fresh ;
-      G' <- addFreshCtx G x alpha ;
       ret (var alpha, (x, sc_var alpha)::nil, nil)
 
   | constr_p x ps =>
-      sigma <- look_dep x G ;
+      sigma <- look_dep x J ;
       _ <- check_is_constructor sigma ;
       tau <- schm_inst_dep sigma ;
-      sG <- inferPats ps tau G ;
-      ret (apply_subst (fst sG) (return_of_ty tau), apply_subst_ctx (fst sG) (snd sG), fst sG)
+      s_G <- inferPats ps tau J ;
+      ret (apply_subst (fst s_G) (return_of_ty tau), apply_subst_ctx (fst s_G) (snd s_G), fst s_G)
   end
-with inferPats (pss : pats) (tau: ty) (G : ctx) {struct pss} : 
-  @Infer (fun i => new_tv_ctx G i /\ new_tv_ty tau i) (substitution * ctx)
+with inferPats (pss : pats) (tau: ty) (J : ctx) {struct pss} : 
+  @Infer (fun i => new_tv_ctx J i /\ new_tv_ty tau i /\ is_constructor_ctx J) (substitution * ctx)
          (fun i x f => i <= f /\ new_tv_ctx (snd x) f /\ new_tv_subst (fst x) f /\
-                    has_type_pats (apply_subst_ctx (fst x) G) pss (apply_subst (fst x) tau)) :=
+                    has_type_pats J pss (apply_subst (fst x) tau)) :=
        match pss, tau with
-       | no_pats, (con i) => ret (nil, G)
-       | no_pats, (appl tau1 tau2) => ret (nil, G)
+       | no_pats, (con i) => ret (nil, nil)
+       | no_pats, (appl tau1 tau2) => ret (nil, nil)
        | (some_pats p ps'), (arrow tau1 tau2) =>
-           tauGs <- inferPat p G ; 
-           s <- unify (apply_subst (snd tauGs) tau1) (fst (fst tauGs)) ;
-           sG <- inferPats ps' (apply_subst s (apply_subst (snd tauGs) tau2)) (apply_subst_ctx s (apply_subst_ctx (snd tauGs) G)) ;
-           ret (compose_subst (snd tauGs) (compose_subst s (fst sG)), snd (fst tauGs))
+           tau_G_s <- inferPat p J ; 
+           s <- unify (apply_subst (snd tau_G_s) tau1) (fst (fst tau_G_s)) ;
+           s_G <- inferPats ps' (apply_subst s (apply_subst (snd tau_G_s) tau2)) J ;
+           ret (compose_subst (snd tau_G_s) (compose_subst s (fst s_G)), snd (fst tau_G_s))
        | no_pats, (arrow tau1 tau2) => failT (@PatsFailure' (arrow tau1 tau2) no_pats (MissingPatArrow tau1 tau2)) (substitution * ctx)
        | no_pats, (var i) => failT (@PatsFailure' (var i) no_pats (MissingPatVar i)) (substitution * ctx)
        | (some_pats p ps), (var i) => failT (@PatsFailure' (var i) (some_pats p ps) (HasPatVar i p ps)) (substitution * ctx)
@@ -182,9 +181,6 @@ Next Obligation.
   unfold top;
     splits; intros;
       try splits; auto.
-  destruct H0.
-  subst.
-  auto.
 Defined.
 Next Obligation. (* var_p case *)
   splits; auto.
@@ -195,79 +191,81 @@ Next Obligation.
     splits; intros;
       try splits; auto;
         intros; auto; splits; eauto.
-  destructs H1.
   destructs H0.
   intros; splits; auto.
-  destructs H4.
+  destructs H2.
   subst.
   splits; eauto.
+  destruct H. subst. eauto.
+  destruct H. subst. eauto.
 Defined.
 Next Obligation.
-  destruct (look_dep x G >>= _); crush; clear inferPats; sort;
+  destruct (look_dep x J >>= _); crush; clear inferPats; sort;
   rename x2 into tau;
   rename x3 into alpha;
   rename x1 into sigma;
   rename x4 into s;
-  rename t2 into G'.
+  rename t2 into J'.
   - eapply new_tv_apply_subst_ty. 
     apply new_tv_ty_return_of_ty.
     eapply new_tv_ty_trans_le; eauto.
     auto.
   - destruct sigma.
     (** sc_var *)
-    + inverts* H3.
+    + inverts* H2.
     (** sc_con *)
-    + simpl in H0.
-      inverts* H0.
-      inverts* H8.
-      eapply has_type_pat_is_stable_under_substitution; eauto.
+    + simpl in H.
+      inverts* H.
+      inverts* H7.
+      erewrite apply_subst_return_of_ty; eauto.
       econstructor; eauto.
       exists (nil:inst_subst). reflexivity.
       econstructor.
+      exists (nil:inst_subst). reflexivity.
     (** gen *)
-    + inverts* H3.
+    + inverts* H2.
     (** sc_appl *)
-    + simpl in H0.
+    + simpl in H.
       cases (apply_inst_subst (compute_inst_subst alpha (Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2))) sigma1).
       cases (apply_inst_subst (compute_inst_subst alpha (Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2))) sigma2).
-      inversion H0.
+      inversion H.
       rename t0 into tau1, t1 into tau2.
-      rewrite <- H9 in H8.
-      inverts* H8.
-      eapply has_type_pat_is_stable_under_substitution; eauto.
+      rewrite <- H8 in H7.
+      inverts* H7.
+      apply stronger_has_type_pat_is_stable_under_substitution.
       econstructor; eauto.
       exists ((compute_inst_subst alpha (max_gen_vars (sc_appl sigma1 sigma2)))).
       simpl.
       rewrite Eq, Eq0.
-      rewrite H9. reflexivity.
+      rewrite H8. reflexivity.
       econstructor.
-      inverts* H0.
-      inverts* H0.
+      inverts* H.
+      inverts* H.
     (** sc_arrow *)
-    + simpl in H0.
+    + simpl in H.
       cases (apply_inst_subst (compute_inst_subst alpha (Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2))) sigma1).
       cases (apply_inst_subst (compute_inst_subst alpha (Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2))) sigma2).
-      inversion H0.
+      inversion H.
       rename t0 into tau1, t1 into tau2.
       erewrite apply_subst_return_of_ty; eauto.
-      rewrite <- H9 in H8.
-      simpl in H8.
-      eapply constr_htp with (sigma:= (apply_subst_schm s (sc_arrow sigma1 sigma2))).
-      eauto.
+      econstructor.
+      eapply apply_subst_ctx_is_constructor in i. 
+      rewrite <- i. eauto.
       eauto.
       exists (map_apply_subst_ty s (compute_inst_subst alpha (max_gen_vars (sc_arrow sigma1 sigma2)))).
+      simpl.
       eapply subst_inst_subst_type in Eq.
       eapply subst_inst_subst_type in Eq0.
-      simpl.
       rewrite Eq, Eq0.
       reflexivity.
+      rewrite <- H8 in H7.
       eauto.
       exists ((compute_inst_subst alpha (max_gen_vars (sc_arrow sigma1 sigma2)))).
       simpl.
       rewrite Eq, Eq0.
       reflexivity.
-      inverts* H0.
-      inverts* H0.
+      inverts H.
+      inverts H.
 Defined.      
 Next Obligation.
   unfold top; auto.
@@ -293,21 +291,15 @@ Next Obligation.
   destruct x0.
   simpl in *.
   splits; eauto.
-  eapply new_tv_s_ctx; eauto.
-  eapply H2; eauto.
-  crush.
   eapply new_tv_apply_subst_ty; eauto.
-  eapply new_tv_ty_trans_le; auto.
-  inverts* n0.
   eapply new_tv_apply_subst_ty; eauto.
   inverts* n0.
-  eapply H2; crush.
   inverts* n0.
   Unshelve. auto.
   Unshelve. auto.
 Defined.
 Next Obligation.
-  destruct (inferPat p G >>= _); crush.
+  destruct (inferPat p J >>= _); crush.
   rename x1 into s1, x2 into s2;
   rename t3 into G', t1 into s;
   rename x0 into tau.
@@ -318,11 +310,10 @@ Next Obligation.
     eapply new_tv_apply_subst_ty; eauto.
     inverts* n0.
   - econstructor.
-    + repeat erewrite apply_compose_equiv. 
-      repeat erewrite apply_subst_ctx_compose. 
+    + inverts* n0.
+      repeat erewrite apply_compose_equiv. 
       crush.
     + repeat erewrite apply_compose_equiv. 
-      repeat erewrite apply_subst_ctx_compose. 
       auto.
       Unshelve. auto.
       Unshelve. auto.
@@ -360,7 +351,7 @@ Definition completeness_cases (cs : cases) (G J : ctx) (tau1 tau2 : ty) (s : sub
 (** * The algorithm W itself *)
 
 Program Fixpoint W (e : term) (G J: ctx) {struct e} :
-  @Infer (fun i => new_tv_ctx G i /\ new_tv_ctx J i) (ty * substitution)
+  @Infer (fun i => new_tv_ctx G i /\ new_tv_ctx J i /\ is_constructor_ctx J) (ty * substitution)
          (fun i x f => i <= f /\ new_tv_subst (snd x) f /\ new_tv_ty (fst x) f /\
                     new_tv_ctx (apply_subst_ctx (snd x) G) f /\
                     new_tv_ctx (apply_subst_ctx (snd x) J) f /\
@@ -385,7 +376,7 @@ Program Fixpoint W (e : term) (G J: ctx) {struct e} :
 
   | app_t l r =>
       tau1_s1 <- W l G J ;
-      tau2_s2 <- W r (apply_subst_ctx (snd tau1_s1) G) (apply_subst_ctx (snd tau1_s1) J) ;
+      tau2_s2 <- W r (apply_subst_ctx (snd tau1_s1) G) J ;
       alpha <- fresh ;
       s <- unify (apply_subst (snd tau2_s2) (fst tau1_s1)) (arrow (fst tau2_s2) (var alpha)) ;
       ret (apply_subst s (var alpha), compose_subst  (snd tau1_s1) (compose_subst (snd tau2_s2) s))
@@ -393,12 +384,12 @@ Program Fixpoint W (e : term) (G J: ctx) {struct e} :
   | let_t x e1 e2  =>
       tau1_s1 <- W e1 G J ;
       tau2_s2 <- W e2 ((x,gen_ty (fst tau1_s1)
-                      (apply_subst_ctx (snd tau1_s1) G) )::(apply_subst_ctx (snd tau1_s1) G)) (apply_subst_ctx (snd tau1_s1) J) ;
+                      (apply_subst_ctx (snd tau1_s1) G) )::(apply_subst_ctx (snd tau1_s1) G)) J ;
       ret (fst tau2_s2, compose_subst (snd tau1_s1) (snd tau2_s2))
 
   | case_t e' cs =>
       tau1_s1 <- W e' G J ;
-      tau2_s2 <- infer_cases cs (fst tau1_s1) (apply_subst_ctx (snd tau1_s1) G) (apply_subst_ctx (snd tau1_s1) J);
+      tau2_s2 <- infer_cases cs (fst tau1_s1) (apply_subst_ctx (snd tau1_s1) G) J;
       ret (fst tau2_s2, compose_subst (snd tau1_s1) (snd tau2_s2)) 
   end
 with infer_cases (cs : cases) (tau : ty) (G J : ctx) {struct cs} :
@@ -410,16 +401,15 @@ with infer_cases (cs : cases) (tau : ty) (G J : ctx) {struct cs} :
        | one_case p e =>
           tau_J_s <- inferPat p J ;
           s <- unify (apply_subst (snd tau_J_s) tau) (fst (fst tau_J_s)) ;
-          tau_s <- W e (apply_subst_ctx s (apply_subst_ctx (snd tau_J_s) ((snd (fst tau_J_s) ++ G)))) (apply_subst_ctx s (apply_subst_ctx (snd tau_J_s) J)) ;
+          tau_s <- W e (apply_subst_ctx s (apply_subst_ctx (snd tau_J_s) ((snd (fst tau_J_s) ++ G)))) J ;
           ret (fst tau_s, compose_subst (snd tau_J_s) (compose_subst s (snd tau_s)))
        | many_cases p e cs' =>
           tau_J_s <- inferPat p J ;
           s <- unify (apply_subst (snd tau_J_s) tau) (fst (fst tau_J_s)) ;
-          tau_s <- W e (apply_subst_ctx s (apply_subst_ctx (snd tau_J_s) ((snd (fst tau_J_s) ++ G)))) (apply_subst_ctx s (apply_subst_ctx (snd tau_J_s) J));
+          tau_s <- W e (apply_subst_ctx s (apply_subst_ctx (snd tau_J_s) ((snd (fst tau_J_s) ++ G)))) J;
 
           tau_s' <- infer_cases cs' (apply_subst (compose_subst (snd tau_J_s) (compose_subst s (snd tau_s))) tau)
-                 (apply_subst_ctx (compose_subst (snd tau_J_s) (compose_subst s (snd tau_s))) G) 
-                 (apply_subst_ctx (compose_subst (snd tau_J_s) (compose_subst s (snd tau_s))) J) ;
+                   (apply_subst_ctx (compose_subst (snd tau_J_s) (compose_subst s (snd tau_s))) G) J ;
           s' <- unify (apply_subst (snd tau_s') (fst tau_s)) (fst tau_s') ;
           ret (apply_subst s' (fst tau_s'), (compose_subst (snd tau_J_s) (compose_subst s (compose_subst (snd tau_s) ((compose_subst (snd tau_s') s'))))))
        end.
@@ -566,6 +556,9 @@ Next Obligation.
   intros; splits; auto.
   destructs H;
     try splits; auto.
+  eauto.
+  Unshelve. auto.
+  Unshelve. auto.
 Defined.
 Next Obligation. (* Case: postcondition of application  *)
   destruct (W l G J >>= _);
@@ -612,6 +605,8 @@ Next Obligation. (* Case: postcondition of application  *)
     apply app_ht with (tau := apply_subst mu tauL); eauto.
     rewrite <- MGU'';
       eauto.
+    apply has_type_is_stable_under_substitution.
+    erewrite (@apply_subst_ctx_is_constructor J); eauto.
   (* Subcase : completeness application *)
   - subst.
     unfold completeness. intros.
@@ -665,6 +660,8 @@ Next Obligation.
   intros; splits; eauto.
   destructs H;
     try splits; eauto.
+  Unshelve. auto.
+  Unshelve. auto.
 Defined.
 Next Obligation. (* Case : postcondition of let *)
   destruct (W e1 G J >>= _).
@@ -711,6 +708,11 @@ Next Obligation. (* Case : postcondition of let *)
     rewrite <- subst_add_type_scheme; eauto.
     rewrite <- gen_apply_rename_to_subst; eauto.
     rewrite apply_subst_ctx_compose; eauto.
+    erewrite (@apply_subst_ctx_is_constructor J); eauto.
+    Unshelve. auto.
+    Unshelve. auto.
+    Unshelve. auto.
+    Unshelve. auto.
   (* Subcase : completeness let *)
   - intro. intros.
     rename H5 into SOUND_let.
@@ -739,10 +741,6 @@ Next Obligation. (* Case : postcondition of let *)
     eapply more_general_gen_ty_before_apply_subst.
     rewrite <- PRINC_e11.
     erewrite <- new_tv_compose_subst_ctx; eauto.
-    Unshelve. auto.
-    Unshelve. auto.
-    Unshelve. auto.
-    Unshelve. auto.
 Defined.
 Next Obligation.
   unfold top.
@@ -750,6 +748,8 @@ Next Obligation.
   intros; splits; eauto.
   destructs H;
     try split; eauto.
+    Unshelve. auto.
+    Unshelve. auto.
 Defined.
 Next Obligation.
   destruct (W e' G J >>= _); crush;
@@ -765,6 +765,7 @@ Next Obligation.
     eauto.
     repeat rewrite apply_subst_ctx_compose.
     eauto.
+    erewrite (@apply_subst_ctx_is_constructor J); eauto.
   - intro. intros.
     rename H8 into SOUND_case.
     rename H6 into COMPL_e', H5 into SOUND_e'.
@@ -775,7 +776,10 @@ Next Obligation.
     edestruct COMPL_e' as [s'' [PRINC_e1 PRINC_e2]].
     {eauto. }
     edestruct COMPL_cs as [s' [PRINC_cs1 PRINC_cs2]].
-    {skip. }
+    {erewrite <- (@apply_subst_ctx_is_constructor J).
+     eapply has_type_cases_is_stable_under_substitution.
+
+     eauto.  }
     exists s'.
     split.
     + eauto.

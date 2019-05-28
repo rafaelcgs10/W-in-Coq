@@ -89,6 +89,32 @@ Qed.
 Hint Resolve apply_subst_schm_is_constructor.
 Hint Rewrite apply_subst_schm_is_constructor:RE.
 
+Inductive is_constructor_ctx : ctx -> Prop :=
+| is_constructor_ctx_nil : is_constructor_ctx nil
+| is_constructor_ctx_cons : forall x sigma J, is_constructor_schm sigma ->
+                                         is_constructor_ctx J ->
+                                         is_constructor_ctx ((x, sigma)::J).
+
+Lemma cons_ctx_is_constructor : forall J i sigma, is_constructor_ctx ((i, sigma)::J) ->
+                                       is_constructor_ctx J.
+Proof.
+  induction J; intros; try econstructor.
+  inverts* H.
+Qed.
+
+Hint Resolve cons_ctx_is_constructor.
+
+Lemma apply_subst_ctx_is_constructor : forall J s, is_constructor_ctx J ->
+                                              apply_subst_ctx s J = J.
+Proof.
+  induction J; crush.
+  inverts* H.
+  rewrite apply_subst_schm_is_constructor; eauto.
+  rewrite IHJ; eauto.
+Qed.
+
+Hint Resolve apply_subst_ctx_is_constructor.
+
 Inductive has_type_pat : ctx -> pat -> ty -> Prop:=
 | var_htp : forall x J tau, has_type_pat J (var_p x) tau
 | constr_htp : forall J x sigma ps tau, in_ctx x J = Some sigma ->
@@ -569,5 +595,4 @@ Proof.
     + eauto.
 Qed.
 
-Lemma weaker_has_type_cases_is_stable_under_substitution : forall e s tau G J,
-    has_type_cases G J cs tau tau' -> has_type_cases (apply_subst_ctx s G) (apply_subst_ctx s J) cs (apply_subst s tau) (apply_subst s tau').
+Hint Resolve has_type_cases_is_stable_under_substitution.
