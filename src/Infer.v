@@ -360,51 +360,22 @@ Next Obligation.
          + exists (compute_inst_subst alpha (max_gen_vars sigma)).
            eauto.
         }
-     {
-
-       * fequal.
-         (** aqui *)
-         eapply new_tv_schm_compute_inst_subst with (p := max_gen_vars sigma). 
-         skip.
-         reflexivity.
-         eauto.
-
-       * apply H10.
-       * rewrite PRINC_ps1 in H5.
-         
-         eapply is_schm_instance_is_stable_under_substitution; eauto.
-         exists (map_apply_subst_ty (compose_subst s s') is_s).
-         
-         rewrite apply_compose_equiv.
-         skip.
-       *
-     + intros.
-       crush.
-
-       eapply new_tv_schm_compute_inst_subst with (p := max_gen_vars sigma). 
-       * eapply new_tv_ctx_implies_new_tv_schm; 
-           crush.
-       * reflexivity.
-       * 
-         subst_inst_subst_type
-         simpl.
-       * sort.
-         crush.
-     + intros.
-       rewrite apply_subst_nil.
-       rewrite find_subst_some_apply_app_compute_subst.
-       reflexivity.
-       assumption. 
-*)
-
-
-     skip.
+     { intros.
+       eauto.
+     }
 Defined.      
 Next Obligation.
   unfold top; auto.
 Defined.      
 Next Obligation.
-  splits; eauto; try econstructor.
+  splits; eauto. try econstructor.
+  intro. intros.
+  (** aqui *)
+  inversion_clear H.
+  - destruct (eq_id_dec i1 i).
+    + subst.
+      skip.
+    +
 Defined.      
 Next Obligation.
   unfold top; auto.
