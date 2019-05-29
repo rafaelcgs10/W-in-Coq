@@ -208,11 +208,12 @@ Program Fixpoint inferPat (p : pat) (J : ctx) {struct p} :
       sigma <- look_dep x J ;
       _ <- check_is_constructor sigma ;
       tau <- schm_inst_dep sigma ;
-      s_G <- inferPats ps tau J ;
+      s_G <- inferPats x sigma ps tau J ;
       ret (apply_subst (fst s_G) (return_of_ty tau), apply_subst_ctx (fst s_G) (snd s_G), fst s_G)
   end
-with inferPats (pss : pats) (tau: ty) (J : ctx) {struct pss} : 
-  @Infer (fun i => new_tv_ctx J i /\ new_tv_ty tau i /\ is_constructor_ctx J) (substitution * ctx)
+with inferPats (x : id) (sigma : schm) (pss : pats) (tau: ty) (J : ctx) {struct pss} : 
+    @Infer (fun i => new_tv_ctx J i /\ new_tv_ty tau i /\ is_constructor_ctx J /\ in_ctx x J = Some sigma /\ is_schm_instance tau sigma)
+           (substitution * ctx)
          (fun i x f => i <= f /\ new_tv_ctx (snd x) f /\ new_tv_subst (fst x) f /\
                     has_type_pats J pss (apply_subst (fst x) tau) /\
                     completeness_pats pss J (apply_subst (fst x) tau) (fst x) i) :=
@@ -222,7 +223,7 @@ with inferPats (pss : pats) (tau: ty) (J : ctx) {struct pss} :
        | (some_pats p ps'), (arrow tau1 tau2) =>
            tau_G_s <- inferPat p J ; 
            s <- unify (apply_subst (snd tau_G_s) tau1) (fst (fst tau_G_s)) ;
-           s_G <- inferPats ps' (apply_subst s (apply_subst (snd tau_G_s) tau2)) J ;
+           s_G <- inferPats x sigma ps' (apply_subst s (apply_subst (snd tau_G_s) tau2)) J ;
            ret (compose_subst (snd tau_G_s) (compose_subst s (fst s_G)), snd (fst tau_G_s))
        | no_pats, (arrow tau1 tau2) => failT (@PatsFailure' (arrow tau1 tau2) no_pats (MissingPatArrow tau1 tau2)) (substitution * ctx)
        | no_pats, (var i) => failT (@PatsFailure' (var i) no_pats (MissingPatVar i)) (substitution * ctx)
@@ -259,6 +260,10 @@ Next Obligation.
   splits; eauto.
   destruct H. subst. eauto.
   destruct H. subst. eauto.
+  destructs* H.
+  destructs* H.
+  subst.
+  exists (compute_inst_subst s0 (max_gen_vars x1)). auto.
 Defined.
 Next Obligation.
   destruct (look_dep x J >>= _); crush; clear inferPats; sort;
