@@ -148,9 +148,9 @@ Definition completeness_pat (p : pat) (J : ctx) (tau : ty) (s : substitution) (s
     exists s', tau' = apply_subst s' tau /\
           (forall x : id, x < st -> apply_subst phi (var x) = apply_subst s' (apply_subst s (var x))).
 
-Definition completeness_pats (ps : pats) (J : ctx) (tau : ty) (s : substitution) (st : id) :=
+Definition completeness_pats (x : id) (ps : pats) (J : ctx) (tau : ty) (s : substitution) (st : id) :=
   forall (tau' : ty) (phi : substitution),
-    has_type_pats (apply_subst_ctx phi J) ps tau' -> 
+    has_type_pats x (apply_subst_ctx phi J) ps tau' -> 
     exists s', tau' = apply_subst s' tau /\
           (forall x : id, x < st -> apply_subst phi (var x) = apply_subst s' (apply_subst s (var x))).
 
@@ -179,6 +179,7 @@ Proof.
       auto.
 Qed.      
 
+(**
 Lemma completeness_pat_returno_of_ty : forall tau s i x ps J sigma,
     is_constructor_schm sigma -> is_schm_instance tau sigma ->
     completeness_pat (constr_p x ps) J tau s i -> completeness_pat (constr_p x ps) J (return_of_ty tau) s i.
@@ -190,6 +191,7 @@ Proof.
   exists s''.
   split.
   - Abort.      
+*)
 
 (** * The pattern inference *)
 
@@ -211,19 +213,20 @@ Program Fixpoint inferPat (p : pat) (J : ctx) {struct p} :
       s_G <- inferPats x sigma ps tau J ;
       ret (apply_subst (fst s_G) (return_of_ty tau), apply_subst_ctx (fst s_G) (snd s_G), fst s_G)
   end
-with inferPats (x : id) (sigma : schm) (pss : pats) (tau: ty) (J : ctx) {struct pss} : 
-    @Infer (fun i => new_tv_ctx J i /\ new_tv_ty tau i /\ is_constructor_ctx J /\ in_ctx x J = Some sigma /\ is_schm_instance tau sigma)
+with inferPats (x0 : id) (sigma : schm) (pss : pats) (tau: ty) (J : ctx) {struct pss} : 
+       @Infer (fun i => new_tv_ctx J i /\ new_tv_ty tau i /\ is_constructor_ctx J /\ in_ctx x0 J = Some sigma /\
+                     apply_inst_subst (compute_inst_subst (i - (max_gen_vars sigma)) (max_gen_vars sigma)) sigma = Some tau)
            (substitution * ctx)
          (fun i x f => i <= f /\ new_tv_ctx (snd x) f /\ new_tv_subst (fst x) f /\
-                    has_type_pats J pss (apply_subst (fst x) tau) /\
-                    completeness_pats pss J (apply_subst (fst x) tau) (fst x) i) :=
+                    has_type_pats x0 J pss (apply_subst (fst x) tau) /\
+                    completeness_pats x0 pss J (apply_subst (fst x) tau) (fst x) (i - (max_gen_vars sigma))) :=
        match pss, tau with
        | no_pats, (con i) => ret (nil, nil)
        | no_pats, (appl tau1 tau2) => ret (nil, nil)
        | (some_pats p ps'), (arrow tau1 tau2) =>
            tau_G_s <- inferPat p J ; 
            s <- unify (apply_subst (snd tau_G_s) tau1) (fst (fst tau_G_s)) ;
-           s_G <- inferPats x sigma ps' (apply_subst s (apply_subst (snd tau_G_s) tau2)) J ;
+           s_G <- inferPats x0 sigma ps' (apply_subst s (apply_subst (snd tau_G_s) tau2)) J ;
            ret (compose_subst (snd tau_G_s) (compose_subst s (fst s_G)), snd (fst tau_G_s))
        | no_pats, (arrow tau1 tau2) => failT (@PatsFailure' (arrow tau1 tau2) no_pats (MissingPatArrow tau1 tau2)) (substitution * ctx)
        | no_pats, (var i) => failT (@PatsFailure' (var i) no_pats (MissingPatVar i)) (substitution * ctx)
@@ -263,7 +266,10 @@ Next Obligation.
   destructs* H.
   destructs* H.
   subst.
-  exists (compute_inst_subst s0 (max_gen_vars x1)). auto.
+  assert ((s0 + max_gen_vars x1 - max_gen_vars x1) = s0).
+  { omega. }
+  rewrite H.
+  auto.
 Defined.
 Next Obligation.
   destruct (look_dep x J >>= _); crush; clear inferPats; sort;
@@ -283,30 +289,49 @@ Next Obligation.
     + simpl in H.
       inverts* H.
       inverts* H7.
+      rewrite H5 in H1.
+      inverts* H1.
       erewrite apply_subst_return_of_ty; eauto.
       econstructor; eauto.
       exists (nil:inst_subst). reflexivity.
-      econstructor.
+      econstructor; eauto.
       exists (nil:inst_subst). reflexivity.
     (** gen *)
     + inverts* H2.
     (** sc_appl *)
     + simpl in H.
       cases (apply_inst_subst (compute_inst_subst alpha (Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2))) sigma1).
-      cases (apply_inst_subst (compute_inst_subst alpha (Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2))) sigma2).
-      inversion H.
-      rename t0 into tau1, t1 into tau2.
-      rewrite <- H9 in H7.
-      inverts* H7.
-      apply stronger_has_type_pat_is_stable_under_substitution.
-      econstructor; eauto.
-      exists ((compute_inst_subst alpha (max_gen_vars (sc_appl sigma1 sigma2)))).
-      simpl.
-      rewrite Eq, Eq0.
-      rewrite H9. reflexivity.
-      econstructor.
-      inverts* H.
-      inverts* H.
+      {
+        cases (apply_inst_subst (compute_inst_subst alpha (Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2))) sigma2).
+        { inversion H.
+          rename t0 into tau1, t1 into tau2.
+          rewrite <- H9 in H7.
+          inversion H7.
+          subst.
+          rewrite H11 in H1.
+          inverts* H1.
+          simpl.
+          assert (appl (apply_subst s tau1) (apply_subst s tau2) = return_of_ty (appl (apply_subst s tau1 ) (apply_subst s tau2))).
+          { reflexivity. }
+          rewrite H1.
+          econstructor.
+          assert (in_ctx x J = in_ctx x (apply_subst_ctx s J)).
+          { rewrite apply_subst_ctx_is_constructor; eauto. }
+          rewrite H5.
+          info_eauto.
+          eauto.
+          destruct H16.
+          eauto.
+          exists (map_apply_subst_ty s ((compute_inst_subst alpha (Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2))))).
+          rewrite <- apply_subst_appl.
+          apply subst_inst_subst_type.
+          simpl.
+          rewrite Eq, Eq0.
+          reflexivity.
+          auto.
+        }
+        inverts* H. }
+        inverts* H.
     (** sc_arrow *)
     + simpl in H.
       cases (apply_inst_subst (compute_inst_subst alpha (Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2))) sigma1).
@@ -366,29 +391,164 @@ Next Obligation.
            eauto.
         }
      { intros.
-       eauto.
+       apply PRINC_ps2.
+       omega.
      }
 Defined.      
 Next Obligation.
   unfold top; auto.
 Defined.      
 Next Obligation.
-  splits; eauto. try econstructor.
+  splits; eauto.
+  - try econstructor.
+    eauto.
+    eauto.
+    exists (compute_inst_subst (x - max_gen_vars sigma) (max_gen_vars sigma)).
+    eauto.
+    reflexivity.
+  -
   intro. intros.
-  (** aqui *)
+  (** completeness_pats con case *)
   inversion_clear H.
-  - destruct (eq_id_dec i1 i).
-    + subst.
-      skip.
-    +
+  (** con case *)
+  + rewrite apply_subst_ctx_is_constructor in H0; eauto.
+    assert (is_constructor_schm sigma).
+    { eauto. }
+    assert (is_constructor_schm sigma0).
+    { eauto. }
+    rewrite H0 in e.
+    inversion e.
+    destruct sigma.
+    * subst. inverts* H4.
+    * inverts* e.
+      apply is_schm_instance_must_be_con in H2.
+      subst.
+      inverts* H3.
+      simpl in e0.
+      inverts* e0.
+    * subst. inverts* H4.
+    * subst. inverts* e0.
+      destruct (apply_inst_subst (compute_inst_subst (x - Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2)) (Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2))) sigma1).
+      destruct (apply_inst_subst (compute_inst_subst (x - Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2)) (Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2))) sigma2).
+      inverts* H6.
+      inverts* H6.
+      inverts* H6.
+    * subst. inverts* e0.
+      destruct (apply_inst_subst (compute_inst_subst (x - Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2)) (Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2))) sigma1).
+      destruct (apply_inst_subst (compute_inst_subst (x - Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2)) (Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2))) sigma2).
+      inverts* H6.
+      inverts* H6.
+      inverts* H6.
+  + rewrite apply_subst_ctx_is_constructor in H0; eauto.
+    assert (is_constructor_schm sigma).
+    { eauto. }
+    assert (is_constructor_schm sigma0).
+    { eauto. }
+    rewrite H0 in e.
+    inversion e.
+    destruct sigma.
+    * subst. inverts* H4.
+    * inverts* e.
+      apply is_schm_instance_must_be_con in H2.
+      subst.
+      inverts* H3.
+    * subst. inverts* H4.
+    * subst. inverts* e0.
+      destruct (apply_inst_subst (compute_inst_subst (x - Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2)) (Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2))) sigma1).
+      destruct (apply_inst_subst (compute_inst_subst (x - Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2)) (Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2))) sigma2).
+      inverts* H6.
+      inverts* H6.
+      inverts* H6.
+    * subst. inverts* e0.
+      destruct (apply_inst_subst (compute_inst_subst (x - Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2)) (Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2))) sigma1).
+      destruct (apply_inst_subst (compute_inst_subst (x - Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2)) (Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2))) sigma2).
+      inverts* H6.
+      inverts* H6.
+      inverts* H6.
 Defined.      
 Next Obligation.
   unfold top; auto.
 Defined.      
 Next Obligation.
-  splits; eauto; try econstructor.
+  splits; eauto.
+  (** soundness_pats appl case *)
+  - try econstructor.
+    eauto.
+    eauto.
+    exists (compute_inst_subst (x - max_gen_vars sigma) (max_gen_vars sigma)).
+    eauto.
+    fold (apply_subst nil tau1).
+    fold (apply_subst nil tau2).
+    crush.
+  (** completeness_pats appl case *)
+  - intro. intros.
+  inversion_clear H.
+  (** con case *)
+  + rewrite apply_subst_ctx_is_constructor in H0; eauto.
+    assert (is_constructor_schm sigma).
+    { eauto. }
+    assert (is_constructor_schm sigma0).
+    { eauto. }
+    rewrite H0 in e.
+    inversion e.
+    destruct sigma.
+    * subst. inverts* H4.
+    * inverts* e0.
+    * subst. inverts* H4.
+    * subst.
+      apply is_schm_instance_must_be_some_appl in H2.
+      destruct H2 as [tau1' [tau2' H2]].
+      subst.
+      inverts* H3.
+    * subst.
+      inverts* e0.
+      destruct (apply_inst_subst (compute_inst_subst (x - Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2)) (Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2))) sigma1).
+      destruct (apply_inst_subst (compute_inst_subst (x - Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2)) (Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2))) sigma2).
+      inverts* H6.
+      inverts* H6.
+      inverts* H6.
+  + rewrite apply_subst_ctx_is_constructor in H0; eauto.
+    assert (is_constructor_schm sigma).
+    { eauto. }
+    assert (is_constructor_schm sigma0).
+    { eauto. }
+    rewrite H0 in e.
+    inversion e.
+    subst.
+    assert (exists sigma1 sigma2, sigma = sc_appl sigma1 sigma2).
+    { destruct sigma ; try inverts* H4.
+      inverts* e0.
+      inverts* e0.
+      destruct (apply_inst_subst (compute_inst_subst (x - Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2)) (Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2))) sigma1).
+      destruct (apply_inst_subst (compute_inst_subst (x - Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2)) (Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2))) sigma2).
+      inverts* H5.
+      inverts* H5.
+      inverts* H5. }
+    destruct H5 as [sigma1 [sigma2 H5]].
+    subst.
+    apply is_schm_instance_must_be_some_appl in H2 as H2'.
+    destruct H2' as [tau1' [tau2' H2']].
+    subst.
+    inverts* H3.
+    destruct H2.
+    exists (compute_subst (x - max_gen_vars (sc_appl sigma1 sigma2)) x1 ++ phi).
+    split; repeat rewrite apply_subst_nil.
+    * eapply new_tv_schm_compute_inst_subst with (p := max_gen_vars (sc_appl sigma1 sigma2)). 
+      { eapply new_tv_ctx_implies_new_tv_schm. 
+        apply H0.
+        skip. (** aqui *)
+        }
+      { reflexivity. }
+      { auto. }
+      { rewrite apply_subst_schm_is_constructor; eauto. }
+    * intros.
+      rewrite apply_subst_nil.
+      rewrite find_subst_some_apply_app_compute_subst.
+      reflexivity.
+      auto.
 Defined.      
 Next Obligation.
+  (** aqui 2 *)
   unfold top; intros;
     splits; intros;
       try splits; auto;
