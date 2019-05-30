@@ -550,20 +550,23 @@ Defined.
 Next Obligation.
   (** aqui 2 *)
   unfold top; intros;
-    splits; intros;
+    splits; intros.
       try splits; auto;
         intros; eauto. 
-  destructs H0.
   destructs H.
   splits; intros; eauto.
-  subst.
-  destruct x0.
-  simpl in *.
-  splits; eauto.
+  destructs H5.
+  crush.
+  crush.
   eapply new_tv_apply_subst_ty; eauto.
   eapply new_tv_apply_subst_ty; eauto.
   inverts* n0.
   inverts* n0.
+  inverts* n0.
+  destruct sigma;
+  try (inverts* e0; fail).
+  simpl in e0. simpl.
+  eauto.
   Unshelve. auto.
   Unshelve. auto.
 Defined.
