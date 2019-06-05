@@ -15,8 +15,6 @@ Section hoare_state_monad.
 
 Variable st : Set.
 
-Definition State (a : Type) : Type := st -> a * st.
-
 Definition Pre : Type := st -> Prop.
 
 Definition Post (a : Type) : Type := st -> a -> st -> Prop.

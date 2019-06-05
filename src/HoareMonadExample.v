@@ -9,8 +9,6 @@ Section hoare_state_monad.
 
 Variable st : Set.
 
-Definition State (a : Type) : Type := st -> a * st.
-
 Definition Pre : Type := st -> Prop.
 
 Definition Post (a : Type) : Type := st -> a -> st -> Prop.
@@ -95,14 +93,14 @@ Hint Resolve new_number_trans_le.
 
 Unset Implicit Arguments.
 
-Program Fixpoint remove_zeros (t : TreeNat) (n : nat) :
+Program Fixpoint change_zeros (t : TreeNat) (n : nat) :
   NewNumberTree t n -> {(t', n') : TreeNat * nat | NewNumberTree t' n' /\ n <= n'} :=
   fun pre => 
   match t with
   | Leaf 0 =>  exist _ (Leaf n, S n) _
   | Leaf n' => exist _ (Leaf n', n) _
-  | Node t1 t2 => match remove_zeros t1 n _ with
-                 | (t1', n') => match remove_zeros t2 n' _ with
+  | Node t1 t2 => match change_zeros t1 n _ with
+                 | (t1', n') => match change_zeros t2 n' _ with
                                | (t2', n'') => exist _ (Node t1' t2', n'') _
                                end
                  end
@@ -130,7 +128,7 @@ Program Definition fresh : @HoareState nat (@top nat) nat (fun i x f => S i = f 
 
 Unset Implicit Arguments.
 
-Program Fixpoint remove_zeros_m (t : TreeNat) :
+Program Fixpoint change_zeros_m (t : TreeNat) :
   @HoareState nat (fun i => NewNumberTree t i) TreeNat (fun i t' f => (NewNumberTree t' f) /\ i <= f) := 
   match t with
   | Leaf 0 =>
@@ -138,8 +136,8 @@ Program Fixpoint remove_zeros_m (t : TreeNat) :
            ret (Leaf n')
   | Leaf n' => ret (Leaf n')
   | Node t1 t2 =>
-               t1' <- remove_zeros_m t1 ; 
-               t2' <- remove_zeros_m t2 ; 
+               t1' <- change_zeros_m t1 ; 
+               t2' <- change_zeros_m t2 ; 
                ret (Node t1' t2')
   end.
 Next Obligation.
@@ -163,7 +161,7 @@ Next Obligation.
   auto.
 Defined.
 Next Obligation.
-  destruct (remove_zeros_m t1 >>= _).
+  destruct (change_zeros_m t1 >>= _).
   simpl in *.
   destruct x0.
   destruct y.
