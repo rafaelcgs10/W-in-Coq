@@ -403,7 +403,7 @@ Defined.
 
 Print Assumptions W.
 
-Program Definition runW e G (s0 : id) (p : NewTypeVariable.new_tv_ctx G s0) : option (ty * Subst.substitution) :=
+Program Definition runW e G (s0 : id) (p : new_tv_ctx G s0) : option (ty * substitution) :=
   match W e G (exist _ s0 p) with
   | inleft (a', _) => Some a'
   | inright _ => None

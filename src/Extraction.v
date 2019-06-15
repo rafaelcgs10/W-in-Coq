@@ -12,28 +12,19 @@ Extraction Language Haskell.
 
 Cd "extracted".
 
-Check (@HoareMonad.Infer (fun _ => True)).
-Check (@W (Typing.var_t 0) nil).
-
-Program Definition runInfer P a Q (C : Infer P a Q) (s0 : id) (p : P s0) : option a :=
-  match C (exist _ s0 p) with
-  | inleft (a', _) => Some a'
-  | inright _ => None
-  end.
-
-Check runW.
-
+Extract Inductive bool => "Prelude.Bool" ["Prelude.True" "Prelude.False"].
 Extract Inductive sumbool => "Prelude.Bool" ["Prelude.True" "Prelude.False"].
 Extract Inductive list => "[]" [ "[]" "(:)" ].
 Extract Inductive prod => "(,)"  [ "(,)" ].
 Extract Inductive string => "String"  [ "[]" "(::)" ].
 Extract Inductive sumor   => "Prelude.Maybe" ["Prelude.Just" "Prelude.Nothing"].
 
-
 Class Show A : Type :=
   {
     show : A -> string
   }.
+
+Separate Extraction runW.
 
 Instance showBool : Show bool :=
   {
@@ -45,5 +36,3 @@ Extraction "test.hs" show.
 
 Compute (show true).
 
-
-Separate Extraction unify.
