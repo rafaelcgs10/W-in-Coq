@@ -114,6 +114,7 @@ Hint Constructors new_tv_schm.
 
 (** ** Lemmas that are only about new type variables for schemes (and simple types). *)
 
+
 (** Relating new type variables for simple types and schemes through [ty_to_schm]. *)
 Lemma new_tv_ty_to_schm : forall tau st,
     new_tv_schm (ty_to_schm tau) st <-> new_tv_ty tau st.
@@ -191,6 +192,33 @@ Proof.
 Qed.
 
 Hint Resolve new_tv_schm_trans.
+
+Lemma new_tv_schm_max_vars : forall sigma, new_tv_schm sigma (S (max_vars_schm sigma)).
+Proof.
+  induction sigma; crush.
+  econstructor; eauto.
+  destruct (Max.max_dec (max_vars_schm sigma1) (max_vars_schm sigma2)). 
+  rewrite e.
+  auto.
+  rewrite e.
+  eapply new_tv_schm_trans; eauto.
+  eapply Nat.max_r_iff.
+  simpl.
+  fequals*.
+  destruct (Max.max_dec (max_vars_schm sigma1) (max_vars_schm sigma2)). 
+  rewrite e.
+  eapply new_tv_schm_trans; eauto.
+  eapply Nat.max_r_iff.
+  simpl.
+  fequals*.
+  rewrite Max.max_comm.
+  auto.
+  rewrite e.
+  auto.
+Qed.
+
+Hint Resolve new_tv_schm_max_vars.
+
 
 Lemma new_tv_schm_apply_subst : forall i tau s sigma,
     new_tv_schm sigma i ->

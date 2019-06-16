@@ -411,8 +411,27 @@ Defined.
 
 Print Assumptions W.
 
-Program Definition runW e G (s0 : id) (p : new_tv_ctx G s0) : sumorT (ty * substitution) InferFailure :=
-  match W e G (exist _ s0 p) with
+Program Fixpoint computeInitialState (G : ctx) : {s : id | new_tv_ctx G s} :=
+  match G with
+  | nil => 0
+  | (_, sigma)::G' => match computeInitialState G' with
+                     | s' => if lt_dec (max_vars_schm sigma) s'
+                     then s'
+                     else S (max_vars_schm sigma)
+                     end
+  end.
+Next Obligation.
+  econstructor; eauto.
+Defined.
+Next Obligation.
+  econstructor; eauto.
+  eapply new_tv_ctx_trans.
+  apply n.
+  omega.
+Defined. 
+
+Program Definition runW e G (s0 : id) : sumorT (ty * substitution) InferFailure :=
+  match W e G (computeInitialState G)  with
   | inleftT _ (a', _) => inleftT _ a'
   | inrightT _ er => inrightT _ er
   end.

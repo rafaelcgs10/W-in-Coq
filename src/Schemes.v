@@ -48,3 +48,11 @@ Fixpoint max_gen_vars (sigma : schm) : nat :=
   | sc_arrow s1 s2 => max (max_gen_vars s1) (max_gen_vars s2)
   end.
 
+Fixpoint max_vars_schm (sigma : schm) : nat :=
+  match sigma with
+  | sc_con _ => 0
+  | sc_var i => i
+  | sc_gen _ => 0
+  | sc_arrow s1 s2 => max (max_vars_schm s1) (max_vars_schm s2)
+  end.
+
