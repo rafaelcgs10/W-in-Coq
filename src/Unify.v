@@ -148,12 +148,12 @@ we can either:
  *)
 
 Definition unify_type (c : constraints) :=
-  wf_constraints c ->
+  wf_constraints c -> sumorT
   ({ s | unifier (fst (get_tys c)) (snd (get_tys c)) s /\ wf_subst (get_ctxt c) s /\
          (forall st, (new_tv_ty (fst (get_tys c)) st /\ new_tv_ty (snd (get_tys c)) st) -> new_tv_subst s st) /\
          forall s', unifier (fst (get_tys c)) (snd (get_tys c)) s' ->
                exists s'', forall v, apply_subst s' (var v) = apply_subst (compose_subst s s'') (var v)})
-  + { UnifyFailure (fst (get_tys c)) (snd (get_tys c)) }.
+    (UnifyFailure (fst (get_tys c)) (snd (get_tys c))) .
 
 Unset Implicit Arguments.
 
@@ -169,33 +169,36 @@ Unset Implicit Arguments.
 Program Fixpoint unify' (l : constraints) {wf constraints_lt l} : unify_type l :=
   fun wfl => match get_tys l with
           | (var i, t) => match occurs_dec i t with
-                         | left _ => inright _ 
+                         | left _ => inrightT _ _ 
                          | right _ => if (eq_ty_dec (var i) t)
-                                     then inleft _ (@exist substitution _ nil _) 
-                                     else inleft _ (@exist substitution _ ((i, t)::nil) _)
+                                     then inleftT _ (@exist substitution _ nil _) 
+                                     else inleftT _ (@exist substitution _ ((i, t)::nil) _)
                          end
           | (t, var i) => match occurs_dec i t with
-                         | left _ =>  inright _ 
+                         | left _ =>  inrightT _ _
                          | right _ => if (eq_ty_dec (var i) t)
-                                     then inleft _ (@exist substitution _ nil _) 
-                                     else inleft _ (@exist substitution _ ((i, t)::nil) _)
+                                     then inleftT _ (@exist substitution _ nil _) 
+                                     else inleftT _ (@exist substitution _ ((i, t)::nil) _)
                          end
           | (con i, con j) => if eq_id_dec i j
-                             then inleft _ (@exist substitution _ nil _) 
-                             else inright _ 
+                             then inleftT _ (@exist substitution _ nil _) 
+                             else inrightT _ _ 
           | (arrow l1 r1, arrow l2 r2) => match unify' (mk_constraints (get_ctxt l) l1 l2) _ with
-                                         | inright E => inright _
-                                         | inleft _ (exist _ s1 HS) =>
+                                         | inrightT _ E => inrightT _ _
+                                         | inleftT _ (exist _ s1 HS) =>
                                            match unify' (mk_constraints (minus (get_ctxt l) (dom s1))
                                                                         (apply_subst s1 r1) (apply_subst s1 r2)) _ with
-                                           | inright E => inright _
-                                           | inleft _ (exist _ s2 HS') =>
-                                             inleft _ (@exist substitution _ (compose_subst s1 s2) _)
+                                           | inrightT _ E => inrightT _ _
+                                           | inleftT _ (exist _ s2 HS') =>
+                                             inleftT _ (@exist substitution _ (compose_subst s1 s2) _)
                                            end
                                          end
-          | (arrow _ _, con _) => inright _
-          | (con  _, arrow _ _) => inright _
+          | (arrow _ _, con _) => inrightT _ _
+          | (con  _, arrow _ _) => inrightT _ _
           end.
+Next Obligation.
+  eauto.
+Defined.
 Next Obligation.
   splits; crush.
 Defined.
@@ -223,6 +226,15 @@ Next Obligation.
   unfold unifier.
   splits;
     crush.
+Defined.
+Next Obligation.
+  unfold wf_constraints in wfl.
+  rewrite <- Heq_anonymous0 in wfl.
+  simpl in wfl.
+  destruct wfl.
+  unfold unifier.
+  splits;
+    crush.
   exists s'.
   crush.
   Unshelve. assumption.
@@ -231,6 +243,9 @@ Next Obligation.
   splits; crush.
   exists s'.
   crush.
+Defined.
+Next Obligation.
+  eauto.
 Defined.
 Next Obligation.
   unfold wf_constraints in wfl.
@@ -246,6 +261,9 @@ Next Obligation.
   rewrite <- Heq_anonymous in *.
   destruct wfl.
   crush.
+Defined.
+Next Obligation.
+  eauto.
 Defined.
 Next Obligation.
   clear e Heq_anonymous unify'.
@@ -306,6 +324,12 @@ Next Obligation.
     eapply ext_subst_var_ty in H2 as H2'.
     rewrite <- H2'.
     reflexivity.
+Defined.
+Next Obligation.
+  eauto.
+Defined.
+Next Obligation.
+  eauto.
 Defined.
 Next Obligation.
   apply well_founded_constraints_lt.
@@ -378,11 +402,11 @@ Qed.
 
 (** An interface so unify can work by only providing the two types to be unified *)
 Definition unify'' : forall t1 t2 : ty,
-    {x & ({ s | unifier t1 t2 s /\ wf_subst x s /\
+    {x & sumorT ({ s | unifier t1 t2 s /\ wf_subst x s /\
                 (forall st, (new_tv_ty t1 st /\ new_tv_ty t2 st) -> new_tv_subst s st) /\
                 forall s', unifier t1 t2 s' ->
                            exists s'', forall v, apply_subst s' (var v) = apply_subst (compose_subst s s'') (var v)})
-         + { UnifyFailure t1 t2 }}.
+         (UnifyFailure t1 t2)} .
 Proof.
   intros.
   pose proof ids_ty_dep2 as dep.
@@ -404,8 +428,8 @@ Program Definition unify (tau1 tau2 : ty) :
                                    ((new_tv_ty tau1 i /\ new_tv_ty tau2 i) -> new_tv_subst mu i) /\
                                    apply_subst mu tau1 = apply_subst mu tau2) :=
   match unify'' tau1 tau2 as y  with
-  | existT _ c (inleft _ (exist _ mu HS)) => ret mu
-  | existT _ c (inright _ error) => failT (@UnifyFailure' tau1 tau2 error) substitution
+  | existT _ c (inleftT _ (exist _ mu HS)) => ret mu
+  | existT _ c (inrightT _ error) => failT (@UnifyFailure' tau1 tau2 error) substitution
   end.
 Next Obligation.
   splits; intros; eauto.

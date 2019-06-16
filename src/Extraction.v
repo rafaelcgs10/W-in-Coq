@@ -9,9 +9,10 @@ Extraction Language Haskell.
 Cd "extraction/src".
 
 Extract Inductive bool => "Prelude.Bool" ["Prelude.True" "Prelude.False"].
-Extract Inductive sumbool => "Prelude.Bool" ["Prelude.True" "Prelude.False"].
+Extract Inductive sumbool => "Prelude.Either" ["Prelude.Left" "Prelude.Right"].
 Extract Inductive list => "[]" [ "[]" "(:)" ].
 Extract Inductive prod => "(,)"  [ "(,)" ].
-Extract Inductive sumor   => "Prelude.Maybe" ["Prelude.Just" "Prelude.Nothing"].
+Extract Inductive sumorT => "Prelude.Either" ["Prelude.Left" "Prelude.Right"].
 
 Separate Extraction runW.
+

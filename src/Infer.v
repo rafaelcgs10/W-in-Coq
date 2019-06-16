@@ -52,6 +52,9 @@ Next Obligation.
   simpl in *.
   destruct (apply_inst_subst_hoare (compute_inst_subst x (max_gen_vars sigma)) sigma >>= _).
   crush.
+  destruct x0.
+  crush.
+  auto.
 Defined.
 
 (** Look up function used in algorithm W. *)
@@ -62,9 +65,11 @@ Program Definition look_dep (x : id) (G : ctx) :
   | None => failT (@MissingVar' x (missingVar x)) schm
   end.
 
+Set Implicit Arguments.
+
 (** Gives you a fresh variable *)
-Program Definition fresh : @Infer (@top id) id (fun i x f => S i = f /\ i = x) :=
-  fun n => exist _ (inleft (n, S n)) _.
+Program Definition fresh : Infer (@top id) id (fun i x f => S i = f /\ i = x) :=
+  fun n => exist _ (inleftT _ (n, S n)) _.
 
 (** Adds a fresh variable to the context *)
 Program Definition addFreshCtx (G : ctx) (x : id) (alpha : id):
@@ -104,7 +109,7 @@ Program Fixpoint W (e : term) (G : ctx) {struct e} :
 
   | lam_t x e' =>
     alpha <- fresh ;
-      G' <- addFreshCtx G x alpha ;
+      G' <- @addFreshCtx G x alpha ;
       tau_s <- W e' G'  ;
       ret ((arrow (apply_subst ((snd tau_s)) (var alpha)) (fst tau_s)), (snd tau_s))
 
@@ -136,6 +141,7 @@ Defined.
 Next Obligation.  (* Case: postcondition of var *)
   edestruct (look_dep x G >>= _);
     crush; 
+  destruct x1; crush;
     rename x into st0, x2 into st1;
     rename x0 into tau', x1 into tau.
   - (* Case: var_t soundness *)
@@ -183,6 +189,7 @@ Next Obligation. (* Case: postcondition of lambda  *)
   simpl.
   destruct (W e' (((x, sc_var x0)) :: G) >>= _);
     crush; clear W;
+  destruct x1; crush;
       rename x0 into st0, t1 into s, x1 into tau_r, t into st1.
   (* Subcase : new_tv_ty lambda *)
   - destruct (find_subst s st0).
@@ -245,6 +252,7 @@ Next Obligation. (* Case: postcondition of application  *)
   destruct (W l G  >>= _).
   crush;
     clear W;
+  destruct x0; crush;
     rename H7 into MGU, H13 into MGU', H15 into MGU'';
     rename x4 into alpha, x into st0, x1 into st1;
     rename x3 into mu, t1 into s1, t2 into s2;
@@ -333,7 +341,7 @@ Next Obligation.
 Defined.
 Next Obligation. (* Case : postcondition of let *)
   destruct (W e1 G >>= _).
-  crush;
+  crush; destruct x1; crush;
     clear W;
     rename H11 into SOUND_e2, H5 into SOUND_e1;
     rename H6 into COMP_e1, H12 into COMP_e2;
@@ -403,9 +411,9 @@ Defined.
 
 Print Assumptions W.
 
-Program Definition runW e G (s0 : id) (p : new_tv_ctx G s0) : option (ty * substitution) :=
+Program Definition runW e G (s0 : id) (p : new_tv_ctx G s0) : sumorT (ty * substitution) InferFailure :=
   match W e G (exist _ s0 p) with
-  | inleft (a', _) => Some a'
-  | inright _ => None
+  | inleftT _ (a', _) => inleftT _ a'
+  | inrightT _ er => inrightT _ er
   end.
 

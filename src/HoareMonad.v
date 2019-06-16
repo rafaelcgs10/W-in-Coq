@@ -19,17 +19,27 @@ Definition Pre : Type := st -> Prop.
 
 Definition Post (a : Type) : Type := st -> a -> st -> Prop.
 
-Program Definition HoareState  (B : Prop) (pre : Pre) (a : Type) (post : Post a) : Type :=
-  forall i : sig (fun t : st => pre t), sig (fun anonymous : sumor (prod a st) B =>
+Locate "+".
+
+Inductive sumorT (A B: Type) : Type :=
+| inleftT : A -> A + B
+| inrightT : B -> A + B
+ where "A + B " := (sumorT A B) : type_scope.
+
+Arguments inleftT {A} {B}.
+Arguments inrightT {A} {B}.
+
+Program Definition HoareState  (B : Set) (pre : Pre) (a : Type) (post : Post a) : Type :=
+  forall i : sig (fun t : st => pre t), sig (fun anonymous : sumorT (prod a st) B =>
                                        match anonymous with
-                                       | inleft (x, f) => post (proj1_sig i) x f
-                                       | inright _ => B
+                                       | inleftT (x, f) => post (proj1_sig i) x f
+                                       | inrightT _ => True
                                        end).
 
 Definition top : Pre := fun st => True.
 
-Program Definition ret {B : Prop} (a : Type) : forall x,
-    @HoareState B top a (fun i y f => i = f /\ y = x) := fun x s => exist _ (inleft (x, s)) _.
+Program Definition ret {B : Set} (a : Type) : forall x,
+    @HoareState B top a (fun i y f => i = f /\ y = x) := fun x s => exist _ (inleftT (x, s)) _.
 
 
 Program Definition bind : forall a b P1 P2 Q1 Q2 B,
@@ -38,8 +48,8 @@ Program Definition bind : forall a b P1 P2 Q1 Q2 B,
                 b
                 (fun s1 y s3 => exists x, exists s2, Q1 s1 x s2 /\ Q2 x s2 y s3) :=
   fun B a b P1 P2 Q1 Q2 c1 c2 s1 => match c1 s1 as y with
-                                 | inleft (x, s2) => c2 x s2
-                                 | inright R => inright R
+                                 | inleftT (x, s2) => c2 x s2
+                                 | inrightT R => _
                                  end.
 Next Obligation.
   eapply p.
@@ -74,14 +84,18 @@ Next Obligation.
   simpl in *.
   auto.
 Defined.
+Next Obligation.
+  simpl in *.
+  inversion Heq_y.
+  exists (@inrightT (a * st) Q2 R).
+  auto.
+Defined.
 
-Check bind.
+Program Definition failT {B : Set} (b : B) (A : Type) : @HoareState B top A (fun _ _ _ => True) := fun s => exist _ (inrightT b) _.
 
-Program Definition failT {B : Prop} (b : B) (A : Type) : @HoareState B top A (fun _ _ _ => True) := fun s => exist _ (inright b) _.
+Program Definition get' {B : Set} : @HoareState B top st (fun i x f => i = f /\ x = i) := fun s => exist _ (inleftT (s, s)) _.
 
-Program Definition get' {B : Prop} : @HoareState B top st (fun i x f => i = f /\ x = i) := fun s => exist _ (inleft (s, s)) _.
-
-Program Definition put' {B : Prop} (x : st) : @HoareState B top unit (fun _ _ f => f = x) := fun  _ => exist _ (inleft (tt, x)) _.
+Program Definition put' {B : Set} (x : st) : @HoareState B top unit (fun _ _ f => f = x) := fun  _ => exist _ (inleftT (tt, x)) _.
 
 End hoare_state_monad.
 
@@ -94,7 +108,7 @@ Notation "x <- m ; p" := (m >>= fun x => p)
 
 (** * Failures of W *)
 
-Inductive UnifyFailure : ty -> ty -> Prop :=
+Inductive UnifyFailure : ty -> ty -> Set :=
 | occ_fail  : forall v t, occurs v t -> UnifyFailure (var v) t
 | occ_fail'  : forall v t, occurs v t -> UnifyFailure t (var v)
 | diff_cons : forall n n', n <> n' -> UnifyFailure (con n) (con n')
@@ -106,17 +120,17 @@ Inductive UnifyFailure : ty -> ty -> Prop :=
 
 Hint Constructors UnifyFailure.
 
-Inductive SubstFailure :  Prop :=
+Inductive SubstFailure : Set :=
 | substFail : SubstFailure.
 
 Hint Constructors SubstFailure.
 
-Inductive MissingVar : id ->  Prop :=
+Inductive MissingVar : id ->  Set :=
 | missingVar : forall i, MissingVar i.
 
 Hint Constructors MissingVar.
 
-Inductive InferFailure : Prop :=
+Inductive InferFailure : Set :=
 | SubstFailure' : SubstFailure -> InferFailure
 | UnifyFailure' : forall t1 t2, UnifyFailure t1 t2 -> InferFailure
 | MissingVar' : forall i, MissingVar i -> InferFailure.
