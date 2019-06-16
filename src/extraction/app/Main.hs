@@ -1,6 +1,6 @@
 module Main where
 
-import Lib
+import Infer
 
 main :: IO ()
-main = someFunc
+main = undefined
