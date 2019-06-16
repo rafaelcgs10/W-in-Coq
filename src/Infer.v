@@ -69,7 +69,7 @@ Set Implicit Arguments.
 
 (** Gives you a fresh variable *)
 Program Definition fresh : Infer (@top id) id (fun i x f => S i = f /\ i = x) :=
-  fun n => exist _ (inleftT _ (n, S n)) _.
+  fun n => exist _ (inl _ (n, S n)) _.
 
 (** Adds a fresh variable to the context *)
 Program Definition addFreshCtx (G : ctx) (x : id) (alpha : id):
@@ -430,9 +430,9 @@ Next Obligation.
   omega.
 Defined. 
 
-Program Definition runW e G (s0 : id) : sumorT (ty * substitution) InferFailure :=
+Program Definition runW e G (s0 : id) : sum (ty * substitution) InferFailure :=
   match W e G (computeInitialState G)  with
-  | inleftT _ (a', _) => inleftT _ a'
-  | inrightT _ er => inrightT _ er
+  | inl _ (a', _) => inl _ a'
+  | inr _ er => inr _ er
   end.
 

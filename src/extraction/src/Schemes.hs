@@ -32,3 +32,10 @@ max_gen_vars sigma =
    Coq_sc_arrow s1 s2 -> Nat.max (max_gen_vars s1) (max_gen_vars s2);
    _ -> Datatypes.O}
 
+max_vars_schm :: Coq_schm -> Datatypes.Coq_nat
+max_vars_schm sigma =
+  case sigma of {
+   Coq_sc_var i -> i;
+   Coq_sc_arrow s1 s2 -> Nat.max (max_vars_schm s1) (max_vars_schm s2);
+   _ -> Datatypes.O}
+

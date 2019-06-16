@@ -148,7 +148,7 @@ we can either:
  *)
 
 Definition unify_type (c : constraints) :=
-  wf_constraints c -> sumorT
+  wf_constraints c -> sum
   ({ s | unifier (fst (get_tys c)) (snd (get_tys c)) s /\ wf_subst (get_ctxt c) s /\
          (forall st, (new_tv_ty (fst (get_tys c)) st /\ new_tv_ty (snd (get_tys c)) st) -> new_tv_subst s st) /\
          forall s', unifier (fst (get_tys c)) (snd (get_tys c)) s' ->
@@ -169,32 +169,32 @@ Unset Implicit Arguments.
 Program Fixpoint unify' (l : constraints) {wf constraints_lt l} : unify_type l :=
   fun wfl => match get_tys l with
           | (var i, t) => match occurs_dec i t with
-                         | left _ => inrightT _ _ 
+                         | left _ => inr _ _ 
                          | right _ => if (eq_ty_dec (var i) t)
-                                     then inleftT _ (@exist substitution _ nil _) 
-                                     else inleftT _ (@exist substitution _ ((i, t)::nil) _)
+                                     then inl _ (@exist substitution _ nil _) 
+                                     else inl _ (@exist substitution _ ((i, t)::nil) _)
                          end
           | (t, var i) => match occurs_dec i t with
-                         | left _ =>  inrightT _ _
+                         | left _ =>  inr _ _
                          | right _ => if (eq_ty_dec (var i) t)
-                                     then inleftT _ (@exist substitution _ nil _) 
-                                     else inleftT _ (@exist substitution _ ((i, t)::nil) _)
+                                     then inl _ (@exist substitution _ nil _) 
+                                     else inl _ (@exist substitution _ ((i, t)::nil) _)
                          end
           | (con i, con j) => if eq_id_dec i j
-                             then inleftT _ (@exist substitution _ nil _) 
-                             else inrightT _ _ 
+                             then inl _ (@exist substitution _ nil _) 
+                             else inr _ _ 
           | (arrow l1 r1, arrow l2 r2) => match unify' (mk_constraints (get_ctxt l) l1 l2) _ with
-                                         | inrightT _ E => inrightT _ _
-                                         | inleftT _ (exist _ s1 HS) =>
+                                         | inr _ E => inr _ _
+                                         | inl _ (exist _ s1 HS) =>
                                            match unify' (mk_constraints (minus (get_ctxt l) (dom s1))
                                                                         (apply_subst s1 r1) (apply_subst s1 r2)) _ with
-                                           | inrightT _ E => inrightT _ _
-                                           | inleftT _ (exist _ s2 HS') =>
-                                             inleftT _ (@exist substitution _ (compose_subst s1 s2) _)
+                                           | inr _ E => inr _ _
+                                           | inl _ (exist _ s2 HS') =>
+                                             inl _ (@exist substitution _ (compose_subst s1 s2) _)
                                            end
                                          end
-          | (arrow _ _, con _) => inrightT _ _
-          | (con  _, arrow _ _) => inrightT _ _
+          | (arrow _ _, con _) => inr _ _
+          | (con  _, arrow _ _) => inr _ _
           end.
 Next Obligation.
   eauto.
@@ -402,7 +402,7 @@ Qed.
 
 (** An interface so unify can work by only providing the two types to be unified *)
 Definition unify'' : forall t1 t2 : ty,
-    {x & sumorT ({ s | unifier t1 t2 s /\ wf_subst x s /\
+    {x & sum ({ s | unifier t1 t2 s /\ wf_subst x s /\
                 (forall st, (new_tv_ty t1 st /\ new_tv_ty t2 st) -> new_tv_subst s st) /\
                 forall s', unifier t1 t2 s' ->
                            exists s'', forall v, apply_subst s' (var v) = apply_subst (compose_subst s s'') (var v)})
@@ -428,8 +428,8 @@ Program Definition unify (tau1 tau2 : ty) :
                                    ((new_tv_ty tau1 i /\ new_tv_ty tau2 i) -> new_tv_subst mu i) /\
                                    apply_subst mu tau1 = apply_subst mu tau2) :=
   match unify'' tau1 tau2 as y  with
-  | existT _ c (inleftT _ (exist _ mu HS)) => ret mu
-  | existT _ c (inrightT _ error) => failT (@UnifyFailure' tau1 tau2 error) substitution
+  | existT _ c (inl _ (exist _ mu HS)) => ret mu
+  | existT _ c (inr _ error) => failT (@UnifyFailure' tau1 tau2 error) substitution
   end.
 Next Obligation.
   splits; intros; eauto.

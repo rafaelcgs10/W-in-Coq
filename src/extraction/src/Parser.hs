@@ -42,14 +42,6 @@ expr' = parens expr <|> abst
                     <|> letExpr
                     <|> liftM (Coq_var_t . stringToCoq_id) var
                     
-comma = do
-        reservedOp ","
-        return ()
-
-pip = do
-        reservedOp "|"
-        return ()
-
 stringToListNum256 s = map ord s
 listNumBaseToNum256 l = sum $ zipWith (\a e -> a * 256 ^ e) l [0..(Prelude.length l)] 
 num256ToListNumBase  n | n < 256  = [n]
@@ -63,6 +55,7 @@ numToCoq_id n
 coq_idToNum O = 0
 coq_idToNum (S n) = 1 + coq_idToNum n
 
+coq_idToString = (map chr) . num256ToListNumBase . coq_idToNum
 stringToCoq_id = numToCoq_id . listNumBaseToNum256 . stringToListNum256
 
 -- Lex

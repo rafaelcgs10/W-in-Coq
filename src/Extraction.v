@@ -12,7 +12,6 @@ Extract Inductive bool => "Prelude.Bool" ["Prelude.True" "Prelude.False"].
 Extract Inductive sumbool => "Prelude.Bool" ["Prelude.True" "Prelude.False"].
 Extract Inductive list => "[]" [ "[]" "(:)" ].
 Extract Inductive prod => "(,)"  [ "(,)" ].
-Extract Inductive sumorT => "Prelude.Either" ["Prelude.Left" "Prelude.Right"].
+Extract Inductive sum => "Prelude.Either" ["Prelude.Left" "Prelude.Right"].
 
 Separate Extraction runW.
-

@@ -9,5 +9,4 @@ data Coq_term =
  | Coq_let_t SimpleTypes.Coq_id Coq_term Coq_term
  | Coq_lam_t SimpleTypes.Coq_id Coq_term
  | Coq_const_t SimpleTypes.Coq_id
- deriving Prelude.Show
 

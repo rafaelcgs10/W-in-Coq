@@ -7,7 +7,7 @@ data Coq_unit =
 
 data Coq_nat =
    O
- | S Coq_nat deriving Prelude.Show
+ | S Coq_nat
 
 nat_rect :: a1 -> (Coq_nat -> a1 -> a1) -> Coq_nat -> a1
 nat_rect f f0 n =
