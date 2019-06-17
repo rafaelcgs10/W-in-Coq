@@ -1,4 +1,4 @@
-This is the extracted folder.
+This folder of the extraced code.
 
 Only Parser.hs and Printing.hs were write by hand.
 
