@@ -47,14 +47,6 @@ listNumBaseToNum256 l = sum $ zipWith (\a e -> a * 256 ^ e) l [0..(Prelude.lengt
 num256ToListNumBase  n | n < 256  = [n]
                       | otherwise =  mod n 256 : num256ToListNumBase (n `div` 256)
 
---numToCoq_id 0 = O::SimpleTypes.Coq_id
---numToCoq_id n
---         | n < 0 = O 
---         | n > 0 = S (numToCoq_id (n-1))
-
---coq_idToNum O = 0
---coq_idToNum (S n) = 1 + coq_idToNum n
-
 coq_idToString = (map chr) . num256ToListNumBase 
 stringToCoq_id = listNumBaseToNum256 . stringToListNum256
 

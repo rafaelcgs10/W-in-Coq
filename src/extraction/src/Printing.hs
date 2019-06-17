@@ -7,24 +7,6 @@ import Typing
 import Datatypes
 import SimpleTypes
 
---instance Show Datatypes.Coq_nat where
---  show n = coq_idToString n 
-
---instance Eq Datatypes.Coq_nat where
---  O == O = True
---  (S n) == (S n') = n == n
-  
---instance Ord Datatypes.Coq_nat where
---  O `compare` O = EQ
---  O `compare` S O = LT
---  S O `compare` O = GT
---  (S n) `compare` (S m) = n `compare` m
---  O < O = False
---  (S _) < O = False
---  O < (S _) = True
---  (S n) < (S m) = n < m
---  max n m = if n < m then m else n
---  min n m = if n < m then n else m
 max_ty (Coq_con _) = 0
 max_ty (Coq_var n) = n
 max_ty (Coq_arrow t1 t2) = max (max_ty t1) (max_ty t2)
