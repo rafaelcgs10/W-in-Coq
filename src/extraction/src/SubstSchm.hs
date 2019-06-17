@@ -29,9 +29,10 @@ apply_inst_subst is_s sigma =
                            Datatypes.None -> Datatypes.None};
      Datatypes.None -> Datatypes.None}}
 
-compute_inst_subst :: SimpleTypes.Coq_id -> Datatypes.Coq_nat -> [] SimpleTypes.Coq_ty
+compute_inst_subst :: SimpleTypes.Coq_id -> Prelude.Int -> [] SimpleTypes.Coq_ty
 compute_inst_subst st n =
-  case n of {
-   Datatypes.O -> [];
-   Datatypes.S n' -> (:) (SimpleTypes.Coq_var st) (compute_inst_subst (Datatypes.S st) n')}
+  (\fO fS n -> if n Prelude.== 0 then fO () else fS (n Prelude.- 1))
+    (\_ -> [])
+    (\n' -> (:) (SimpleTypes.Coq_var st) (compute_inst_subst (Prelude.succ st) n'))
+    n
 

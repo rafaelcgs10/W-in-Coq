@@ -1,12 +1,10 @@
 module Infer where
 
 import qualified Prelude
-import qualified Compare_dec
 import qualified Context
 import qualified Datatypes
 import qualified Gen
 import qualified HoareMonad
-import qualified Nat
 import qualified Schemes
 import qualified SimpleTypes
 import qualified Specif
@@ -29,7 +27,7 @@ schm_inst_dep sigma =
   (\x ->
   Specif.proj1_sig
     (HoareMonad.bind HoareMonad.get (\st ->
-      HoareMonad.bind (HoareMonad.put (Nat.add st filtered_var)) (\_ ->
+      HoareMonad.bind (HoareMonad.put ((Prelude.+) st filtered_var)) (\_ ->
         HoareMonad.bind (apply_inst_subst_hoare (SubstSchm.compute_inst_subst st filtered_var) sigma) HoareMonad.ret)) (Specif.proj1_sig x)))
 
 look_dep :: SimpleTypes.Coq_id -> Context.Coq_ctx -> HoareMonad.Infer Schemes.Coq_schm
@@ -42,7 +40,7 @@ look_dep x g =
 
 fresh :: HoareMonad.Infer SimpleTypes.Coq_id
 fresh n =
-  Prelude.Left ((,) (Specif.proj1_sig n) (Datatypes.S (Specif.proj1_sig n)))
+  Prelude.Left ((,) (Specif.proj1_sig n) (Prelude.succ (Specif.proj1_sig n)))
 
 addFreshCtx :: Context.Coq_ctx -> SimpleTypes.Coq_id -> SimpleTypes.Coq_id -> HoareMonad.Infer Context.Coq_ctx
 addFreshCtx g x alpha x0 =
@@ -82,17 +80,17 @@ coq_W e g x0 =
 computeInitialState :: Context.Coq_ctx -> SimpleTypes.Coq_id
 computeInitialState g =
   case g of {
-   [] -> Datatypes.O;
+   [] -> 0;
    (:) p g' ->
     case p of {
      (,) _ sigma ->
       let {filtered_var = Specif.proj1_sig (computeInitialState g')} in
-      case Compare_dec.lt_dec (Schemes.max_vars_schm sigma) filtered_var of {
+      case (Prelude.<) (Schemes.max_vars_schm sigma) filtered_var of {
        Prelude.True -> filtered_var;
-       Prelude.False -> Datatypes.S (Schemes.max_vars_schm sigma)}}}
+       Prelude.False -> Prelude.succ (Schemes.max_vars_schm sigma)}}}
 
-runW :: Typing.Coq_term -> Context.Coq_ctx -> SimpleTypes.Coq_id -> Prelude.Either ((,) SimpleTypes.Coq_ty Subst.Coq_substitution) HoareMonad.InferFailure
-runW e g _ =
+runW :: Typing.Coq_term -> Context.Coq_ctx -> Prelude.Either ((,) SimpleTypes.Coq_ty Subst.Coq_substitution) HoareMonad.InferFailure
+runW e g =
   let {filtered_var = Specif.proj1_sig (coq_W e g (computeInitialState g))} in
   case filtered_var of {
    Prelude.Left p -> case p of {

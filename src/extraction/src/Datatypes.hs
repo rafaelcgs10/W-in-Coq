@@ -5,20 +5,6 @@ import qualified Prelude
 data Coq_unit =
    Coq_tt
 
-data Coq_nat =
-   O
- | S Coq_nat
-
-nat_rect :: a1 -> (Coq_nat -> a1 -> a1) -> Coq_nat -> a1
-nat_rect f f0 n =
-  case n of {
-   O -> f;
-   S n0 -> f0 n0 (nat_rect f f0 n0)}
-
-nat_rec :: a1 -> (Coq_nat -> a1 -> a1) -> Coq_nat -> a1
-nat_rec =
-  nat_rect
-
 data Coq_option a =
    Some a
  | None
@@ -33,11 +19,11 @@ snd p =
   case p of {
    (,) _ y -> y}
 
-length :: ([] a1) -> Coq_nat
+length :: ([] a1) -> Prelude.Int
 length l =
   case l of {
-   [] -> O;
-   (:) _ l' -> S (length l')}
+   [] -> 0;
+   (:) _ l' -> Prelude.succ (length l')}
 
 app :: ([] a1) -> ([] a1) -> [] a1
 app l m =

@@ -7,55 +7,52 @@ import Typing
 import Datatypes
 import SimpleTypes
 
-instance Show Datatypes.Coq_nat where
-  show n = coq_idToString n 
+--instance Show Datatypes.Coq_nat where
+--  show n = coq_idToString n 
 
-instance Eq Datatypes.Coq_nat where
-  O == O = True
-  (S n) == (S n') = n == n
+--instance Eq Datatypes.Coq_nat where
+--  O == O = True
+--  (S n) == (S n') = n == n
   
-instance Ord Datatypes.Coq_nat where
-  O `compare` O = EQ
-  O `compare` S O = LT
-  S O `compare` O = GT
-  (S n) `compare` (S m) = n `compare` m
-  O < O = False
-  O < (S O) = True
-  (S n) < (S m) = n < m
-  max n m = if n < m then m else n
-  min n m = if n < m then n else m
-
-max_ty (Coq_con _) = O
+--instance Ord Datatypes.Coq_nat where
+--  O `compare` O = EQ
+--  O `compare` S O = LT
+--  S O `compare` O = GT
+--  (S n) `compare` (S m) = n `compare` m
+--  O < O = False
+--  (S _) < O = False
+--  O < (S _) = True
+--  (S n) < (S m) = n < m
+--  max n m = if n < m then m else n
+--  min n m = if n < m then n else m
+max_ty (Coq_con _) = 0
 max_ty (Coq_var n) = n
 max_ty (Coq_arrow t1 t2) = max (max_ty t1) (max_ty t2)
-  
-min_ty (Coq_con _) = O
-min_ty (Coq_var n) = n
-min_ty (Coq_arrow t1 t2) = min (min_ty t1) (min_ty t2)
 
-minus_id O m = O
-minus_id m O = m
-minus_id (S m) (S n) = minus_id m n
+min_ty t = min_ty' t (max_ty t)
+min_ty' (Coq_con _) m = m
+min_ty' (Coq_var n) m = min n m
+min_ty' (Coq_arrow t1 t2) m = min (min_ty' t1 m) (min_ty' t2 m)
 
 normalize_ty_to_O t = normalize_ty_to_O' t (min_ty t)
-normalize_ty_to_O' (Coq_var n) n' = Coq_var (minus_id n n') 
+normalize_ty_to_O' (Coq_var n) n' = Coq_var (n - n') 
 normalize_ty_to_O' (Coq_con n) _ = Coq_con n 
 normalize_ty_to_O' (Coq_arrow t1 t2) n' = Coq_arrow (normalize_ty_to_O' t1 n') (normalize_ty_to_O' t2 n')
 
-add_97_to_id n = add_97_to_id' n 97
-add_97_to_id' n 0 = n
-add_97_to_id' n m = add_97_to_id' (S n) (m - 1)
+add_97_coq_var (Coq_var n) = Coq_var (n + 97)
+add_97_coq_var (Coq_arrow t1 t2) = Coq_arrow (add_97_coq_var t1) (add_97_coq_var t2)
+add_97_coq_var m = m
 
 instance Show SimpleTypes.Coq_ty where
-  show t = show' (normalize_ty_to_O t) where
-             show' (Coq_var n) = show (add_97_to_id n)
-             show' (Coq_con O) = "Int"
+  show t = show' (add_97_coq_var (normalize_ty_to_O t)) where
+             show' (Coq_var n) = coq_idToString n
+             show' (Coq_con 0) = "Int"
              show' (Coq_con n) = "Const " ++ show n
-             show' (Coq_arrow t1 t2) = (show' t1) ++ " -> " ++ (show' t2)
+             show' (Coq_arrow t1 t2) = "(" ++ (show' t1) ++ " -> " ++ (show' t2) ++ ")"
 
 instance Show HoareMonad.UnifyFailure where
-  show (Coq_occ_fail i t) = "Occurs check failure: " ++ show i ++ " in " ++ show t
-  show (Coq_occ_fail' i t) = "Occurs check failure: " ++ show i ++ " in " ++ show t
+  show (Coq_occ_fail i t) = "Occurs check failure: " ++ show (Coq_var i) ++ " in " ++ show t
+  show (Coq_occ_fail' i t) = "Occurs check failure: " ++ show (Coq_var i) ++ " in " ++ show t
   show (Coq_diff_cons i j) = "Can't unify " ++ show (Coq_con i) ++ " and " ++ show (Coq_con j)
   show (Coq_con_arrow i t1 t2) = "Can't unify " ++ show (Coq_con i) ++ " and " ++ show (Coq_arrow t1 t2)
   show (Coq_arrow_con i t1 t2) = "Can't unify " ++ show (Coq_con i) ++ " and " ++ show (Coq_arrow t1 t2)

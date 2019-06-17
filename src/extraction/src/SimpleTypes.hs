@@ -1,15 +1,13 @@
 module SimpleTypes where
 
 import qualified Prelude
-import qualified Datatypes
-import qualified PeanoNat
 import qualified Specif
 
-type Coq_id = Datatypes.Coq_nat
+type Coq_id = Prelude.Int
 
 eq_id_dec :: Coq_id -> Coq_id -> Prelude.Bool
 eq_id_dec =
-  PeanoNat._Nat__eq_dec
+  (Prelude.==)
 
 data Coq_ty =
    Coq_var Coq_id

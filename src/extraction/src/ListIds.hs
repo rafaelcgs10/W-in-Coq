@@ -18,9 +18,9 @@ index_list_id_aux count i l =
    [] -> Datatypes.None;
    (:) x l' -> case SimpleTypes.eq_id_dec x i of {
                 Prelude.True -> Datatypes.Some count;
-                Prelude.False -> index_list_id_aux (Datatypes.S count) i l'}}
+                Prelude.False -> index_list_id_aux (Prelude.succ count) i l'}}
 
 index_list_id :: SimpleTypes.Coq_id -> ([] SimpleTypes.Coq_id) -> Datatypes.Coq_option SimpleTypes.Coq_id
 index_list_id i l =
-  index_list_id_aux Datatypes.O i l
+  index_list_id_aux 0 i l
 

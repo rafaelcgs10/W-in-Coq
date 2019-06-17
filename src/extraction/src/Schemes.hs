@@ -2,7 +2,6 @@ module Schemes where
 
 import qualified Prelude
 import qualified Datatypes
-import qualified Nat
 import qualified SimpleTypes
 
 data Coq_schm =
@@ -25,17 +24,17 @@ coq_FV_schm sigma =
    Coq_sc_arrow l r -> Datatypes.app (coq_FV_schm l) (coq_FV_schm r);
    _ -> []}
 
-max_gen_vars :: Coq_schm -> Datatypes.Coq_nat
+max_gen_vars :: Coq_schm -> Prelude.Int
 max_gen_vars sigma =
   case sigma of {
-   Coq_sc_gen i -> Datatypes.S i;
-   Coq_sc_arrow s1 s2 -> Nat.max (max_gen_vars s1) (max_gen_vars s2);
-   _ -> Datatypes.O}
+   Coq_sc_gen i -> Prelude.succ i;
+   Coq_sc_arrow s1 s2 -> Prelude.max (max_gen_vars s1) (max_gen_vars s2);
+   _ -> 0}
 
-max_vars_schm :: Coq_schm -> Datatypes.Coq_nat
+max_vars_schm :: Coq_schm -> Prelude.Int
 max_vars_schm sigma =
   case sigma of {
    Coq_sc_var i -> i;
-   Coq_sc_arrow s1 s2 -> Nat.max (max_vars_schm s1) (max_vars_schm s2);
-   _ -> Datatypes.O}
+   Coq_sc_arrow s1 s2 -> Prelude.max (max_vars_schm s1) (max_vars_schm s2);
+   _ -> 0}
 
