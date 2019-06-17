@@ -430,7 +430,7 @@ Next Obligation.
   omega.
 Defined. 
 
-Program Definition runW e G (s0 : id) : sum (ty * substitution) InferFailure :=
+Program Definition runW e G : sum (ty * substitution) InferFailure :=
   match W e G (computeInitialState G)  with
   | inl _ (a', _) => inl _ a'
   | inr _ er => inr _ er
