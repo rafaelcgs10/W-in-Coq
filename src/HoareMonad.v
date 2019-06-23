@@ -17,75 +17,93 @@ Variable st : Set.
 
 Definition Pre : Type := st -> Prop.
 
-Definition Post (a : Type) : Type := st -> a -> st -> Prop.
+Definition Post (a e : Type) : Type := st -> sum a e -> st -> Prop.
 
-Program Definition HoareState  (B : Set) (pre : Pre) (a : Type) (post : Post a) : Type :=
-  forall i : sig (fun t : st => pre t), sig (fun anonymous : sum (prod a st) B =>
+Program Definition HoareState  (e : Type) (pre : Pre) (a : Type) (post : Post a e) : Type :=
+  forall i : sig (fun t : st => pre t), sig (fun anonymous : prod (sum a e) st =>
                                        match anonymous with
-                                       | inl (x, f) => post (proj1_sig i) x f
-                                       | inr _ => True
+                                       | (x, f) => post (proj1_sig i) x f
                                        end).
 
 Definition top : Pre := fun st => True.
 
-Program Definition ret {B : Set} (a : Type) : forall x,
-    @HoareState B top a (fun i y f => i = f /\ y = x) := fun x s => exist _ (inl (x, s)) _.
+Program Definition ret {e : Type} (a : Type) : forall x,
+    @HoareState e top a (fun i y f => i = f /\ y = x) := fun x s => (x, s).
 
 
-Program Definition bind : forall a b P1 P2 Q1 Q2 B,
-    (@HoareState B P1 a Q1) -> (forall (x : a), @HoareState B (P2 x) b (Q2 x)) ->
-    @HoareState B (fun s1 => P1 s1 /\ forall x s2, Q1 s1 x s2 -> P2 x s2)
+Program Definition bind : forall a b e P1 P2 Q1 Q2,
+    (@HoareState e P1 a Q1) -> (forall (x : a), @HoareState e (P2 x) b (Q2 x)) ->
+    @HoareState e (fun s1 => P1 s1 /\ forall x s2, match x as x' with
+                                          | inl l => Q1 s1 x s2 -> P2 l s2
+                                          | inr r => True
+                                          end )
                 b
-                (fun s1 y s3 => exists x, exists s2, Q1 s1 x s2 /\ Q2 x s2 y s3) :=
-  fun B a b P1 P2 Q1 Q2 c1 c2 s1 => match c1 s1 as y with
-                                 | inl (x, s2) => c2 x s2
-                                 | inr R => _
+                (fun s1 y s3 => exists x, exists s2, match x, y as xy with
+                                        | inl l, inl _ => Q1 s1 x s2 /\ Q2 l s2 y s3
+                                        | inr r, inr _ => Q1 s1 x s2
+                                        | inr r, inl _ => False
+                                        | inl l, inr r => Q2 l s2 y s3
+                                        end) :=
+  fun a b e P1 P2 Q1 Q2 c1 c2 s1 => match c1 s1 as y with
+                                 | (x, s2) => match x with
+                                             | inl l => c2 l s2
+                                             | inr r => (inr r, s1)
+                                             end
                                  end.
 Next Obligation.
-  eapply p.
+  specialize y with (x := inl l).
+  simpl in *.
+  apply y.
   cbv in Heq_y.
   destruct c1.
-  destruct x0.
-  - simpl in y.
-    destruct p0.
-    inversion Heq_y.
-    subst.
-    auto.
-  - simpl in y.
-    inversion Heq_y.
-Defined.
-Next Obligation.
-  destruct (c2 x).
-  destruct x0.
-  cbv in Heq_y.
-  simpl in *.
-  destruct p0.
-  exists x s2.
-  split;
-    auto.
-  destruct c1.
-  destruct x0.
-  destruct p0.
-  simpl in *.
+  destruct x.
+  simpl in y.
+  destruct s.
   inversion Heq_y.
   subst.
   auto.
   inversion Heq_y.
-  simpl in *.
-  auto.
 Defined.
 Next Obligation.
+  destruct (c2 l).
+  destruct x.
+  cbv in Heq_y.
   simpl in *.
+  destruct c1.
+  simpl in *.
+  destruct x.
+  destruct s3.
   inversion Heq_y.
-  exists (@inr (a * st) Q2 R).
+  subst.
+  exists (@inl a e a0).
+  exists s4.
+  destruct s.
+  split; auto.
+  auto.
+  inversion Heq_y.
+Defined.
+Next Obligation.
+  destruct c1.
+  destruct x.
+  simpl in *.
+  destruct s.
+  inversion Heq_y.
+  inversion Heq_y.
+  subst.
+  exists (@inr a e e0).
+  exists s0.
   auto.
 Defined.
 
-Program Definition failT {B : Set} (b : B) (A : Type) : @HoareState B top A (fun _ _ _ => True) := fun s => exist _ (inr b) _.
+Program Definition failT {B : Type} (b : B) (A : Type) : @HoareState B top A (fun _ _ _ => True) := fun s => (inr b, s).
 
-Program Definition get' {B : Set} : @HoareState B top st (fun i x f => i = f /\ x = i) := fun s => exist _ (inl (s, s)) _.
+Program Definition get' {B : Type} : @HoareState B top st (fun i x f => i = f /\ x = inl i) := fun s => (_, s).
+Next Obligation.
+  left.
+  auto.
+Defined.
 
-Program Definition put' {B : Set} (x : st) : @HoareState B top unit (fun _ _ f => f = x) := fun  _ => exist _ (inl (tt, x)) _.
+Program Definition put' {B : Set} (x : st) : @HoareState B top unit (fun _ _ f => f = x) := fun  _ => (inl tt, x).
 
 End hoare_state_monad.
 

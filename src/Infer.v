@@ -29,31 +29,83 @@ Require Import MyLtacs.
 
 (** Monadic version of a the function [apply_inst_subst]. *)
 Program Definition apply_inst_subst_hoare (is_s : inst_subst) (sigma : schm):
-  @Infer (@top id) ty (fun i r f => i = f /\ apply_inst_subst is_s sigma = Some r) :=
+  @Infer (@top id) ty (fun i x f => i = f /\ match x with
+                                          | inl tau => apply_inst_subst is_s sigma = Some tau
+                                          | inr _ => apply_inst_subst is_s sigma = None
+                                          end) :=
   match apply_inst_subst is_s sigma with
   | None => failT (SubstFailure' substFail) ty
-  | Some tau => ret tau 
+  | Some tau => ret (inl tau) 
   end .
 
 (** Gives a type that is a (new) instance of a scheme *)
 Program Definition schm_inst_dep (sigma : schm) :
   @Infer (@top id) ty
-         (fun i r f => f = i + (max_gen_vars sigma) /\
-                    apply_inst_subst (compute_inst_subst i (max_gen_vars sigma)) sigma = Some r /\
-                    (new_tv_schm sigma i -> new_tv_ty r f)) :=
+         (fun i x f =>  match x with 
+                    | inl tau => f = i + (max_gen_vars sigma) /\ apply_inst_subst (compute_inst_subst i (max_gen_vars sigma)) sigma = Some tau /\
+                                (new_tv_schm sigma i -> new_tv_ty tau f)
+                    | inr _ => apply_inst_subst (compute_inst_subst i (max_gen_vars sigma)) sigma = None
+                    end) :=
   match max_gen_vars sigma as y with
   | nmax => 
     st <- get ;
       _ <- put (st + nmax) ;
       tau <- apply_inst_subst_hoare (compute_inst_subst st nmax) sigma ;
-      ret tau
+      ret (inl tau)
   end.
 Next Obligation.
   simpl in *.
-  destruct (apply_inst_subst_hoare (compute_inst_subst x (max_gen_vars sigma)) sigma >>= _).
-  crush.
+  unfold top.
+  split; auto.
+  intros.
+  destruct x0; auto.
+  intros; splits; auto.
+  intros; auto.
+  destruct x0; auto.
+  intros; splits; auto.
+  intros; auto.
+  destruct x0; auto.
+  (**
+  intros.
+  split; auto.
+  intros.
+  destruct x0.
+  intro.
+  auto.
+  intros; auto.
+  intros.
+  split; auto.
+  intros.
+  destruct x0.
+  split; auto.
   destruct x0.
   crush.
+  crush.
+  intros.
+  split; intros; auto.
+  destruct x0.
+  crush.
+  crush.
+*)
+Defined.
+Next Obligation.
+  simpl.
+  destruct (apply_inst_subst_hoare (compute_inst_subst x (max_gen_vars sigma)) sigma >>= _).
+  crush.
+  destruct x1.
+  destruct x0.
+  destructs H0.
+  destructs H0.
+  inversion H2.
+  subst.
+  splits; auto.
+  intros.
+  eauto.
+  inversion H0.
+  inversion H2.
+  destruct x0.
+  skip.
+  destructs H0.
   auto.
 Defined.
 

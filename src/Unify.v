@@ -421,14 +421,16 @@ Qed.
 
 (** An interface to the Infer monad  *)
 Program Definition unify (tau1 tau2 : ty) :
-  @Infer (@top id) substitution (fun i mu f =>
-                                   i = f /\
-                                   (forall s', apply_subst s' tau1 = apply_subst s' tau2 ->
-                                          exists s'', forall tau, apply_subst s' tau = apply_subst (compose_subst mu s'') tau) /\
-                                   ((new_tv_ty tau1 i /\ new_tv_ty tau2 i) -> new_tv_subst mu i) /\
-                                   apply_subst mu tau1 = apply_subst mu tau2) :=
+  @Infer (@top id) substitution (fun i x f => match x with
+                                           | inl mu => i = f /\
+                                                      (forall s', apply_subst s' tau1 = apply_subst s' tau2 ->
+                                                             exists s'', forall tau, apply_subst s' tau = apply_subst (compose_subst mu s'') tau) /\
+                                                      ((new_tv_ty tau1 i /\ new_tv_ty tau2 i) -> new_tv_subst mu i) /\
+                                                      apply_subst mu tau1 = apply_subst mu tau2
+                                           | inr r => forall s, ~ unifier tau1 tau2 s
+                                            end ) :=
   match unify'' tau1 tau2 as y  with
-  | existT _ c (inl _ (exist _ mu HS)) => ret mu
+  | existT _ c (inl _ (exist _ mu HS)) => ret (inl mu)
   | existT _ c (inr _ error) => failT (@UnifyFailure' tau1 tau2 error) substitution
   end.
 Next Obligation.
@@ -439,5 +441,9 @@ Next Obligation.
   intros.
   simpl.
   eauto.
+Defined.
+Next Obligation.
+  intro.
+  skip.
 Defined.
 
