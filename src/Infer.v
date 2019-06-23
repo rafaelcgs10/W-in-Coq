@@ -87,7 +87,7 @@ Next Obligation.
   crush.
   crush.
 *)
-Defined.
+Qed.
 Next Obligation.
   simpl.
   destruct (apply_inst_subst_hoare (compute_inst_subst x (max_gen_vars sigma)) sigma >>= _).
@@ -104,33 +104,43 @@ Next Obligation.
   inversion H0.
   inversion H2.
   destruct x0.
-  skip.
+  contradiction.
   destructs H0.
   auto.
 Defined.
 
 (** Look up function used in algorithm W. *)
 Program Definition look_dep (x : id) (G : ctx) :
-  @Infer (@top id) schm (fun i k f => i = f /\ in_ctx x G = Some k) :=
+  @Infer (@top id) schm (fun i k f => i = f /\ match k with
+                                           | inl sigma => in_ctx x G = Some sigma
+                                           | inr _ => in_ctx x G = None
+                                           end) :=
   match in_ctx x G with
-  | Some sig => ret sig
+  | Some sig => ret (inl sig)
   | None => failT (@MissingVar' x (missingVar x)) schm
   end.
 
 Set Implicit Arguments.
 
 (** Gives you a fresh variable *)
-Program Definition fresh : Infer (@top id) id (fun i x f => S i = f /\ i = x) :=
-  fun n => exist _ (inl _ (n, S n)) _.
+Program Definition fresh : Infer (@top id) id (fun i x f => S i = f /\ (match x with
+                                                                   | inl i' => i = i'
+                                                                   | inr r => True
+                                                                    end)) :=
+  fun s => (@inl id InferFailure s, S s).
 
 (** Adds a fresh variable to the context *)
 Program Definition addFreshCtx (G : ctx) (x : id) (alpha : id):
   @Infer (fun i => new_tv_ctx G i) ctx
-         (fun i r f => alpha < i -> (new_tv_ctx r f /\ f = i /\ new_tv_ty (var alpha) f)) :=
-  ret ((x, ty_to_schm (var alpha)) :: G).
+         (fun i r f => alpha < i -> match r with
+                                | inl G' => (new_tv_ctx G' f /\ f = i /\ new_tv_ty (var alpha) f)
+                                | inr r => True
+                                end) :=
+  ret (inl ((x, ty_to_schm (var alpha)) :: G)).
 Next Obligation.
   split; intros;
   unfold top; auto.
+Optimize Proof. Optimize Heap.
 Defined.
 
 (** Completeness theorem definition. *)
@@ -140,43 +150,49 @@ Definition completeness (e : term) (G : ctx) (tau : ty) (s : substitution) (st :
     exists s', tau' = apply_subst s' tau /\
     (forall x : id, x < st -> apply_subst phi (var x) = apply_subst s' (apply_subst s (var x))).
     
-Unset Implicit Arguments.
-
+Set Implicit Arguments.
 (** * The algorithm W itself *)
 
 Program Fixpoint W (e : term) (G : ctx) {struct e} :
   @Infer (fun i => new_tv_ctx G i) (ty * substitution)
-         (fun i x f => i <= f /\ new_tv_subst (snd x) f /\ new_tv_ty (fst x) f /\
-                    new_tv_ctx (apply_subst_ctx (snd x) G) f /\
-                    has_type (apply_subst_ctx ((snd x)) G) e (fst x) /\
-                    completeness e G (fst x) ((snd x)) i) :=
+         (fun i x f => i <= f /\ match x with
+                             | inl (tau, s) => new_tv_subst s f /\ new_tv_ty tau f /\
+                                              new_tv_ctx (apply_subst_ctx s G) f /\
+                                              has_type (apply_subst_ctx s G) e tau /\
+                                              completeness e G tau s i
+                             | inr r => True
+                             end) := 
   match e with
   | const_t x =>
-    ret ((con x), nil)
+    ret (inl ((con x), nil))
+
+  | app_t l r =>
+      tau1_s1 <- @W l G ;
+      tau2_s2 <- @W r (apply_subst_ctx (snd tau1_s1) G)  ;
+      alpha <- fresh ;
+      s <- @unify (apply_subst (snd tau2_s2) (fst tau1_s1)) (arrow (fst tau2_s2) (var 0)) ;
+      ret (inl (apply_subst s (var alpha), compose_subst  (snd tau1_s1) (compose_subst (snd tau2_s2) s)))
+
+  | _ => _ end.
 
   | var_t x =>
     sigma <- look_dep x G ;
       tau <- schm_inst_dep sigma ;
-      ret (tau, nil)
+      ret (inl (tau, nil))
 
   | lam_t x e' =>
     alpha <- fresh ;
       G' <- @addFreshCtx G x alpha ;
-      tau_s <- W e' G'  ;
-      ret ((arrow (apply_subst ((snd tau_s)) (var alpha)) (fst tau_s)), (snd tau_s))
-
-  | app_t l r =>
-    tau1_s1 <- W l G  ;
-      tau2_s2 <- W r (apply_subst_ctx (snd tau1_s1) G)  ;
-      alpha <- fresh ;
-      s <- unify (apply_subst (snd tau2_s2) (fst tau1_s1)) (arrow (fst tau2_s2) (var alpha)) ;
-      ret (apply_subst s (var alpha), compose_subst  (snd tau1_s1) (compose_subst (snd tau2_s2) s))
+      tau_s <- @W e' G'  ;
+      ret (inl ((arrow (apply_subst ((snd tau_s)) (var alpha)) (fst tau_s)), (snd tau_s)))
 
   | let_t x e1 e2  =>
-    tau1_s1 <- W e1 G  ;
-      tau2_s2 <- W e2 ((x,gen_ty (fst tau1_s1)
+    tau1_s1 <- @W e1 G  ;
+      tau2_s2 <- @W e2 ((x,gen_ty (fst tau1_s1)
                       (apply_subst_ctx (snd tau1_s1) G) )::(apply_subst_ctx (snd tau1_s1) G))  ;
-      ret (fst tau2_s2, compose_subst (snd tau1_s1) (snd tau2_s2))
+      ret (inl (fst tau2_s2, compose_subst (snd tau1_s1) (snd tau2_s2)))
+
+
   end. 
 Next Obligation.
   intros; unfold top; auto.

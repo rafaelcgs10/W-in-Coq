@@ -97,11 +97,7 @@ Defined.
 
 Program Definition failT {B : Type} (b : B) (A : Type) : @HoareState B top A (fun _ _ _ => True) := fun s => (inr b, s).
 
-Program Definition get' {B : Type} : @HoareState B top st (fun i x f => i = f /\ x = inl i) := fun s => (_, s).
-Next Obligation.
-  left.
-  auto.
-Defined.
+Program Definition get' {B : Type} : @HoareState B top st (fun i x f => i = f /\ x = inl i) := fun s => (@inl st B s, s).
 
 Program Definition put' {B : Set} (x : st) : @HoareState B top unit (fun _ _ f => f = x) := fun  _ => (inl tt, x).
 

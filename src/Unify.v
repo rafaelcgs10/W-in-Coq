@@ -447,3 +447,21 @@ Next Obligation.
   skip.
 Defined.
 
+Lemma unify_dec : forall tau1 tau2, {exists s, unifier tau1 tau2 s} + {forall s, ~ unifier tau1 tau2 s}.
+Proof.
+  intros.
+  edestruct (unify tau1 tau2).
+  simpl in *.
+  destruct x.
+  destruct s.
+  destructs y.
+  left.
+  exists s.
+  auto.
+  right.
+  auto.
+  Unshelve.
+  exists 0.
+  unfold top.
+  auto.
+Qed.
