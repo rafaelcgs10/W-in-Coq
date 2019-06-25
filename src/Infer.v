@@ -25,6 +25,8 @@ Require Import SimpleTypes.
 Require Import Subst.
 Require Import MyLtacs.
 
+Unset Program Cases.
+
 (** * A bunch of auxiliary definitions *)
 
 (** Monadic version of a the function [apply_inst_subst]. *)
@@ -35,78 +37,115 @@ Program Definition apply_inst_subst_hoare (is_s : inst_subst) (sigma : schm):
                                           end) :=
   match apply_inst_subst is_s sigma with
   | None => failT (SubstFailure' substFail) ty
-  | Some tau => ret (inl tau) 
+  | Some tau => ret tau 
   end .
+
+Lemma compute_inst_subst_length : forall i j, length (compute_inst_subst j i) = i.
+Proof.
+  induction i; intros; crush.
+Qed.
+
+Hint Resolve compute_inst_subst_length.
+
+Lemma compute_inst_subst_always_greater : forall sigma x is_s,
+    compute_inst_subst x (max_gen_vars sigma) = is_s ->  max_gen_vars sigma <= length is_s.
+Proof.
+  intros.
+  eapply Nat.lt_eq_cases.
+  right.
+  induction sigma; intros; crush.
+Qed.
+
+Hint Resolve compute_inst_subst_always_greater.
+
+Lemma nth_error_is_s_exact_length : forall i is_s, length is_s >= (S i) ->
+                                    exists tau, @nth_error ty is_s i = Some tau.
+Proof.
+  induction i; intros.
+  - crush.
+    destruct is_s.
+    inverts H.
+    exists t. reflexivity.
+  - destruct is_s.
+    inverts H.
+    edestruct IHi with (is_s := is_s). 
+    simpl in H.
+    inversion H.
+    omega.
+    omega.
+    simpl.
+    rewrite H0.
+    exists x. reflexivity.
+Qed.
+
+Hint Resolve nth_error_is_s_exact_length.
+
+Lemma apply_inst_compute_with_inst_subst_exact_length : forall sigma is_s, 
+     max_gen_vars sigma <= length is_s ->
+      exists tau, apply_inst_subst is_s sigma = Some tau.
+Proof.
+  induction sigma; intros.
+  - simpl. exists (var i). reflexivity.
+  - simpl. exists (con i). reflexivity.
+  - simpl in *. 
+    edestruct nth_error_is_s_exact_length.
+    apply H.
+    rewrite H0.
+    exists x.
+    reflexivity.
+  - simpl in H.
+    assert (length is_s >= max_gen_vars sigma1 /\ length is_s >= max_gen_vars sigma2).
+    { assert (Init.Nat.max (max_gen_vars sigma1) (max_gen_vars sigma2) <= length is_s).
+      omega.
+      eapply Nat.max_lub_iff.
+      auto. }
+    destruct H0.
+    edestruct IHsigma1. apply H0.
+    edestruct IHsigma2. apply H1.
+    simpl.
+    rewrite H2.
+    rewrite H3.
+    exists (arrow x x0).
+    reflexivity.
+Qed.
+
+Hint Resolve apply_inst_compute_with_inst_subst_exact_length.
+
+Lemma apply_inst_compute_inst_subst_always_works : forall sigma x, exists tau,
+      apply_inst_subst (compute_inst_subst x (max_gen_vars sigma)) sigma = Some tau.
+Proof.
+  intros.
+  edestruct apply_inst_compute_with_inst_subst_exact_length with (is_s:= (compute_inst_subst x (max_gen_vars sigma))) (sigma:=sigma).
+  eauto.
+  exists x0.
+  auto.
+Qed.
+   
+Hint Resolve apply_inst_compute_inst_subst_always_works. 
 
 (** Gives a type that is a (new) instance of a scheme *)
 Program Definition schm_inst_dep (sigma : schm) :
   @Infer (@top id) ty
          (fun i x f =>  match x with 
-                    | inl tau => f = i + (max_gen_vars sigma) /\ apply_inst_subst (compute_inst_subst i (max_gen_vars sigma)) sigma = Some tau /\
+                    | inl tau =>  f = i + (max_gen_vars sigma) /\ apply_inst_subst (compute_inst_subst i (max_gen_vars sigma)) sigma = Some tau /\
                                 (new_tv_schm sigma i -> new_tv_ty tau f)
-                    | inr _ => apply_inst_subst (compute_inst_subst i (max_gen_vars sigma)) sigma = None
+                    | inr r => False 
                     end) :=
   match max_gen_vars sigma as y with
   | nmax => 
     st <- get ;
       _ <- put (st + nmax) ;
       tau <- apply_inst_subst_hoare (compute_inst_subst st nmax) sigma ;
-      ret (inl tau)
+      ret tau
   end.
 Next Obligation.
-  simpl in *.
-  unfold top.
-  split; auto.
-  intros.
-  destruct x0; auto.
-  intros; splits; auto.
-  intros; auto.
-  destruct x0; auto.
-  intros; splits; auto.
-  intros; auto.
-  destruct x0; auto.
-  (**
-  intros.
-  split; auto.
-  intros.
-  destruct x0.
-  intro.
-  auto.
-  intros; auto.
-  intros.
-  split; auto.
-  intros.
-  destruct x0.
-  split; auto.
-  destruct x0.
-  crush.
-  crush.
-  intros.
-  split; intros; auto.
-  destruct x0.
-  crush.
-  crush.
-*)
-Qed.
+  repeat (intros; crush).
+Defined.
 Next Obligation.
-  simpl.
-  destruct (apply_inst_subst_hoare (compute_inst_subst x (max_gen_vars sigma)) sigma >>= _).
+  destruct (apply_inst_subst_hoare (compute_inst_subst x (max_gen_vars sigma)) sigma >>= _);
   crush.
-  destruct x1.
-  destruct x0.
-  destructs H0.
-  destructs H0.
-  inversion H2.
-  subst.
-  splits; auto.
-  intros.
-  eauto.
-  inversion H0.
-  inversion H2.
-  destruct x0.
-  contradiction.
-  destructs H0.
-  auto.
+  edestruct apply_inst_compute_inst_subst_always_works with (sigma:=sigma) (x:=x).
+  congruence.
 Defined.
 
 (** Look up function used in algorithm W. *)
@@ -116,7 +155,7 @@ Program Definition look_dep (x : id) (G : ctx) :
                                            | inr _ => in_ctx x G = None
                                            end) :=
   match in_ctx x G with
-  | Some sig => ret (inl sig)
+  | Some sig => ret sig
   | None => failT (@MissingVar' x (missingVar x)) schm
   end.
 
@@ -125,22 +164,21 @@ Set Implicit Arguments.
 (** Gives you a fresh variable *)
 Program Definition fresh : Infer (@top id) id (fun i x f => S i = f /\ (match x with
                                                                    | inl i' => i = i'
-                                                                   | inr r => True
+                                                                   | inr r => False
                                                                     end)) :=
-  fun s => (@inl id InferFailure s, S s).
+  fun s => exist _ (@inl (id * id) InferFailure (s, S s)) _.
 
 (** Adds a fresh variable to the context *)
 Program Definition addFreshCtx (G : ctx) (x : id) (alpha : id):
   @Infer (fun i => new_tv_ctx G i) ctx
          (fun i r f => alpha < i -> match r with
                                 | inl G' => (new_tv_ctx G' f /\ f = i /\ new_tv_ty (var alpha) f)
-                                | inr r => True
+                                | inr r => False
                                 end) :=
-  ret (inl ((x, ty_to_schm (var alpha)) :: G)).
+  ret ((x, ty_to_schm (var alpha)) :: G).
 Next Obligation.
   split; intros;
   unfold top; auto.
-Optimize Proof. Optimize Heap.
 Defined.
 
 (** Completeness theorem definition. *)
@@ -167,53 +205,45 @@ Program Fixpoint W (e : term) (G : ctx) {struct e} :
   match e with
 
   | const_t x =>
-    ret (inl ((con x), nil))
+    ret ((con x), nil)
 
   | var_t x =>
     sigma <- look_dep x G ;
       tau <- schm_inst_dep sigma ;
-      ret (inl (tau, nil))
+      ret (tau, nil)
 
   | lam_t x e' =>
     alpha <- fresh ;
       G' <- @addFreshCtx G x alpha ;
       tau_s <- @W e' G'  ;
-      ret (inl ((arrow (apply_subst ((snd tau_s)) (var alpha)) (fst tau_s)), (snd tau_s)))
+      ret ((arrow (apply_subst ((snd tau_s)) (var alpha)) (fst tau_s)), (snd tau_s))
 
   | app_t l r =>
       tau1_s1 <- W l G ;
       tau2_s2 <- W r (apply_subst_ctx (snd tau1_s1) G)  ;
       alpha <- fresh ;
       s <- unify (apply_subst (snd tau2_s2) (fst tau1_s1)) (arrow (fst tau2_s2) (var alpha)) ;
-      ret (inl (apply_subst s (var alpha), compose_subst  (snd tau1_s1) (compose_subst (snd tau2_s2) s)))
+      ret (apply_subst s (var alpha), compose_subst  (snd tau1_s1) (compose_subst (snd tau2_s2) s))
 
   | let_t x e1 e2  =>
     tau1_s1 <- @W e1 G  ;
       tau2_s2 <- @W e2 ((x,gen_ty (fst tau1_s1)
                       (apply_subst_ctx (snd tau1_s1) G) )::(apply_subst_ctx (snd tau1_s1) G))  ;
-      ret (inl (fst tau2_s2, compose_subst (snd tau1_s1) (snd tau2_s2)))
+      ret (fst tau2_s2, compose_subst (snd tau1_s1) (snd tau2_s2))
 
 
   end. 
-(**
 Next Obligation.
-  intros; unfold top; auto.
+  unfold top in *.
+  repeat (intros; crush).
 Defined.
 Next Obligation.  (* Case: postcondition of const_t *)
-  crush.
-  econstructor.
-  intro. intros.
-  inverts* H0.
-Defined.
-Next Obligation. 
-  intros; unfold top; auto.
-Defined.
-Next Obligation.  (* Case: postcondition of var *)
   edestruct (look_dep x G >>= _);
-    crush; 
-  destruct x1; crush;
-    rename x into st0, x2 into st1;
-    rename x0 into tau', x1 into tau.
+  crush;
+  try rename t1 into tau';
+  try rename x into st0;
+  try rename x1 into st1;
+  try rename s into tau.
   - (* Case: var_t soundness *)
     econstructor; eauto. 
     rewrite apply_subst_ctx_nil. eauto.
@@ -249,6 +279,13 @@ Next Obligation.  (* Case: postcondition of var *)
       rewrite find_subst_some_apply_app_compute_subst.
       reflexivity.
       assumption.
+  - intro.
+    destruct H2.
+    destruct H2.
+    inverts H2.
+    edestruct assoc_subst_exists; eauto.
+    destruct a.
+    congruence.
 Defined.
 Next Obligation. 
   splits; intros; unfold top; auto;

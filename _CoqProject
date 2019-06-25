@@ -10,6 +10,7 @@
    src/Varctxt.v
    src/WellFormed.v
    src/HoareMonad.v
+   src/Gen.v
    src/NewTypeVariable.v
    src/Unify.v
    src/Sublist.v
@@ -17,9 +18,7 @@
    src/Disjoints.v
    src/SubstSchm.v
    src/Rename.v
-   src/Gen.v
    src/Typing.v
    src/ProductList.v
    src/DisjointTail.v
    src/MoreGeneral.v
-   src/Infer.v

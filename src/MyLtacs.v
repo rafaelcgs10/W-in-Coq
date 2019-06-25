@@ -47,11 +47,16 @@ Ltac crush' :=
   match goal with
     | [ H : _ /\ _ |- _] => destruct H
     | [ H : _ \/ _ |- _] => destruct H
+    | [ H : _ + _ |- _] => destruct H
     | [ x : (_ * _)%type |- _ ] => let t := fresh "t" in destruct x as [x t]
     | [ H : (_,_) = (_,_) |- _] => inverts* H
     | [ H : option _ |- _] => destruct H
     | [ H : sumor _ _ |- _] => destruct H
     | [ H : Some _ = Some _ |- _] => inverts* H
+    | [ H : inl _ = inl _ |- _] => inverts* H
+    | [ H : inr _ = inr _ |- _] => inverts* H
+    | [ H : inl _ = inr _ |- _] => congruence
+    | [ H : inr _ = inl _ |- _] => congruence
     | [ H : Some _ = None |- _] => congruence
     | [ H : None = Some _ |- _] => congruence
     | [ H : true = false |- _] => inversion H

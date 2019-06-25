@@ -430,7 +430,7 @@ Program Definition unify (tau1 tau2 : ty) :
                                            | inr r => forall s, ~ unifier tau1 tau2 s
                                             end ) :=
   match unify'' tau1 tau2 as y  with
-  | existT _ c (inl _ (exist _ mu HS)) => ret (inl mu)
+  | existT _ c (inl _ (exist _ mu HS)) => ret mu
   | existT _ c (inr _ error) => failT (@UnifyFailure' tau1 tau2 error) substitution
   end.
 Next Obligation.
@@ -453,7 +453,7 @@ Proof.
   edestruct (unify tau1 tau2).
   simpl in *.
   destruct x.
-  destruct s.
+  destruct p.
   destructs y.
   left.
   exists s.
