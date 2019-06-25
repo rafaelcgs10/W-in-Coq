@@ -153,6 +153,8 @@ Definition completeness (e : term) (G : ctx) (tau : ty) (s : substitution) (st :
 Unset Implicit Arguments.
 (** * The algorithm W itself *)
 
+Unset Program Cases.
+
 Program Fixpoint W (e : term) (G : ctx) {struct e} :
   @Infer (fun i => new_tv_ctx G i) (ty * substitution)
          (fun i x f => i <= f /\ match x with
@@ -160,18 +162,9 @@ Program Fixpoint W (e : term) (G : ctx) {struct e} :
                                               new_tv_ctx (apply_subst_ctx s G) f /\
                                               has_type (apply_subst_ctx s G) e tau /\
                                               completeness e G tau s i
-                             | inr r => True
+                             | inr r => ~ exists tau s, has_type (apply_subst_ctx s G) e tau
                              end) := 
   match e with
-
-  | app_t l r =>
-      tau1_s1 <- W l G ;
-      tau2_s2 <- W r (apply_subst_ctx (snd tau1_s1) G)  ;
-      alpha <- fresh ;
-      s <- unify (apply_subst (snd tau2_s2) (fst tau1_s1)) (arrow (fst tau2_s2) (var alpha)) ;
-      ret (inl (apply_subst s (var alpha), compose_subst  (snd tau1_s1) (compose_subst (snd tau2_s2) s)))
-
-  | _ => _ end.
 
   | const_t x =>
     ret (inl ((con x), nil))
@@ -187,6 +180,13 @@ Program Fixpoint W (e : term) (G : ctx) {struct e} :
       tau_s <- @W e' G'  ;
       ret (inl ((arrow (apply_subst ((snd tau_s)) (var alpha)) (fst tau_s)), (snd tau_s)))
 
+  | app_t l r =>
+      tau1_s1 <- W l G ;
+      tau2_s2 <- W r (apply_subst_ctx (snd tau1_s1) G)  ;
+      alpha <- fresh ;
+      s <- unify (apply_subst (snd tau2_s2) (fst tau1_s1)) (arrow (fst tau2_s2) (var alpha)) ;
+      ret (inl (apply_subst s (var alpha), compose_subst  (snd tau1_s1) (compose_subst (snd tau2_s2) s)))
+
   | let_t x e1 e2  =>
     tau1_s1 <- @W e1 G  ;
       tau2_s2 <- @W e2 ((x,gen_ty (fst tau1_s1)
@@ -195,6 +195,7 @@ Program Fixpoint W (e : term) (G : ctx) {struct e} :
 
 
   end. 
+(**
 Next Obligation.
   intros; unfold top; auto.
 Defined.
@@ -504,4 +505,4 @@ Program Definition runW e G : sum (ty * substitution) InferFailure :=
   | inl _ (a', _) => inl _ a'
   | inr _ er => inr _ er
   end.
-
+*)
