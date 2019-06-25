@@ -150,7 +150,7 @@ Definition completeness (e : term) (G : ctx) (tau : ty) (s : substitution) (st :
     exists s', tau' = apply_subst s' tau /\
     (forall x : id, x < st -> apply_subst phi (var x) = apply_subst s' (apply_subst s (var x))).
     
-Set Implicit Arguments.
+Unset Implicit Arguments.
 (** * The algorithm W itself *)
 
 Program Fixpoint W (e : term) (G : ctx) {struct e} :
@@ -163,17 +163,18 @@ Program Fixpoint W (e : term) (G : ctx) {struct e} :
                              | inr r => True
                              end) := 
   match e with
-  | const_t x =>
-    ret (inl ((con x), nil))
 
   | app_t l r =>
-      tau1_s1 <- @W l G ;
-      tau2_s2 <- @W r (apply_subst_ctx (snd tau1_s1) G)  ;
+      tau1_s1 <- W l G ;
+      tau2_s2 <- W r (apply_subst_ctx (snd tau1_s1) G)  ;
       alpha <- fresh ;
-      s <- @unify (apply_subst (snd tau2_s2) (fst tau1_s1)) (arrow (fst tau2_s2) (var 0)) ;
+      s <- unify (apply_subst (snd tau2_s2) (fst tau1_s1)) (arrow (fst tau2_s2) (var alpha)) ;
       ret (inl (apply_subst s (var alpha), compose_subst  (snd tau1_s1) (compose_subst (snd tau2_s2) s)))
 
   | _ => _ end.
+
+  | const_t x =>
+    ret (inl ((con x), nil))
 
   | var_t x =>
     sigma <- look_dep x G ;
