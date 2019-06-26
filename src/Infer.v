@@ -126,8 +126,8 @@ Hint Resolve apply_inst_compute_inst_subst_always_works.
 (** Gives a type that is a (new) instance of a scheme *)
 Program Definition schm_inst_dep (sigma : schm) :
   @Infer (@top id) ty
-         (fun i x f =>  match x with 
-                    | inl tau =>  f = i + (max_gen_vars sigma) /\ apply_inst_subst (compute_inst_subst i (max_gen_vars sigma)) sigma = Some tau /\
+         (fun i x f => f = i + (max_gen_vars sigma) /\ match x with 
+                    | inl tau => apply_inst_subst (compute_inst_subst i (max_gen_vars sigma)) sigma = Some tau /\
                                 (new_tv_schm sigma i -> new_tv_ty tau f)
                     | inr r => False 
                     end) :=
@@ -146,14 +146,17 @@ Next Obligation.
   crush.
   edestruct apply_inst_compute_inst_subst_always_works with (sigma:=sigma) (x:=x).
   congruence.
+  edestruct apply_inst_compute_inst_subst_always_works with (sigma:=sigma) (x:=x).
+  congruence.
 Defined.
 
 (** Look up function used in algorithm W. *)
 Program Definition look_dep (x : id) (G : ctx) :
-  @Infer (@top id) schm (fun i k f => i = f /\ match k with
-                                           | inl sigma => in_ctx x G = Some sigma
-                                           | inr _ => in_ctx x G = None
-                                           end) :=
+  @Infer (@top id) schm (fun i k f => i = f /\
+                                   match k with
+                                   | inl sigma =>  in_ctx x G = Some sigma
+                                   | inr _ => in_ctx x G = None
+                                   end) :=
   match in_ctx x G with
   | Some sig => ret sig
   | None => failT (@MissingVar' x (missingVar x)) schm
@@ -162,11 +165,11 @@ Program Definition look_dep (x : id) (G : ctx) :
 Set Implicit Arguments.
 
 (** Gives you a fresh variable *)
-Program Definition fresh : Infer (@top id) id (fun i x f => S i = f /\ (match x with
-                                                                   | inl i' => i = i'
-                                                                   | inr r => False
-                                                                    end)) :=
-  fun s => exist _ (@inl (id * id) InferFailure (s, S s)) _.
+Program Definition fresh : Infer (@top id) id (fun i x f => match x with
+                                                         | inl i' => S i = f /\ i = i'
+                                                         | inr r => False
+                                                         end) :=
+  fun s => (@inl id InferFailure s, S s).
 
 (** Adds a fresh variable to the context *)
 Program Definition addFreshCtx (G : ctx) (x : id) (alpha : id):
@@ -193,22 +196,24 @@ Unset Implicit Arguments.
 
 Unset Program Cases.
 
+Ltac crush_light := repeat (intros; simpl in *; try split; try crush'; subst; auto); try omega.
+
 Program Fixpoint W (e : term) (G : ctx) {struct e} :
   @Infer (fun i => new_tv_ctx G i) (ty * substitution)
-         (fun i x f => i <= f /\ match x with
-                             | inl (tau, s) => new_tv_subst s f /\ new_tv_ty tau f /\
-                                              new_tv_ctx (apply_subst_ctx s G) f /\
-                                              has_type (apply_subst_ctx s G) e tau /\
-                                              completeness e G tau s i
-                             | inr r => ~ exists tau s, has_type (apply_subst_ctx s G) e tau
-                             end) := 
+         (fun i x f =>  match x with
+                    | inl (tau, s) => i <= f /\ new_tv_subst s f /\ new_tv_ty tau f /\
+                                     new_tv_ctx (apply_subst_ctx s G) f /\
+                                     has_type (apply_subst_ctx s G) e tau /\
+                                     completeness e G tau s i 
+                    | inr r => ~ exists tau, has_type G e tau
+                    end) := 
   match e with
 
   | const_t x =>
     ret ((con x), nil)
 
   | var_t x =>
-    sigma <- look_dep x G ;
+      sigma <- look_dep x G ;
       tau <- schm_inst_dep sigma ;
       ret (tau, nil)
 
@@ -238,8 +243,7 @@ Next Obligation.
   repeat (intros; crush).
 Defined.
 Next Obligation.  (* Case: postcondition of const_t *)
-  edestruct (look_dep x G >>= _);
-  crush;
+  edestruct (look_dep x G >>= _); crush_light;
   try rename t1 into tau';
   try rename x into st0;
   try rename x1 into st1;
@@ -279,23 +283,148 @@ Next Obligation.  (* Case: postcondition of const_t *)
       rewrite find_subst_some_apply_app_compute_subst.
       reflexivity.
       assumption.
-  - intro.
-    destruct H2.
-    destruct H2.
-    inverts H2.
-    edestruct assoc_subst_exists; eauto.
-    destruct a.
-    congruence.
+  - intros.
+    intro.
+    destruct H0.
+    skip.
+    Unshelve. apply nil.
+    Unshelve. apply nil.
+    Unshelve. apply nil.
+    auto.
 Defined.
 Next Obligation. 
-  splits; intros; unfold top; auto;
-    crush. intros. crush. 
-  destructs H0; eauto.
+  unfold top in *.
+  repeat (intros; crush).
 Defined.
 Next Obligation. (* Case: postcondition of lambda  *)
   simpl.
+  destruct (W l G  >>= _);
+  crush_light;
+    clear W;
+  try rename i into alpha;
+  try rename s into mu;
+  try rename t2 into s2;
+  try rename t1 into s1;
+  try rename H7 into MGU;
+  try rename H13 into MGU';
+  try rename H15 into MGU'';
+  try rename x0 into st1;
+  try rename x into st0;
+  try rename p0 into tauLR;
+  try rename p1 into tauL;
+  try rename H6 into COMP_L, H12 into COMP_R.
+  - skip.
+  (* Subcase : new_tv_subst application *)
+    (**
+  - fold (apply_subst mu (var alpha)) in *.
+    apply new_tv_compose_subst; eauto.
+    apply new_tv_compose_subst; eauto.
+    eapply MGU'.
+    splits; eauto.
+    econstructor; eauto.
+*)
+  (* Subcase : new_tv_ty application *)
+  - fold (apply_subst mu (var alpha)).
+    subst.
+    apply new_tv_apply_subst_ty; eauto.
+    apply MGU'; eauto.
+    splits; eauto.
+    econstructor; eauto.
+  (* Subcase : new_tv_ctx application *)
+  - subst.
+    eapply new_tv_s_ctx; eauto.
+    apply new_tv_compose_subst; eauto.
+    apply new_tv_compose_subst; eauto.
+    eapply MGU'.
+    splits; eauto.
+    econstructor; eauto.
+  (* Subcase : soundness application *)
+  - fold (apply_subst mu (var alpha)) in *.
+    subst.
+    repeat rewrite apply_subst_ctx_compose.
+    apply app_ht with (tau := apply_subst mu tauL); eauto.
+    rewrite <- MGU'';
+      eauto.
+  (* Subcase : completeness application *)
+  - subst.
+    unfold completeness. intros.
+    rename H6 into SOUND_LR.
+    inversion_clear SOUND_LR.
+    rename tau into tau_l.
+    rename tau' into tau_r.
+    rename H6 into SOUND_L, H7 into SOUND_R.
+    sort.
+    apply COMP_L in SOUND_L as PRINC_L.
+    destruct PRINC_L as [psi1 PRINC_L].
+    destruct PRINC_L as [PRINC_L1 PRINC_L2].
+    cut (exists psi2, (tau_l = apply_subst psi2 tauL /\
+         forall x0 : id, x0 < st1 -> apply_subst psi1 (var x0) = apply_subst psi2 (apply_subst s2 (var x0)))).
+    intros PRINC_R.
+    destruct PRINC_R as [psi2 [PRINC_R1 PRINC_R2]].
+    specialize MGU with (s':= ((alpha, tau_r)::psi2)).
+    destruct MGU as [s_psi MGU].
+    {
+      fold (apply_subst ((alpha, tau_r)::psi2) (var alpha)).
+      simpl. destruct (eq_id_dec alpha alpha); intuition.
+      erewrite (@add_subst_new_tv_ty psi2 alpha tauL); eauto.
+      rewrite <- PRINC_R1.
+      erewrite <- (@new_tv_compose_subst_type psi1 s2 ((alpha, tau_r)::psi2) st1 tauLR); eauto.
+      intros.
+      erewrite add_subst_new_tv_ty; eauto. 
+    }
+    fold (apply_subst mu (var alpha)).
+    exists s_psi.
+    splits.
+    + rewrite <- apply_compose_equiv.
+      rewrite <- MGU.
+      mysimp.
+    + intros.
+      repeat rewrite apply_compose_equiv.
+      repeat rewrite <- apply_compose_equiv.
+      rewrite apply_compose_equiv.
+      rewrite apply_compose_equiv.
+      rewrite <- MGU.
+      rewrite add_subst_new_tv_ty.
+      erewrite <- (new_tv_compose_subst_type psi1 s2 psi2); eauto.
+      apply new_tv_apply_subst_ty; auto.
+      eapply new_tv_ty_trans_le; eauto. 
+    + eapply COMP_R; eauto.
+      erewrite <- new_tv_compose_subst_ctx; eauto.
+  - intro.
+    destruct H6.
+    inverts H6.
+    edestruct COMP_L with (phi:=nil:substitution).
+    { eapply has_type_is_stable_under_substitution. apply H15. }
+    edestruct COMP_R with (phi:=nil:substitution).
+    { eapply has_type_is_stable_under_substitution. eapply has_type_is_stable_under_substitution. apply H17. }
+    destruct H12.
+    destruct H6.
+    eapply H7.
+    unfold unifier.
+    exists (x0).
+    repeat rewrite apply_subst_nil.
+    erewrite <- new_tv_compose_subst_type.
+    erewrite <- H6.
+    rewrite apply_subst_nil.
+    rewrite apply_subst_arrow.
+    fequal.
+    rewrite apply_compose_equiv.
+    erewrite <- new_tv_compose_subst_type.
+    erewrite <- H6.
+    
+  - intro.
+    destruct H7.
+    eapply H1.
+    inverts H7.
+    exists (apply_subst t0 tau).
+    apply has_type_is_stable_under_substitution.
+    auto.
+ -
+
+Defined.
+  
   destruct (W e' (((x, sc_var x0)) :: G) >>= _);
-    crush; clear W;
+    crush; clear W.
   destruct x1; crush;
       rename x0 into st0, t1 into s, x1 into tau_r, t into st1.
   (* Subcase : new_tv_ty lambda *)

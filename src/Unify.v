@@ -427,7 +427,7 @@ Program Definition unify (tau1 tau2 : ty) :
                                                              exists s'', forall tau, apply_subst s' tau = apply_subst (compose_subst mu s'') tau) /\
                                                       ((new_tv_ty tau1 i /\ new_tv_ty tau2 i) -> new_tv_subst mu i) /\
                                                       apply_subst mu tau1 = apply_subst mu tau2
-                                           | inr r => forall s, ~ unifier tau1 tau2 s
+                                           | inr r => ~ exists s, unifier tau1 tau2 s
                                             end ) :=
   match unify'' tau1 tau2 as y  with
   | existT _ c (inl _ (exist _ mu HS)) => ret mu
@@ -447,13 +447,14 @@ Next Obligation.
   skip.
 Defined.
 
+(**
 Lemma unify_dec : forall tau1 tau2, {exists s, unifier tau1 tau2 s} + {forall s, ~ unifier tau1 tau2 s}.
 Proof.
   intros.
   edestruct (unify tau1 tau2).
   simpl in *.
   destruct x.
-  destruct p.
+  destruct s.
   destructs y.
   left.
   exists s.
@@ -465,3 +466,4 @@ Proof.
   unfold top.
   auto.
 Qed.
+*)

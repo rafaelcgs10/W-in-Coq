@@ -14,6 +14,7 @@ Ltac s :=
   match goal with
     | [ H : _ /\ _ |- _] => destruct H
     | [ H : _ \/ _ |- _] => destruct H
+    | [ H : _ + _ |- _] => destruct H
     | [ |- context[eq_id_dec ?a ?b] ] => destruct (eq_id_dec a b) ; subst ; try congruence
     | [ |- context[eq_nat_dec ?a ?b] ] => destruct (eq_nat_dec a b) ; subst ; try congruence
     | [ H : context[eq_nat_dec ?a ?a] |- _ ] => destruct (eq_nat_dec a a) ; subst ; try congruence

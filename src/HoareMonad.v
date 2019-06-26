@@ -20,15 +20,14 @@ Definition Pre : Type := st -> Prop.
 Definition Post (a e : Type) : Type := st -> sum a e -> st -> Prop.
 
 Program Definition HoareState  (e : Type) (pre : Pre) (a : Type) (post : Post a e) : Type :=
-  forall i : {t : st | pre t}, { x : sum (a * st) e | match x with
-                                                       | inl (x, f) => post (proj1_sig i) (inl x) f
-                                                       | inr x => post (proj1_sig i) (inr x) (proj1_sig i)
-                                                       end}.
+  forall i : {t : st | pre t}, {x : ((sum a e) * st) | match x with
+                                                  | (x, f) => post (proj1_sig i) x f
+                                                  end}.
 
 Definition top : Pre := fun st => True.
 
 Program Definition ret {e : Type} (a : Type) : forall (x : a),
-    @HoareState e top a (fun i y f => i = f /\ y = inl x) := fun (x : a) s => exist _ (inl (x, s)) _.
+    @HoareState e top a (fun i y f => i = f /\ y = inl x) := fun (x : a) s => (inl x, s).
 
 
 Program Definition bind : forall a b e P1 P2 Q1 Q2,
@@ -39,67 +38,68 @@ Program Definition bind : forall a b e P1 P2 Q1 Q2,
                                           end )
                 b
                 (fun s1 y s3 => exists x s2, match x, y as xy with
-                                        | inl l, inl _ => Q1 s1 x s2 /\ Q2 l s2 y s3
-                                        | inr r, inr _ => Q1 s1 x s1
+                                        | inl l, _ => Q1 s1 x s2 /\ Q2 l s2 y s3
+                                        | inr r, inr _ => Q1 s1 x s2
                                         | inr r, inl _ => False
-                                        | inl l, inr r => Q2 l s2 y s2
                                         end) := 
   fun a b e P1 P2 Q1 Q2 c1 c2 s1 => match c1 s1 as y with
-                                 | inl (x, s2) => c2 x s2
-                                 | inr r => exist _ (inr r) _
+                                 | (x, s2) => match x with
+                                             | inl l => c2 l s2
+                                             | inr r => (inr r, s2)
+                                             end
                                  end.
 Next Obligation.
-  specialize y with (x := inl x).
+  specialize y with (x := inl l).
   simpl in *.
   apply y.
   cbv in Heq_y.
   destruct c1.
-  destruct x0.
+  destruct x.
   simpl in y0.
-  destruct p0.
+  destruct s.
   inversion Heq_y.
   subst.
   auto.
   inversion Heq_y.
 Defined.
 Next Obligation.
-  destruct (c2 x).
-  destruct x0.
-  cbv in Heq_y.
   simpl in *.
   destruct c1.
   simpl in *.
-  destruct p0.
-  destruct x0.
+  destruct x.
   inversion Heq_y.
   subst.
-  exists (@inl a e x).
-  exists s2.
-  split; auto.
-  inverts Heq_y.
+  destruct (c2 l).
+  destruct x.
   simpl in *.
-  exists (@inl a e x).
-  exists s2.
-  auto.
+  destruct s.
+  simpl in *.
+  exists (@inl a e l).
+  exists s0.
+  split; auto.
+  exists (@inl a e l).
+  exists s0.
+  split; auto.
 Defined.
 Next Obligation.
   destruct c1.
   simpl in *.
   destruct x.
   simpl in *.
-  inverts Heq_y.
+  destruct s.
+  inversion Heq_y.
   inversion Heq_y.
   subst.
   exists (@inr a e e0).
-  exists s1.
+  exists s0.
   auto.
 Defined.
 
-Program Definition failT {e : Type} (b : e) (A : Type) : @HoareState e top A (fun _ _ _ => True) := fun s => exist _ (inr b) _.
+Program Definition failT {e : Type} (b : e) (A : Type) : @HoareState e top A (fun _ _ _ => True) := fun s => (inr b, s).
 
-Program Definition get' {e : Type} : @HoareState e top st (fun i x f => i = f /\ x = inl i) := fun s => exist _ (@inl (st * st) e (s, s)) _.
+Program Definition get' {e : Type} : @HoareState e top st (fun i x f => i = f /\ x = inl i) := fun s => (@inl st e s, s).
 
-Program Definition put' {e : Set} (x : st) : @HoareState e top unit (fun _ _ f => f = x) := fun  _ => exist _ (inl (tt, x)) _.
+Program Definition put' {e : Set} (x : st) : @HoareState e top unit (fun _ _ f => f = x) := fun  _ => (inl tt, x).
 
 End hoare_state_monad.
 
