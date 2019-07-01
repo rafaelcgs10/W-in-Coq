@@ -444,8 +444,8 @@ Next Obligation.
 Defined.
 Next Obligation.
   intro.
-  skip.
-Defined.
+  admit.
+Admitted.
 
 (**
 Lemma unify_dec : forall tau1 tau2, {exists s, unifier tau1 tau2 s} + {forall s, ~ unifier tau1 tau2 s}.

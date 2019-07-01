@@ -4557,6 +4557,7 @@ Tactic Notation "clears_last" constr(N) :=
     [skip] uses the second implementation.
 *)
 
+(**
 Ltac skip_with_existential :=
   match goal with |- ?G =>
     let H := fresh in evar(H:G); eexact H end.
@@ -4673,7 +4674,7 @@ Tactic Notation "skip_induction" constr(E) :=
 
 Tactic Notation "skip_induction" constr(E) "as" simple_intropattern(I) :=
   let IH := fresh "IH" in skip_goal IH; destruct E as I.
-
+*)
 
 (* ################################################################# *)
 (** * Compatibility with Standard Library *)

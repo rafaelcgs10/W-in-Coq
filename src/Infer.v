@@ -184,6 +184,14 @@ Next Obligation.
   unfold top; auto.
 Defined.
 
+Lemma new_tv_ctx_compose_subst_ctx : forall (s s1 s2 : substitution) (st : id) (G : ctx),
+       (forall i : id, i < st -> apply_subst s (var i) = apply_subst s2 (apply_subst s1 (var i))) ->
+       new_tv_ctx G st -> apply_subst_ctx s G = apply_subst_ctx s2 (apply_subst_ctx s1 G).
+Proof.
+  Admitted.
+
+Hint Resolve new_tv_ctx_compose_subst_ctx.
+
 (** Completeness theorem definition. *)
 Definition completeness (e : term) (G : ctx) (tau : ty) (s : substitution) (st : id) :=
   forall (tau' : ty) (phi : substitution),
@@ -193,6 +201,46 @@ Definition completeness (e : term) (G : ctx) (tau : ty) (s : substitution) (st :
     
 Unset Implicit Arguments.
 (** * The algorithm W itself *)
+
+
+Lemma subst_one_side_exists_unifier : forall tau1 tau2 s,
+    apply_subst s tau1 = tau2 ->
+    exists s', apply_subst s' tau1 = apply_subst s' tau2.
+Admitted.
+
+Hint Resolve subst_one_side_exists_unifier.
+                              
+Lemma has_two_type_than_unifier_exists : forall e G tau1 tau2 s1 st,
+    has_type (apply_subst_ctx s1 G) e tau1 -> new_tv_ctx G st ->
+    completeness e G tau1 s1 st ->
+    has_type G e tau2 ->
+    exists s, apply_subst s tau1 = apply_subst s tau2.
+Proof.
+  induction e; intros.
+  - assert (has_type (apply_subst_ctx nil G) (var_t i) tau2).
+    { rewrite apply_subst_ctx_nil. auto. }
+    edestruct H1.
+    { apply H3. }
+    destruct H4.
+    eauto.
+Admitted.
+
+Hint Resolve has_two_type_than_unifier_exists.
+
+Lemma get_instance_complete : forall e G tau st s2 s1 tau',
+    completeness e G tau s1 st ->
+    has_type (apply_subst_ctx s2 G) e tau' ->
+    exists s', apply_subst (compose_subst s' s2) tau = (apply_subst s2 tau').
+Proof.
+  intros.
+  edestruct H.
+  apply H0.
+  destruct H1.
+  exists x.
+  rewrite H1.
+  rewrite apply_compose_equiv.
+  reflexivity.
+Qed.
 
 Unset Program Cases.
 
@@ -205,7 +253,7 @@ Program Fixpoint W (e : term) (G : ctx) {struct e} :
                                      new_tv_ctx (apply_subst_ctx s G) f /\
                                      has_type (apply_subst_ctx s G) e tau /\
                                      completeness e G tau s i 
-                    | inr r => ~ exists tau, has_type G e tau
+                    | inr r => ~ exists tau, forall s, has_type (apply_subst_ctx s G) e tau
                     end) := 
   match e with
 
@@ -286,12 +334,12 @@ Next Obligation.  (* Case: postcondition of const_t *)
   - intros.
     intro.
     destruct H0.
-    skip.
+    admit.
     Unshelve. apply nil.
     Unshelve. apply nil.
     Unshelve. apply nil.
     auto.
-Defined.
+Admitted.
 Next Obligation. 
   unfold top in *.
   repeat (intros; crush).
@@ -313,7 +361,7 @@ Next Obligation. (* Case: postcondition of lambda  *)
   try rename p0 into tauLR;
   try rename p1 into tauL;
   try rename H6 into COMP_L, H12 into COMP_R.
-  - skip.
+  - admit.
   (* Subcase : new_tv_subst application *)
     (**
   - fold (apply_subst mu (var alpha)) in *.
@@ -391,6 +439,75 @@ Next Obligation. (* Case: postcondition of lambda  *)
     + eapply COMP_R; eauto.
       erewrite <- new_tv_compose_subst_ctx; eauto.
   - intro.
+    apply MGU.
+    unfold unifier.
+    destruct H6.
+    specialize H6 with (s:=compose_subst s1 t0).
+    inverts H6.
+    edestruct get_instance_complete.
+    { apply COMP_L. }
+    { apply H14. }
+    edestruct COMP_R with (tau':= tau).
+    { rewrite <- apply_subst_ctx_compose.
+      eauto. }
+    destruct H7.
+    exists x0.
+    rewrite apply_compose_equiv in H6.
+    rewrite H6.
+    edestruct COMP_L with (tau' := apply_subst s1 (arrow tau x)).
+    { rewrite apply_subst_ctx_compose.
+      apply has_type_is_stable_under_substitution.
+      apply H14. }
+    exists ((i0, x)::x0).
+    assert (apply_subst ((i0, x) :: x0) (apply_subst s1 p) = apply_subst x0 (apply_subst s1 p)).
+    { admit. }
+    rewrite H13.
+    destruct H12.
+    erewrite <- 
+    rewrite H12.
+    simpl.
+    destruct (eq_id_dec i0 i0); intuition.
+    assert (apply_subst ((i0, x) :: x0) tauLR = apply_subst x0 tauLR).
+    { admit. }
+    rewrite H15.
+    fequal*.
+  -
+    
+
+
+    
+    sauto.
+    destruct H6.
+    specialize H6 with (s:=t0).
+    inverts H6.
+    edestruct has_two_type_than_unifier_exists.
+    apply H5.
+    admit.
+    eauto.
+    admit.
+    eauto.
+    eapply MGU.
+    unfold unifier.
+    edestruct COMP_L with (phi:= t0).
+    { eauto.  }
+    edestruct COMP_R with (phi:= s1).
+    { eapply H11. }
+    destruct H7.
+    destruct H12.
+    exists (nil:substitution).
+    
+    destruct H12.
+    eapply MGU.
+    unfold unifier.
+    (** aqui *)
+    exists x0.
+    erewrite <- new_tv_compose_subst_type.
+    erewrite <- H6. 
+    erewrite <- new_tv_compose_subst_type.
+    rewrite apply_subst_arrow.
+    erewrite <- H7.
+    
+
     destruct H6.
     inverts H6.
     edestruct COMP_L with (phi:=nil:substitution).
