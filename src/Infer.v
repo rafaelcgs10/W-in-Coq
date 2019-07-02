@@ -242,9 +242,20 @@ Proof.
   reflexivity.
 Qed.
 
+
 Unset Program Cases.
 
 Ltac crush_light := repeat (intros; simpl in *; try split; try crush'; subst; auto); try omega.
+
+Definition is_principal_type (G : ctx) (e : term) (tau : ty) :=
+  forall t s, has_type (apply_subst_ctx s G) e t ->
+         exists s1 s2, t = apply_subst s1 tau /\
+                  s = compose_subst s1 s2.
+          
+Lemma has_type_has_principal_type : forall tau s G e, has_type (apply_subst_ctx s G) e tau ->
+                                                 exists tau', is_principal_type G e tau'.
+Proof.
+  Admitted.
 
 Program Fixpoint W (e : term) (G : ctx) {struct e} :
   @Infer (fun i => new_tv_ctx G i) (ty * substitution)
@@ -253,7 +264,7 @@ Program Fixpoint W (e : term) (G : ctx) {struct e} :
                                      new_tv_ctx (apply_subst_ctx s G) f /\
                                      has_type (apply_subst_ctx s G) e tau /\
                                      completeness e G tau s i 
-                    | inr r => ~ exists tau, forall s, has_type (apply_subst_ctx s G) e tau
+                    | inr r => ~ exists tau, is_principal_type G e tau
                     end) := 
   match e with
 
@@ -439,16 +450,38 @@ Next Obligation. (* Case: postcondition of lambda  *)
     + eapply COMP_R; eauto.
       erewrite <- new_tv_compose_subst_ctx; eauto.
   - intro.
+    rename s1 into s2.
+    rename tauLR into tauL.
+    rename p into tauLR.
+    unfold is_principal_type in *.
+    edestruct H6.
+    edestruct H7.
+    admit.
+    
     apply MGU.
     unfold unifier.
     destruct H6.
-    specialize H6 with (s:=compose_subst s1 t0).
+    destruct H6.
     inverts H6.
-    edestruct get_instance_complete.
-    { apply COMP_L. }
+    edestruct COMP_L.
+    { apply H5. }
+    edestruct COMP_L.
     { apply H14. }
-    edestruct COMP_R with (tau':= tau).
-    { rewrite <- apply_subst_ctx_compose.
+    destruct H6.
+    destruct H7.
+    rewrite H6.
+    destruct H7.
+    rewrite H7.
+    destruct H6.
+    erewrite <- new_tv_compose_subst_type.
+    rewrite <- H6.
+    destruct H6.
+    destruct H7.
+    rewrite H6.
+    edestruct COMP_R.
+    { apply H11. }
+    destruct H12.
+    exists x3
       eauto. }
     destruct H7.
     exists x0.
