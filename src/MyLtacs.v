@@ -71,11 +71,12 @@ Ltac crush' :=
 
 Ltac rewriteHyp :=
   match goal with
-    | [ H : _ |- _ ] => rewrite H by solve [ eauto ]
+    | [ H : _ |- _ ] => rewrite H by solve [ auto ]
   end.
 
 Ltac rewriterP := repeat (rewriteHyp; autorewrite with RE in *).
 Ltac rewriter := autorewrite with RE in *; rewriterP; eauto; fail.
 
-Ltac crush := eauto; repeat (intros; simpl in *; try crush'; subst; eauto); eauto; try contradiction; repeat inversionExist; try splits; 
-                simpl in *; try (subst; omega); try rewriter; autorewrite with RELOOP using congruence; eauto.
+Ltac crush := repeat (intros; simpl in *; try crush'; subst); eauto; try contradiction;
+              try splits; try omega; try rewriter;
+              autorewrite with RELOOP using congruence.

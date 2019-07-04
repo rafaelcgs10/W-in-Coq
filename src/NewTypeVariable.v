@@ -436,7 +436,7 @@ Hint Resolve new_tv_gen_aux_ty.
 Lemma new_tv_gen_ty: forall (tau : ty) (G : ctx) (st : id),
     new_tv_ty tau st -> new_tv_ctx G st -> new_tv_schm (gen_ty tau G) st.
 Proof.
-  induction tau; unfold gen_ty; crush.
+  induction tau; unfold gen_ty; eauto.
 Qed. 
 
 Hint Resolve new_tv_gen_ty.

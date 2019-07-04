@@ -140,7 +140,6 @@ Next Obligation.
 Defined.
 Next Obligation.  (* Case: postcondition of var *)
   edestruct (look_dep x G >>= _);
-    crush; 
   destruct x1; crush;
     rename x into st0, x2 into st1;
     rename x0 into tau', x1 into tau.
@@ -188,8 +187,8 @@ Defined.
 Next Obligation. (* Case: postcondition of lambda  *)
   simpl.
   destruct (W e' (((x, sc_var x0)) :: G) >>= _);
-    crush; clear W;
-  destruct x1; crush;
+    clear W;
+    destruct x1; crush;
       rename x0 into st0, t1 into s, x1 into tau_r, t into st1.
   (* Subcase : new_tv_ty lambda *)
   - destruct (find_subst s st0).
@@ -250,9 +249,8 @@ Next Obligation.
 Defined.
 Next Obligation. (* Case: postcondition of application  *)
   destruct (W l G  >>= _).
-  crush;
     clear W;
-  destruct x0; crush;
+      destruct x0; crush;
     rename H7 into MGU, H13 into MGU', H15 into MGU'';
     rename x4 into alpha, x into st0, x1 into st1;
     rename x3 into mu, t1 into s1, t2 into s2;
@@ -341,7 +339,7 @@ Next Obligation.
 Defined.
 Next Obligation. (* Case : postcondition of let *)
   destruct (W e1 G >>= _).
-  crush; destruct x1; crush;
+  destruct x1; crush;
     clear W;
     rename H11 into SOUND_e2, H5 into SOUND_e1;
     rename H6 into COMP_e1, H12 into COMP_e2;
