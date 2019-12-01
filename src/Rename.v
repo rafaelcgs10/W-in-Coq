@@ -92,7 +92,7 @@ Proof.
       destruct (eq_id_dec i0 x); intuition.
 Qed.
 
-Hint Resolve dom_img_rename_subst.
+Hint Resolve dom_img_rename_subst:core.
 
 (** Finding this special renaming substitution is an essential step in the let case of the soundness proof*)
 Definition compute_renaming : forall (i : id) (l l1 l2 : list id),
@@ -241,7 +241,7 @@ Definition compute_renaming : forall (i : id) (l l1 l2 : list id),
   -  reflexivity.
 Defined.
 
-Hint Resolve compute_renaming.
+Hint Resolve compute_renaming:core.
 
 Lemma exists_renaming_not_concerned_with: forall (l l1 l2: (list id)),
   {r:ren_subst | (renaming_of_not_concerned_with r l l1 l2)}.
@@ -287,7 +287,7 @@ Proof.
   assumption.
 Defined.
 
-Hint Resolve exists_renaming_not_concerned_with.
+Hint Resolve exists_renaming_not_concerned_with:core.
 
 Lemma index_rename_aux : forall (rho: ren_subst) (i: id) (l: (list id)) (c : id),
     is_rename_subst rho -> is_sublist_id l (dom_ren rho) -> in_list_id i (dom_ren rho) = true ->
@@ -310,7 +310,7 @@ Proof.
       mysimp.
 Qed.
 
-Hint Resolve index_rename_aux.
+Hint Resolve index_rename_aux:core.
 
 Lemma index_rename : forall (rho : ren_subst) (i : id) (l: (list id)),
     is_rename_subst rho ->
@@ -323,7 +323,7 @@ Proof.
   apply index_rename_aux; auto.
 Qed.
 
-Hint Resolve index_rename.
+Hint Resolve index_rename:core.
 
 (** For some l disjoint with img_ren rho, apply_ren_subst rho i is not in l*)
 Lemma rename_img : forall (i : id) (rho : ren_subst) (l: list id),
@@ -342,7 +342,7 @@ Proof.
   auto.
 Qed.
 
-Hint Resolve rename_img.
+Hint Resolve rename_img:core.
 
 Lemma in_list_id_dom_img : forall rho i, 
     (in_list_id i (dom_ren rho) = true ->
@@ -356,7 +356,7 @@ Proof.
     simpl in *. destruct (eq_id_dec i0 i); intros; simpl in *; mysimp. 
 Qed.
 
-Hint Resolve in_list_id_dom_img.
+Hint Resolve in_list_id_dom_img:core.
 
 (** ** Converts a renaming substitute to a usual substitution *)
 
@@ -402,4 +402,4 @@ Proof.
     apply H.
 Qed.
 
-Hint Resolve apply_subst_rename_to_subst.
+Hint Resolve apply_subst_rename_to_subst:core.

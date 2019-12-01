@@ -30,14 +30,14 @@ Proof.
   induction t; crush.
 Qed.
 
-Hint Resolve wf_ty_cons.
+Hint Resolve wf_ty_cons:core.
 
 Lemma wf_ty_app : forall c' c t, wf_ty c t -> wf_ty (c++c') t.
 Proof.
   induction c; induction t; crush.
 Qed.
 
-Hint Resolve wf_ty_app.
+Hint Resolve wf_ty_app:core.
       
 Lemma wf_ty_app_comm : forall c c' t, wf_ty (c++c') t -> wf_ty (c'++c) t.
 Proof.
@@ -66,7 +66,7 @@ Proof.
   induction t ; crush.
 Qed.
 
-Hint Resolve subst_remove.
+Hint Resolve subst_remove:core.
 
 (** More lemmas about well formed types *)
 Lemma wf_ty_var : forall i C, member C i <-> wf_ty C (var i).
@@ -75,7 +75,7 @@ Proof.
   induction C; crush.
 Qed.
 
-Hint Resolve wf_ty_var.
+Hint Resolve wf_ty_var:core.
 
 Lemma wf_ty_var_false : forall i C, wf_ty (remove i C) (var i) -> False.
 Proof.
@@ -90,28 +90,28 @@ Proof.
   apply member_remove_false in H. contradiction.
 Qed.
 
-Hint Resolve subst_remove_single.
+Hint Resolve subst_remove_single:core.
 
 Lemma wf_ty_cons_inversion : forall t i C, wf_ty C t -> wf_ty (i::C) t.
 Proof.
   crush.
 Qed. 
 
-Hint Resolve wf_ty_cons_inversion.
+Hint Resolve wf_ty_cons_inversion:core.
 
 Lemma wf_ty_remove_inversion : forall i C t, wf_ty (remove i C) t -> wf_ty C t.
 Proof.
   induction t; crush.
 Qed.
 
-Hint Resolve wf_ty_remove_inversion.
+Hint Resolve wf_ty_remove_inversion:core.
 
 Lemma wf_ty_remove_remove_comm : forall i j C t, wf_ty (remove i (remove j C)) t -> wf_ty (remove j (remove i C)) t.
 Proof.
   induction t; crush.
 Qed.
 
-Hint Resolve wf_ty_remove_remove_comm.
+Hint Resolve wf_ty_remove_remove_comm:core.
 
 Lemma wf_ty_remove_minus_inversion : forall s a C t, wf_ty (remove a (minus C (dom s))) t -> wf_ty (remove a C) t.
 Proof.
@@ -147,14 +147,14 @@ Proof.
   mysimp.
 Qed.
   
-Hint Resolve wf_ty_remove_remove.
+Hint Resolve wf_ty_remove_remove:core.
 
 Lemma wf_ty_remove_minus : forall s i C t, wf_ty (remove i C) t -> wf_ty (minus C (dom s)) t -> wf_ty (remove i (minus C (dom s))) t.
 Proof.
   induction s; intros; eauto; mysimp; simpl in *; eauto.
 Qed.
 
-Hint Resolve wf_ty_remove_minus.
+Hint Resolve wf_ty_remove_minus:core.
 
 Lemma wf_ty_subst_not_in_dom : forall t s1 C, wf_ty (minus C (dom s1)) t -> apply_subst s1 t = t.
 Proof.
@@ -181,7 +181,7 @@ Proof.
   induction t ; mysimp ; try tauto.
 Qed.
 
-Hint Resolve occurs_wf_ty.
+Hint Resolve occurs_wf_ty:core.
 
 (** * Definition of a well formed substitution. *)
 (**
@@ -217,7 +217,7 @@ Proof.
   eauto.
 Qed.
 
-Hint Resolve wf_subst_remove_inversion.
+Hint Resolve wf_subst_remove_inversion:core.
 
 Lemma wf_subst_wf_ty_subst_var' : forall s C i,
     wf_subst C s ->
@@ -328,7 +328,7 @@ Proof.
   auto.
 Qed.
 
-Hint Resolve substs_remove wf_subst_wf_ty_subst.
+Hint Resolve substs_remove wf_subst_wf_ty_subst:core.
 
 Lemma wf_subst_not_in_dom_apply_subst_list : forall s2 s1 C,
     wf_subst (minus C (dom s1)) s2 -> apply_subst_list s2 s1 = s2. 
@@ -422,5 +422,5 @@ Proof.
   eauto.
 Qed.
 
-Hint Resolve wf_subst_arrowend.
+Hint Resolve wf_subst_arrowend:core.
 

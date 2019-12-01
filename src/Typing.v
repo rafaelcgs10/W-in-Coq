@@ -111,7 +111,7 @@ Proof.
     econstructor.
 Qed.
 
-Hint Resolve has_type_is_stable_under_substitution.
+Hint Resolve has_type_is_stable_under_substitution:core.
 
 Lemma has_type_var_ctx_diff : forall (i j : id) (G : ctx) (tau : ty) (sigma : schm),
     i <> j -> has_type G (var_t i) tau -> has_type ((j, sigma) :: G) (var_t i) tau.
@@ -121,5 +121,5 @@ Proof.
  econstructor; crush.
 Qed.
 
-Hint Resolve has_type_var_ctx_diff.
+Hint Resolve has_type_var_ctx_diff:core.
 

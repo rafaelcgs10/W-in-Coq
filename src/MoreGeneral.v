@@ -31,7 +31,7 @@ Inductive more_general : schm -> schm -> Prop :=
     (forall tau : ty, is_schm_instance tau sigma2 -> is_schm_instance tau sigma1) ->
     more_general sigma1 sigma2.
 
-Hint Constructors more_general.
+Hint Constructors more_general:core.
 
 (** ** More general schemes lemmas *)
 
@@ -81,7 +81,7 @@ Proof.
   inverts* H3.
 Qed.  
 
-Hint Resolve sc_var_more_general_than_sigma.
+Hint Resolve sc_var_more_general_than_sigma:core.
 Hint Rewrite sc_var_more_general_than_sigma:RE.
 
 Lemma more_general_arrow_inversion1 : forall sigma1 sigma2 sigma1' sigma2' : schm,
@@ -115,7 +115,7 @@ Proof.
   reflexivity.
 Qed.
 
-Hint Resolve more_general_arrow_inversion1.
+Hint Resolve more_general_arrow_inversion1:core.
 
 Lemma more_general_arrow_inversion2 : forall sigma1 sigma2 sigma1' sigma2' : schm,
     more_general (sc_arrow sigma1 sigma2) (sc_arrow sigma1' sigma2') ->
@@ -151,7 +151,7 @@ Proof.
   reflexivity.
 Qed.
 
-Hint Resolve more_general_arrow_inversion2.
+Hint Resolve more_general_arrow_inversion2:core.
 
 Lemma FV_more_general : forall sigma1 sigma2 : schm,
     more_general sigma1 sigma2 ->
@@ -168,7 +168,7 @@ Proof.
   eapply sublist_of_2_app; eauto.
 Qed.
 
-Hint Resolve FV_more_general.
+Hint Resolve FV_more_general:core.
 
 (** ** More general contexts lemmas *)
 
@@ -178,7 +178,7 @@ Inductive more_general_ctx : ctx -> ctx -> Prop :=
     more_general_ctx G1 G2 -> more_general sigma1 sigma2 ->
     more_general_ctx ((i, sigma1) :: G1) ((i, sigma2) :: G2).
 
-Hint Constructors more_general_ctx.
+Hint Constructors more_general_ctx:core.
 
 Lemma FV_more_general_ctx : forall G1 G2 : ctx,
     more_general_ctx G1 G2 ->
@@ -196,7 +196,7 @@ Proof.
     eauto.
 Qed.
 
-Hint Resolve FV_more_general_ctx.
+Hint Resolve FV_more_general_ctx:core.
 
 (** This complex lemma is needed to prove [more_general_ctx_disjoint_prefix_apply_inst]. *)
 Lemma inst_subst_to_subst_aux :
@@ -267,7 +267,7 @@ Proof.
     erewrite (@IHtau1_1 tau1 l L is_s phi); eauto.
 Qed.
 
-Hint Resolve inst_subst_to_subst_aux.
+Hint Resolve inst_subst_to_subst_aux:core.
 Hint Rewrite inst_subst_to_subst_aux:RE.
 
 (** This huge lemma is needed to prove [more_general_gen_ty]. *)
@@ -336,7 +336,7 @@ Proof.
     rewrite (@H0 x0 phi (snd (@gen_ty_aux t G2 l2)) (snd (@gen_ty_aux t G1 l1)) L P is_s); eauto.
 Qed.
 
-Hint Resolve more_general_ctx_disjoint_prefix_apply_inst.
+Hint Resolve more_general_ctx_disjoint_prefix_apply_inst:core.
 
 Lemma more_general_gen_ty : forall (G1 G2 : ctx) (t : ty),
     more_general_ctx G1 G2 -> more_general (gen_ty t G1) (gen_ty t G2).
@@ -353,7 +353,7 @@ Proof.
  ; eauto.
 Qed.
 
-Hint Resolve more_general_gen_ty.
+Hint Resolve more_general_gen_ty:core.
 
 Lemma typing_in_a_more_general_ctx : forall (e : term) (G2 G1 : ctx) (t : ty),
     more_general_ctx G1 G2 -> has_type G2 e t -> has_type G1 e t.
@@ -396,7 +396,7 @@ Proof.
     econstructor.
 Qed.
     
-Hint Resolve typing_in_a_more_general_ctx.
+Hint Resolve typing_in_a_more_general_ctx:core.
 
 Lemma more_general_ctx_refl : forall G : ctx, more_general_ctx G G.
 Proof.
@@ -404,7 +404,7 @@ Proof.
   intros; elim a; auto.
 Qed.
 
-Hint Resolve more_general_ctx_refl.
+Hint Resolve more_general_ctx_refl:core.
 
 (** Auxiliary lemma for the [more_general_gen_ty_before_apply_subst] lemma *)
 Lemma more_general_gen_ty_before_apply_subst_aux :
@@ -481,7 +481,7 @@ Proof.
         (l2:= (snd (gen_ty_aux (apply_subst s tau1_1) (apply_subst_ctx s G) l2))); eauto.
 Qed.
 
-Hint Resolve more_general_gen_ty_before_apply_subst_aux.
+Hint Resolve more_general_gen_ty_before_apply_subst_aux:core.
 
 Lemma more_general_gen_ty_before_apply_subst : forall (s : substitution) (G : ctx) (tau : ty),
  more_general (apply_subst_schm s (gen_ty tau G)) (gen_ty (apply_subst s tau) (apply_subst_ctx s G)).
@@ -497,4 +497,4 @@ Proof.
   eauto.
 Qed.
 
-Hint Resolve more_general_gen_ty_before_apply_subst.
+Hint Resolve more_general_gen_ty_before_apply_subst:core.

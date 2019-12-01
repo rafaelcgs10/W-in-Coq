@@ -82,7 +82,7 @@ Proof.
   congruence.
 Qed.
 
-Hint Resolve apply_subst_id.
+Hint Resolve apply_subst_id:core.
 Hint Rewrite apply_subst_id:RE.
 
 Lemma apply_subst_con : forall s n, apply_subst s (con n) = con n.
@@ -90,7 +90,7 @@ Proof.
   induction s ; mysimp.
 Qed.
 
-Hint Resolve apply_subst_con.
+Hint Resolve apply_subst_con:core.
 Hint Rewrite apply_subst_con:RE.
 
 Lemma apply_subst_arrow : forall s l r,
@@ -99,7 +99,7 @@ Proof.
   induction s ; mysimp.
 Qed.
 
-Hint Resolve apply_subst_arrow.
+Hint Resolve apply_subst_arrow:core.
 Hint Rewrite apply_subst_arrow:RE.
 
 Lemma apply_subst_nil : forall t, apply_subst nil t = t.
@@ -108,7 +108,7 @@ Proof.
   congruence.
 Qed.
 
-Hint Resolve apply_subst_nil.
+Hint Resolve apply_subst_nil:core.
 Hint Rewrite apply_subst_nil:RE.
 
 Lemma arrow_subst_eq : forall l l' r r' s,
@@ -119,7 +119,7 @@ Proof.
   intros ; do 2 rewrite apply_subst_arrow ; fequals*.
 Qed.
 
-Hint Resolve arrow_subst_eq.
+Hint Resolve arrow_subst_eq:core.
 
 (** Some lemmas for folding back a substitution application *)
 Lemma apply_subst_fold : forall s,
@@ -162,7 +162,7 @@ Proof.
   congruence.
 Qed.
 
-Hint Resolve apply_subst_list_nil.
+Hint Resolve apply_subst_list_nil:core.
 Hint Rewrite apply_subst_list_nil:RE.
 
 Lemma dom_dist : forall s1 s2 : substitution, dom (s1 ++ s2) = dom s1 ++ dom s2.
@@ -170,7 +170,7 @@ Proof.
   induction s1; crush.
 Qed.
 
-Hint Resolve dom_dist.
+Hint Resolve dom_dist:core.
 Hint Rewrite dom_dist:RE.
 
 Lemma img_dist : forall s1 s2 : substitution, img (s1 ++ s2) = img s1 ++ img s2.
@@ -178,7 +178,7 @@ Proof.
   induction s1; crush.
 Qed.
 
-Hint Resolve img_dist.
+Hint Resolve img_dist:core.
 Hint Rewrite img_dist:RE.
 
 Lemma img_ids_dist : forall s1 s2 : substitution, img_ids (s1 ++ s2) = img_ids s1 ++ img_ids s2.
@@ -191,7 +191,7 @@ Proof.
   reflexivity.
 Qed.
 
-Hint Resolve img_ids_dist.
+Hint Resolve img_ids_dist:core.
 Hint Rewrite img_ids_dist:RE.
 
 (** * Substitution composition *)
@@ -206,7 +206,7 @@ Proof.
   intros; induction s; mysimp.
 Qed.
 
-Hint Resolve compose_subst_nil_l.
+Hint Resolve compose_subst_nil_l:core.
 Hint Rewrite compose_subst_nil_l:RE.
 
 Lemma compose_subst_nil_r : forall s, compose_subst s nil = s.
@@ -214,7 +214,7 @@ Proof.
   induction s; unfold compose_subst in *; crush.
 Qed.
 
-Hint Resolve compose_subst_nil_r.
+Hint Resolve compose_subst_nil_r:core.
 Hint Rewrite compose_subst_nil_r:RE.
 
 Lemma apply_compose_subst_nil_l : forall s t, apply_subst (compose_subst nil s) t = apply_subst s t.
@@ -222,7 +222,7 @@ Proof.
   intros; mysimp. 
 Qed.
 
-Hint Resolve apply_compose_subst_nil_l.
+Hint Resolve apply_compose_subst_nil_l:core.
 Hint Rewrite apply_compose_subst_nil_l:RE.
 
 Lemma apply_compose_subst_nil_r : forall s t, apply_subst (compose_subst s nil) t = apply_subst s t.
@@ -230,7 +230,7 @@ Proof.
   intros; mysimp; induction s; autorewrite with RE using congruence.
 Qed.
 
-Hint Resolve apply_compose_subst_nil_r.
+Hint Resolve apply_compose_subst_nil_r:core.
 Hint Rewrite apply_compose_subst_nil_r:RE.
 
 
@@ -248,7 +248,7 @@ Proof.
   fequals.
 Qed.
 
-Hint Resolve apply_compose_equiv.
+Hint Resolve apply_compose_equiv:core.
 Hint Rewrite apply_compose_equiv:RE.
 
 Lemma apply_compose_assoc_var : forall s1 s2 s3 i,
@@ -288,7 +288,7 @@ Proof.
   crush.
 Qed.
 
-Hint Resolve find_subst_none_apply_app.
+Hint Resolve find_subst_none_apply_app:core.
 Hint Rewrite find_subst_none_apply_app:RE.
 
 Lemma find_subst_some_apply_app : forall (s1 s2 : substitution) (st : id) (tau : ty),
@@ -297,7 +297,7 @@ Proof.
   induction s1; crush.
 Qed.
 
-Hint Resolve find_subst_some_apply_app.
+Hint Resolve find_subst_some_apply_app:core.
 Hint Rewrite find_subst_some_apply_app:RE.
 
 Lemma find_subst_some_app : forall (s1 s2 : substitution) (st : id) (tau : ty),
@@ -306,7 +306,7 @@ Proof.
   intros. induction s1; crush.
 Qed.
 
-Hint Resolve find_subst_some_app.
+Hint Resolve find_subst_some_app:core.
 Hint Rewrite find_subst_some_app:RE.
 
 
@@ -321,7 +321,7 @@ Proof.
     mysimp.
 Qed.
 
-Hint Resolve find_subst_none_apply_compose.
+Hint Resolve find_subst_none_apply_compose:core.
 Hint Rewrite find_subst_none_apply_compose : subst.
  
 (** ** Some lemmas about substitution application over a variable *)
@@ -332,14 +332,14 @@ Lemma add_subst_rewrite_for_modified_id : forall (s : substitution) (i : id) (ta
   mysimp.
 Qed.
 
-Hint Resolve add_subst_rewrite_for_modified_id.
+Hint Resolve add_subst_rewrite_for_modified_id:core.
 
 Lemma add_subst_rewrite_for_unmodified_id : forall (s : substitution) (i j : id) (tau : ty),
     i <> j -> (apply_subst ((i, tau):: s)) (var j) = apply_subst s (var j).
   intros; induction s; mysimp.
 Qed.
 
-Hint Resolve add_subst_rewrite_for_unmodified_id.
+Hint Resolve add_subst_rewrite_for_unmodified_id:core.
 
 (** * Extensionality Lemmas For Substitutions *)
 
@@ -365,7 +365,7 @@ Proof.
   induction l; simpl; auto.
 Qed.
 
-Hint Resolve length_ty_from_id_list.
+Hint Resolve length_ty_from_id_list:core.
 Hint Rewrite length_ty_from_id_list:RE.
 
 Lemma ty_from_id_list_app : forall l1 l2 : list id,
@@ -374,7 +374,7 @@ Proof.
   induction l1; crush. 
 Qed.
 
-Hint Resolve ty_from_id_list_app.
+Hint Resolve ty_from_id_list_app:core.
 Hint Rewrite ty_from_id_list_app:RE.
 
 (** * Map simple substitution over a list of ty *)
@@ -394,7 +394,7 @@ Proof.
   induction l1; crush.
 Qed.
 
-Hint Resolve map_extend_app.
+Hint Resolve map_extend_app:core.
 Hint Rewrite map_extend_app:RE.
 
 Lemma length_map : forall (s : substitution) (l : list ty),
@@ -403,7 +403,7 @@ Proof.
   induction l; simpl; auto.
 Qed.
 
-Hint Resolve length_map.
+Hint Resolve length_map:core.
 Hint Rewrite length_map:RE.
 
 Lemma length_map2 : forall (s : substitution) (l : list id),
@@ -414,7 +414,7 @@ Proof.
   rewrite H; auto.
 Qed.
 
-Hint Resolve length_map2.
+Hint Resolve length_map2:core.
 Hint Rewrite length_map2:RE.
 
 Lemma app_length_cons : forall (A : Set) (l : list A) (x : A), length (l ++ x :: nil) = S (length l).
@@ -423,5 +423,5 @@ Proof.
   intros; simpl in |- *; auto.
 Qed.
 
-Hint Resolve app_length_cons.
+Hint Resolve app_length_cons:core.
 Hint Rewrite app_length_cons:RE.

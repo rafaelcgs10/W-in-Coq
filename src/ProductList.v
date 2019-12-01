@@ -84,7 +84,7 @@ Proof.
   inversion H0.
 Qed.
 
-Hint Resolve image_by_product2.
+Hint Resolve image_by_product2:core.
 
 Lemma product_for_le_length : forall (l1 : list id) (l2 : list ty),
     length l1 <= length l2 -> exists s, product_list l1 l2 = Some s.
@@ -99,7 +99,7 @@ Proof.
   reflexivity.
 Qed.
 
-Hint Resolve product_for_le_length.
+Hint Resolve product_for_le_length:core.
 
 (** *)
 Lemma product_list_exists : forall (tau : ty) (G : ctx) (is_s : inst_subst),

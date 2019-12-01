@@ -27,7 +27,7 @@ Inductive is_disjoint_with_some_tail : list id -> list id -> list id -> Prop :=
 |  prefixe_free_intro : forall C l L : list id,
     {l1 : list id | L = l ++ l1 /\ are_disjoints C l1} -> is_disjoint_with_some_tail C l L.
 
-Hint Constructors is_disjoint_with_some_tail.
+Hint Constructors is_disjoint_with_some_tail:core.
 
 (** ** Lemmas about disjoint tail *)
 
@@ -50,7 +50,7 @@ Proof.
   eauto.
 Qed.
 
-Hint Resolve is_prefixe_gen_aux.
+Hint Resolve is_prefixe_gen_aux:core.
 
 Lemma is_prefixe_reflexivity : forall C L : list id, is_disjoint_with_some_tail C L L.
 intros C L.
@@ -60,5 +60,5 @@ exists (nil: list id).
  apply app_nil_end.
 Qed.
 
-Hint Resolve is_prefixe_reflexivity.
+Hint Resolve is_prefixe_reflexivity:core.
 

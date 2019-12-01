@@ -20,7 +20,7 @@ Require Import List.
 Inductive is_sublist_id : (list id) -> (list id) -> Prop := is_sublist_intro: forall (l1 l2: (list id)),
       (forall (st: id), in_list_id st l1 = true -> in_list_id st l2 = true) -> is_sublist_id l1 l2.
 
-Hint Constructors is_sublist_id.
+Hint Constructors is_sublist_id:core.
 
 Lemma sublist_reflexivity: forall l : (list id), (is_sublist_id l l).
 Proof.
@@ -28,7 +28,7 @@ Proof.
   econstructor; auto.
 Qed.
 
-Hint Resolve sublist_reflexivity.
+Hint Resolve sublist_reflexivity:core.
 
 Lemma nil_is_sublist : forall l: (list id), (is_sublist_id nil l).
 Proof.
@@ -37,7 +37,7 @@ Proof.
   simpl in H. inversion H.
 Qed.
 
-Hint Resolve nil_is_sublist.
+Hint Resolve nil_is_sublist:core.
 
 Lemma append_sublist : forall (l l1 l2 : (list id)),
     (is_sublist_id l1 l) -> (is_sublist_id l2 l) ->
@@ -51,7 +51,7 @@ Proof.
   inversion H0. auto.
 Qed.
 
-Hint Resolve append_sublist.
+Hint Resolve append_sublist:core.
 
 Lemma sublist_of_append1 : forall (l l1 l2 : (list id)),
     (is_sublist_id l l1) -> (is_sublist_id l (l1 ++ l2)).
@@ -62,7 +62,7 @@ Proof.
   apply in_list_id_append1. auto.
 Qed.
 
-Hint Resolve sublist_of_append1.
+Hint Resolve sublist_of_append1:core.
 
 Lemma sublist_of_append2 : forall (l l1 l2 : (list id)),
     (is_sublist_id l l2) -> (is_sublist_id l (l1 ++ l2)).
@@ -73,7 +73,7 @@ Proof.
   apply in_list_id_append2. auto.
 Qed.
 
-Hint Resolve sublist_of_append2.
+Hint Resolve sublist_of_append2:core.
 
 Lemma sublist_of_append_inversion1 : forall (l l1 l2: list id),
     (is_sublist_id (l1 ++ l2) l) -> (is_sublist_id l1 l).
@@ -86,7 +86,7 @@ Proof.
   auto.
 Qed.
 
-Hint Resolve sublist_of_append_inversion1.
+Hint Resolve sublist_of_append_inversion1:core.
 
 Lemma sublist_of_append_inversion2 : forall (l l1 l2: list id),
     (is_sublist_id (l1 ++ l2) l) -> (is_sublist_id l2 l).
@@ -99,7 +99,7 @@ Proof.
   auto.
 Qed.
 
-Hint Resolve sublist_of_append_inversion2.
+Hint Resolve sublist_of_append_inversion2:core.
 
 Lemma in_list_id_cons_to_app : forall l i st, in_list_id st (l ++ i :: nil) = true ->
                                          in_list_id st (i::l) = true.
@@ -108,7 +108,7 @@ Proof.
   induction l; crush.
 Qed.
 
-Hint Resolve in_list_id_cons_to_app.
+Hint Resolve in_list_id_cons_to_app:core.
 
 Lemma sublist_cons_inv : forall (l l': (list id)) (i: id),
     (is_sublist_id l l') -> (in_list_id i l') = true -> (is_sublist_id (l ++ i::nil) l').
@@ -122,7 +122,7 @@ Proof.
   crush.
 Qed.
 
-Hint Resolve sublist_cons_inv.
+Hint Resolve sublist_cons_inv:core.
 
 Lemma sublist_inv1 : forall (l1 l2 : list id) (st : id), is_sublist_id l1 l2 ->
                                                     in_list_id st l1 = true ->
@@ -131,7 +131,7 @@ intros.
 inversion_clear H; auto.
 Qed.
 
-Hint Resolve sublist_inv1.
+Hint Resolve sublist_inv1:core.
 
 Lemma sublist_cons : forall (l l0: (list id)) (a: id),
     (is_sublist_id (a::l0) l) -> (is_sublist_id l0 l).
@@ -143,7 +143,7 @@ Proof.
   mysimp.
 Qed.
 
-Hint Resolve sublist_cons.
+Hint Resolve sublist_cons:core.
 
 Lemma disjoint_list_and_append : forall (l l1 l2: (list id)),
     (are_disjoints l1 l) -> (are_disjoints l2 l) ->
@@ -155,7 +155,7 @@ Proof.
   destruct H1; auto.
 Qed.
 
-Hint Resolve disjoint_list_and_append.
+Hint Resolve disjoint_list_and_append:core.
 
 Lemma are_disjoints_symetry : forall (l l' : (list id)),
     (are_disjoints l l') -> (are_disjoints l' l).
@@ -166,7 +166,7 @@ Proof.
   apply H. auto.
 Qed.
 
-Hint Resolve are_disjoints_symetry.
+Hint Resolve are_disjoints_symetry:core.
 
 Lemma disjoint_sublist_bis : forall (l1 l2 l: (list id)),
     (are_disjoints l2 l1) -> (is_sublist_id l l2) -> (are_disjoints l1 l).
@@ -177,7 +177,7 @@ Lemma disjoint_sublist_bis : forall (l1 l2 l: (list id)),
   auto.
 Qed.
 
-Hint Resolve disjoint_sublist_bis.
+Hint Resolve disjoint_sublist_bis:core.
 
 Lemma sublist_FV_type_scheme : forall (s : substitution) (sigma : schm) (i : id),
     (in_list_id i (FV_schm sigma)) = true ->
@@ -205,7 +205,7 @@ Proof.
     eapply sublist_of_append2. auto.
 Qed.            
 
-Hint Resolve sublist_FV_type_scheme.
+Hint Resolve sublist_FV_type_scheme:core.
 
 Lemma sublist_FV_ctx : forall (G: ctx) (s: substitution) (i : id),
     in_list_id i (FV_ctx G) = true ->
@@ -225,7 +225,7 @@ Proof.
     auto.
 Qed.
 
-Hint Resolve sublist_FV_ctx.
+Hint Resolve sublist_FV_ctx:core.
 
 Lemma sublist_of_2_app : forall l l' l1 l2 : list id,
     is_sublist_id l1 l ->
@@ -237,5 +237,5 @@ Proof.
   eauto.
 Qed.
 
-Hint Resolve sublist_of_2_app.
+Hint Resolve sublist_of_2_app:core.
   

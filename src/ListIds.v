@@ -41,7 +41,7 @@ Proof.
     assumption.
 Qed.
 
-Hint Resolve in_list_id_or_append.
+Hint Resolve in_list_id_or_append:core.
 Hint Rewrite in_list_id_or_append:RE.
 
 Lemma in_list_id_or_append_inversion : forall x l1 l2,
@@ -59,7 +59,7 @@ Proof.
     auto.
 Qed.
 
-Hint Resolve in_list_id_or_append_inversion.
+Hint Resolve in_list_id_or_append_inversion:core.
 Hint Rewrite in_list_id_or_append_inversion:RE.
 
 Lemma in_list_id_or_append_inversion_midle : forall x l1 l2 l3 l4,
@@ -75,7 +75,7 @@ Proof.
     destruct (eq_id_dec a x); eauto.
 Qed.
 
-Hint Resolve in_list_id_or_append_inversion_midle.
+Hint Resolve in_list_id_or_append_inversion_midle:core.
 Hint Rewrite in_list_id_or_append_inversion_midle:RE.
 
 Lemma in_list_id_cons_true : forall x l a,
@@ -85,7 +85,7 @@ Proof.
   mysimp.
 Qed.
 
-Hint Resolve in_list_id_cons_true.
+Hint Resolve in_list_id_cons_true:core.
 Hint Rewrite in_list_id_cons_true:RE.
 
 Lemma in_list_id_cons_false : forall x l a,
@@ -98,7 +98,7 @@ Lemma in_list_id_cons_false : forall x l a,
   inversion H.
 Qed.
 
-Hint Resolve in_list_id_cons_false.
+Hint Resolve in_list_id_cons_false:core.
 Hint Rewrite in_list_id_cons_false:RE.
 
 Lemma in_list_id_append_comm_true :
@@ -112,7 +112,7 @@ Proof.
   destruct H; mysimp.
 Qed.
 
-Hint Resolve in_list_id_append_comm_true.
+Hint Resolve in_list_id_append_comm_true:core.
 Hint Rewrite in_list_id_append_comm_true:RELOOP.
 
 Lemma in_list_id_append_comm_true2 :
@@ -127,7 +127,7 @@ Proof.
   eauto.
 Qed.
 
-Hint Resolve in_list_id_append_comm_true2.
+Hint Resolve in_list_id_append_comm_true2:core.
 Hint Rewrite in_list_id_append_comm_true2:RE.
 
 Lemma in_list_id_append_comm_true3 :
@@ -144,7 +144,7 @@ Proof.
   eauto.
 Qed.
 
-Hint Resolve in_list_id_append_comm_true3.
+Hint Resolve in_list_id_append_comm_true3:core.
 Hint Rewrite in_list_id_append_comm_true3:RE.
 
 Lemma in_list_id_append1 :
@@ -157,7 +157,7 @@ Proof.
   auto.
 Qed.
 
-Hint Resolve in_list_id_append1.
+Hint Resolve in_list_id_append1:core.
 Hint Rewrite in_list_id_append1:RE.
 
 Lemma in_list_id_append2 :
@@ -170,7 +170,7 @@ Proof.
   auto.
 Qed.
 
-Hint Resolve in_list_id_append2.
+Hint Resolve in_list_id_append2:core.
 Hint Rewrite in_list_id_append2:RE.
 
 Lemma in_list_id_and_append : forall x l1 l2,
@@ -186,7 +186,7 @@ Proof.
     assumption.
 Qed.
 
-Hint Resolve in_list_id_and_append.
+Hint Resolve in_list_id_and_append:core.
 Hint Rewrite in_list_id_and_append:RE.
 
 Lemma in_list_id_and_append_inversion : forall x l1 l2,
@@ -199,7 +199,7 @@ Proof.
   try (destruct (eq_id_dec a x); intuition).
 Qed.
 
-Hint Resolve in_list_id_and_append_inversion.
+Hint Resolve in_list_id_and_append_inversion:core.
 Hint Rewrite in_list_id_and_append_inversion:RE.
 
 Lemma in_list_id_append_comm_false :
@@ -212,7 +212,7 @@ Proof.
   destruct H; mysimp.
 Qed.
 
-Hint Resolve in_list_id_append_comm_false.
+Hint Resolve in_list_id_append_comm_false:core.
 Hint Rewrite in_list_id_append_comm_false:RE.
 
 Lemma in_list_id_append_inversion1 :
@@ -225,7 +225,7 @@ Proof.
   - simpl in *. destruct (eq_id_dec a x); intuition.
 Qed.
 
-Hint Resolve in_list_id_append_inversion1.
+Hint Resolve in_list_id_append_inversion1:core.
 Hint Rewrite in_list_id_append_inversion1:RE.
 
 Lemma in_list_id_append_inversion2 :
@@ -239,7 +239,7 @@ Proof.
     destruct (eq_id_dec a x); intuition.
 Qed.
 
-Hint Resolve in_list_id_append_inversion2.
+Hint Resolve in_list_id_append_inversion2:core.
 Hint Rewrite in_list_id_append_inversion2:RE.
 
 Lemma in_list_id_le_ex : forall l p i, (forall x : id, in_list_id x (p :: l) = true -> x < i) -> p < i.
@@ -250,7 +250,7 @@ Proof.
   destruct (eq_id_dec p p); intuition.
 Qed.
 
-Hint Resolve in_list_id_le_ex.
+Hint Resolve in_list_id_le_ex:core.
 
 (** * Get the biggest element from a list of ids *)
 
@@ -309,7 +309,7 @@ Proof.
   omega.
 Qed.
 
-Hint Resolve max_list_ids'_eq.
+Hint Resolve max_list_ids'_eq:core.
 Hint Rewrite max_list_ids'_eq:RE.
 
 Lemma max_list_ids'_false : forall  x l x0 P,  max_list_ids' l x = exist _ x0 P -> x0 < x -> False.
@@ -327,7 +327,7 @@ Proof.
     omega.
 Qed.
 
-Hint Resolve max_list_ids'_false.
+Hint Resolve max_list_ids'_false:core.
 
 Definition max_ids (i1 i2 : id) : id := if le_gt_dec i1 i2 then i2 else i1.
 
@@ -355,7 +355,7 @@ Proof.
     mysimp.
 Qed.
 
-Hint Resolve apply_subst_dom_false.
+Hint Resolve apply_subst_dom_false:core.
 Hint Rewrite apply_subst_dom_false:RE.
 
 (** * Get a list of [id] from a [ty] *)
@@ -395,7 +395,7 @@ Proof.
       eauto.
 Qed.
 
-Hint Resolve not_in_img.
+Hint Resolve not_in_img:core.
 Hint Rewrite not_in_img:RE.
 
 (** * Checks if index of an [id] is in a list *)
@@ -415,7 +415,7 @@ Proof.
   induction st; crush.
 Qed.
 
-Hint Resolve index_list_id_nil.
+Hint Resolve index_list_id_nil:core.
 Hint Rewrite index_list_id_nil:RE.
 
 Lemma index_aux1 : forall st l k n, index_list_id_aux (S n) st l = Some k -> index_list_id_aux n st l = Some (Nat.pred k).
@@ -429,21 +429,21 @@ Proof.
   apply IHl in H. auto.
 Qed.
 
-Hint Resolve index_aux1.
+Hint Resolve index_aux1:core.
 
 Lemma index_aux2 : forall st l k n, index_list_id_aux n st l = Some k -> index_list_id_aux (S n) st l = Some (S k).
 Proof.
   induction l; crush.
 Qed.
 
-Hint Resolve index_aux2.
+Hint Resolve index_aux2:core.
 
 Lemma index_aux_false : forall l n m i, m < n -> index_list_id_aux n i l = Some m -> False.
 Proof.
   induction l; crush.
 Qed.
 
-Hint Resolve index_aux_false.
+Hint Resolve index_aux_false:core.
 
 Lemma index_lt : forall (l : list id) (st : id) (k : id),
     index_list_id st l = Some k -> k < length l.
@@ -460,14 +460,14 @@ Proof.
   simpl. omega.
 Qed.
 
-Hint Resolve index_lt.
+Hint Resolve index_lt:core.
 
 Lemma index_list_none_any_k : forall l i k k', index_list_id_aux k i l = None -> index_list_id_aux k' i l = None.
 Proof.
   induction l; crush.
 Qed.
 
-Hint Resolve index_list_none_any_k.
+Hint Resolve index_list_none_any_k:core.
 
 Lemma index_list_id_cons : forall (l : list id) (i : id),
     index_list_id i l = None -> index_list_id i (l ++ i::nil) = Some (length l).
@@ -475,7 +475,7 @@ Proof.
   induction l; unfold index_list_id in *; crush.
 Qed.
 
-Hint Resolve index_list_id_cons.
+Hint Resolve index_list_id_cons:core.
 
 Lemma index_list_id_aux_app : forall (l1 l2 : list id) (n : id) (i : id) k,
  index_list_id_aux k i l1 = Some n -> index_list_id_aux k i (l1 ++ l2) = Some n.
@@ -483,7 +483,7 @@ Proof.
   induction l1; unfold index_list_id in *; crush.
 Qed.
 
-Hint Resolve index_list_id_aux_app.
+Hint Resolve index_list_id_aux_app:core.
 
 Lemma index_list_id_app : forall (l1 l2 : list id) (n : id) (i : id),
  index_list_id i l1 = Some n -> index_list_id i (l1 ++ l2) = Some n.
@@ -491,7 +491,7 @@ Proof.
   induction l1; unfold index_list_id in *; crush.
 Qed.
 
-Hint Resolve index_list_id_app.
+Hint Resolve index_list_id_app:core.
 
 Lemma index_list_id_nth : forall (l : list id) (k : id) (i : id),
     index_list_id i l = Some k -> nth_error (ty_from_id_list l) k = Some (var i).
@@ -509,6 +509,6 @@ Proof.
   auto. 
 Qed.
 
-Hint Resolve index_list_id_nth.
+Hint Resolve index_list_id_nth:core.
 Hint Rewrite index_list_id_nth:RE.
 
