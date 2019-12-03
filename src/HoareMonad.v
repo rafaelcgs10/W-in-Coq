@@ -108,24 +108,24 @@ Inductive UnifyFailure : ty -> ty -> Set :=
 | arrow_right  : forall l l' r r' s, UnifyFailure (apply_subst s r) (apply_subst s r') ->
                                 UnifyFailure (arrow l r) (arrow l' r') .
 
-Hint Constructors UnifyFailure.
+Hint Constructors UnifyFailure:core.
 
 Inductive SubstFailure : Set :=
 | substFail : SubstFailure.
 
-Hint Constructors SubstFailure.
+Hint Constructors SubstFailure:core.
 
 Inductive MissingVar : id ->  Set :=
 | missingVar : forall i, MissingVar i.
 
-Hint Constructors MissingVar.
+Hint Constructors MissingVar:core.
 
 Inductive InferFailure : Set :=
 | SubstFailure' : SubstFailure -> InferFailure
 | UnifyFailure' : forall t1 t2, UnifyFailure t1 t2 -> InferFailure
 | MissingVar' : forall i, MissingVar i -> InferFailure.
 
-Hint Constructors InferFailure.
+Hint Constructors InferFailure:core.
 
 Unset Implicit Arguments.
 

@@ -40,7 +40,7 @@ Proof.
   congruence.
 Qed.
 
-Hint Resolve apply_subst_schm_id.
+Hint Resolve apply_subst_schm_id:core.
 Hint Rewrite apply_subst_schm_id:RE.
 
 Lemma apply_subst_schm_con : forall s n, apply_subst_schm s (sc_con n) = sc_con n.
@@ -48,7 +48,7 @@ Proof.
   induction s ; mysimp.
 Qed.
 
-Hint Resolve apply_subst_schm_con.
+Hint Resolve apply_subst_schm_con:core.
 Hint Rewrite apply_subst_schm_con:RE.
 
 Lemma apply_subst_schm_arrow : forall s l r, apply_subst_schm s (sc_arrow l r) = sc_arrow (apply_subst_schm s l) (apply_subst_schm s r).
@@ -56,7 +56,7 @@ Proof.
   induction s ; mysimp.
 Qed.
 
-Hint Resolve apply_subst_schm_arrow.
+Hint Resolve apply_subst_schm_arrow:core.
 Hint Rewrite apply_subst_schm_arrow:RE.
 
 Lemma apply_subst_schm_gen : forall s n, apply_subst_schm s (sc_gen n) = sc_gen n.
@@ -65,7 +65,7 @@ Proof.
 Qed.
 
 
-Hint Resolve apply_subst_schm_gen.
+Hint Resolve apply_subst_schm_gen:core.
 Hint Rewrite apply_subst_schm_gen:RE.
 
 Lemma apply_subst_schm_arrow_inversion1 : forall s sigma1 sigma2,
@@ -80,7 +80,7 @@ Proof.
   reflexivity.
 Qed.
 
-Hint Resolve apply_subst_schm_arrow_inversion1.
+Hint Resolve apply_subst_schm_arrow_inversion1:core.
 Hint Rewrite apply_subst_schm_arrow_inversion1:RE.
 
 Lemma apply_subst_schm_arrow_inversion2 : forall s sigma1 sigma2,
@@ -95,7 +95,7 @@ Proof.
   reflexivity.
 Qed.
 
-Hint Resolve apply_subst_schm_arrow_inversion2.
+Hint Resolve apply_subst_schm_arrow_inversion2:core.
 Hint Rewrite apply_subst_schm_arrow_inversion2:RE.
 
 Lemma apply_subst_schm_nil : forall sigma, apply_subst_schm nil sigma = sigma.
@@ -104,7 +104,7 @@ Proof.
   congruence.
 Qed.
 
-Hint Resolve apply_subst_schm_nil.
+Hint Resolve apply_subst_schm_nil:core.
 Hint Rewrite apply_subst_schm_nil : subst.
 
 (** * Instance subst on schemes *)
@@ -140,7 +140,7 @@ Proof.
   intros. reflexivity.
 Qed.
 
-Hint Resolve apply_inst_subst_con.
+Hint Resolve apply_inst_subst_con:core.
 Hint Rewrite apply_inst_subst_con:RE.
 
 Lemma apply_inst_subst_var : forall (i : id) (is_s : inst_subst),
@@ -149,7 +149,7 @@ Proof.
   intros. reflexivity.
 Qed.
 
-Hint Resolve apply_inst_subst_var.
+Hint Resolve apply_inst_subst_var:core.
 Hint Rewrite apply_inst_subst_var:RE.
 
 (** * Lemmas relation scheme substitution and ty_to_schm *)
@@ -164,7 +164,7 @@ Proof.
   reflexivity.
 Qed.
 
-Hint Resolve ty_to_subst_single.
+Hint Resolve ty_to_subst_single:core.
 Hint Rewrite ty_to_subst_single:RE.
 
 Lemma ty_to_subst_schm : forall (s : substitution) (tau : ty),
@@ -177,7 +177,7 @@ Proof.
       + crush.
 Qed.
 
-Hint Resolve ty_to_subst_schm.
+Hint Resolve ty_to_subst_schm:core.
 Hint Rewrite ty_to_subst_schm:RE.
 
 
@@ -196,7 +196,7 @@ Proof.
   inversion H.
 Qed.
 
-Hint Resolve apply_inst_subst_gen_nth.
+Hint Resolve apply_inst_subst_gen_nth:core.
 Hint Rewrite apply_inst_subst_gen_nth:RE.
 
 (**  Most general instance definition **)
@@ -217,7 +217,7 @@ Proof.
   apply apply_inst_subst_con.
 Qed.
 
-Hint Resolve apply_inst_subst_con_inversion.
+Hint Resolve apply_inst_subst_con_inversion:core.
 Hint Rewrite apply_inst_subst_con_inversion:RE.
 
 Fixpoint find_instance (sigma : schm) (tau : ty) :=
@@ -247,7 +247,7 @@ Proof.
   exists (arrow x x0). reflexivity.
 Qed.
 
-Hint Resolve apply_inst_subst_succeeds.
+Hint Resolve apply_inst_subst_succeeds:core.
 
 Lemma apply_inst_subst_ge_app : forall (sigma : schm) (is_s l : inst_subst),
     max_gen_vars sigma <= length is_s -> apply_inst_subst (is_s ++ l) sigma = apply_inst_subst is_s sigma.
@@ -261,7 +261,7 @@ Proof.
   apply H.
 Qed.
 
-Hint Resolve apply_inst_subst_ge_app.
+Hint Resolve apply_inst_subst_ge_app:core.
 
 Lemma is_instance_le_max : forall (sigma : schm) (tau : ty) (is_s : inst_subst),
     apply_inst_subst is_s sigma = Some tau -> max_gen_vars sigma <= length is_s.
@@ -279,7 +279,7 @@ Proof.
   inversion H.
 Qed.
 
-Hint Resolve is_instance_le_max.
+Hint Resolve is_instance_le_max:core.
 
 (** * Lemmas relation instance substitution and ty_to_schm *)
 
@@ -293,7 +293,7 @@ Proof.
   reflexivity.
 Qed.
 
-Hint Resolve apply_inst_ty_to_schm.
+Hint Resolve apply_inst_ty_to_schm:core.
 Hint Rewrite apply_inst_ty_to_schm:RE.
 
 Lemma apply_subst_inst_to_ty_to_schm : forall (is_s : inst_subst) (tau : ty),
@@ -302,7 +302,7 @@ Proof.
   induction tau; crush.
 Qed.
 
-Hint Resolve apply_subst_inst_to_ty_to_schm.
+Hint Resolve apply_subst_inst_to_ty_to_schm:core.
 Hint Rewrite apply_subst_inst_to_ty_to_schm:RE.
 
 (** * Lemma relating map substitution and apply instance substitution *)
@@ -323,7 +323,7 @@ Proof.
       fequals.
 Qed.
 
-Hint Resolve subst_inst_subst_type_var.
+Hint Resolve subst_inst_subst_type_var:core.
 Hint Rewrite subst_inst_subst_type_var:RE.
 
 Lemma nth_error_map_apply_subst : forall (is_s : inst_subst) (s : substitution) (i : id) (tau : ty),
@@ -335,7 +335,7 @@ Proof.
   assumption.
 Qed.
 
-Hint Resolve nth_error_map_apply_subst.
+Hint Resolve nth_error_map_apply_subst:core.
 Hint Rewrite nth_error_map_apply_subst:RE.
 
 Lemma map_apply_subst_gen : forall (tau : ty) (s : substitution) (is_s : inst_subst) (i : id),
@@ -351,7 +351,7 @@ Proof.
     reflexivity).
 Qed.
 
-Hint Resolve map_apply_subst_gen.
+Hint Resolve map_apply_subst_gen:core.
 Hint Rewrite map_apply_subst_gen:RE.
 
 
@@ -371,7 +371,7 @@ Proof.
     inversion H.
 Qed.
 
-Hint Resolve exist_arrow_apply_inst_arrow.
+Hint Resolve exist_arrow_apply_inst_arrow:core.
 Hint Rewrite exist_arrow_apply_inst_arrow:RE.
 
 Lemma and_arrow_apply_inst_arrow : forall (sigma1 sigma2 : schm) (tau tau' : ty) (is_s : inst_subst),
@@ -388,7 +388,7 @@ Proof.
     inversion H).
 Qed.
 
-Hint Resolve and_arrow_apply_inst_arrow.
+Hint Resolve and_arrow_apply_inst_arrow:core.
 Hint Rewrite and_arrow_apply_inst_arrow:RE.
 
 Lemma exist_arrow_apply_inst_arrow2 : forall (sigma1 sigma2 : schm) (tau : ty) (is_s : inst_subst),
@@ -402,7 +402,7 @@ Proof.
     destruct (apply_inst_subst is_s sigma2); crush.
 Qed.
 
-Hint Resolve exist_arrow_apply_inst_arrow2.
+Hint Resolve exist_arrow_apply_inst_arrow2:core.
 
 Lemma var_is_not_instance_of_arrow : forall (sigma1 sigma2 : schm) (i : id),
     ~ is_schm_instance (var i) (sc_arrow sigma1 sigma2).
@@ -416,7 +416,7 @@ Proof.
   inverts* H1.
 Qed.
 
-Hint Resolve var_is_not_instance_of_arrow.
+Hint Resolve var_is_not_instance_of_arrow:core.
 
 Lemma con_is_not_instance_of_arrow : forall (sigma1 sigma2 : schm) (i : id),
     ~ is_schm_instance (con i) (sc_arrow sigma1 sigma2).
@@ -430,7 +430,7 @@ Proof.
   inverts* H1.
 Qed.
 
-Hint Resolve con_is_not_instance_of_arrow.
+Hint Resolve con_is_not_instance_of_arrow:core.
 
 Lemma subst_inst_subst_type:
   forall (sigma : schm) (s: substitution) (is_s : inst_subst) (tau : ty),
@@ -476,7 +476,7 @@ Proof.
     auto.
 Qed.
 
-Hint Resolve subst_inst_subst_type.
+Hint Resolve subst_inst_subst_type:core.
 Hint Rewrite subst_inst_subst_type:RE.
 
 
@@ -490,7 +490,7 @@ Proof.
   simpl. rewrite IHtau1. rewrite IHtau2. reflexivity.
 Qed.
 
-Hint Resolve FV_type_scheme_type_to_type_scheme.
+Hint Resolve FV_type_scheme_type_to_type_scheme:core.
 Hint Rewrite FV_type_scheme_type_to_type_scheme:RE.
 
 Lemma not_in_FV_type_scheme : forall  (s: substitution) (sigma : schm) (st: id) ,
@@ -523,7 +523,7 @@ Proof.
     eauto.
 Qed.      
 
-Hint Resolve not_in_FV_type_scheme.
+Hint Resolve not_in_FV_type_scheme:core.
 Hint Rewrite not_in_FV_type_scheme:RE.
 
 (** Identity condition for apply_subst_schm *)
@@ -545,7 +545,7 @@ Proof.
   fequals; eauto.
 Qed.  
 
-Hint Resolve subst_schm_when_dom_s_disjoint_with_FV_schm.
+Hint Resolve subst_schm_when_dom_s_disjoint_with_FV_schm:core.
 Hint Rewrite subst_schm_when_dom_s_disjoint_with_FV_schm:RE.
 
 Lemma apply_schm_compose_equiv : forall s1 s2 sigma, apply_subst_schm (compose_subst s1 s2) sigma =
@@ -558,7 +558,7 @@ Proof.
   fequals; eauto.
 Qed.
 
-Hint Resolve apply_schm_compose_equiv.
+Hint Resolve apply_schm_compose_equiv:core.
 Hint Rewrite apply_schm_compose_equiv:RE.
 
 Fixpoint compute_inst_subst (st : id) (n : nat) : list ty :=
@@ -586,7 +586,7 @@ Proof.
       omega.
 Qed.
 
-Hint Resolve nth_error_compute_inst_Some.
+Hint Resolve nth_error_compute_inst_Some:core.
 Hint Rewrite nth_error_compute_inst_Some:RE.
 
 Lemma nth_error_compute_inst_None' : forall i j, nth_error (compute_inst_subst j i) i = None.
@@ -596,7 +596,7 @@ Proof.
   - intros. simpl. auto.
 Qed.
 
-Hint Resolve nth_error_compute_inst_None'.
+Hint Resolve nth_error_compute_inst_None':core.
 Hint Rewrite nth_error_compute_inst_None':RE.
 
 Lemma nth_error_None_None_cons : forall i (l : list ty) a, nth_error (a :: l) i = None -> nth_error l i = None.
@@ -608,7 +608,7 @@ Proof.
   apply H.
 Qed.
 
-Hint Resolve nth_error_None_None_cons.
+Hint Resolve nth_error_None_None_cons:core.
 Hint Rewrite nth_error_None_None_cons:RE.
 
 Lemma nth_error_None_None : forall (l : list ty) i, nth_error l i = None -> nth_error l (S i) = None.
@@ -621,7 +621,7 @@ Proof.
   auto.
 Qed.
 
-Hint Resolve nth_error_None_None.
+Hint Resolve nth_error_None_None:core.
 Hint Rewrite nth_error_None_None:RE.
 
 Lemma nth_error_None_None_S : forall k i j, nth_error (compute_inst_subst j k) i = None -> nth_error (compute_inst_subst (S j) k) i = None.
@@ -631,7 +631,7 @@ Proof.
   simpl. auto.
 Qed.
 
-Hint Resolve nth_error_None_None_S.
+Hint Resolve nth_error_None_None_S:core.
 Hint Rewrite nth_error_None_None_S:RE.
 
 Lemma nth_error_compute_inst_None : forall i k j, k < i -> nth_error (compute_inst_subst j k) i = None.
@@ -647,7 +647,7 @@ Proof.
     omega.
 Qed.
 
-Hint Resolve nth_error_compute_inst_None.
+Hint Resolve nth_error_compute_inst_None:core.
 Hint Rewrite nth_error_compute_inst_None:RE.
 
 (** * About computing the subst s' in the completeness proof **)
@@ -664,7 +664,7 @@ Proof.
   induction is_s; crush.
 Qed.
 
-Hint Resolve not_in_domain_compute.
+Hint Resolve not_in_domain_compute:core.
 Hint Rewrite not_in_domain_compute:RE.
 
 Lemma find_subst_some_apply_app_compute_subst : forall (is_s : inst_subst) (s : substitution) (st0 st1 : id),
@@ -674,7 +674,7 @@ Proof.
   crush.
 Qed.
 
-Hint Resolve find_subst_some_apply_app_compute_subst.
+Hint Resolve find_subst_some_apply_app_compute_subst:core.
 Hint Rewrite find_subst_some_apply_app_compute_subst:RE.
 
 Lemma compute_subst_cons_rwt : forall (st : id) (tau : ty) (is_s : inst_subst),
@@ -683,7 +683,7 @@ Proof.
   auto.
 Qed.
 
-Hint Resolve compute_subst_cons_rwt.
+Hint Resolve compute_subst_cons_rwt:core.
 Hint Rewrite compute_subst_cons_rwt:RE.
 
 Lemma find_subst_id_compute : forall (i : id) (is_s : inst_subst) (st : id) (tau : ty),
@@ -698,7 +698,7 @@ Proof.
   erewrite IHi; eauto.
 Qed.
 
-Hint Resolve find_subst_id_compute.
+Hint Resolve find_subst_id_compute:core.
 Hint Rewrite find_subst_id_compute:RE.
 
 (** * Make constant inst subst and find inst subst *)
@@ -717,7 +717,7 @@ Proof.
   auto with *.
 Qed.
 
-Hint Resolve nth_error_make_constant_inst_subst3.
+Hint Resolve nth_error_make_constant_inst_subst3:core.
 Hint Rewrite nth_error_make_constant_inst_subst3:RE.
 
 Lemma apply_subst_inst_make_constant_inst_subst : forall (sigma : schm) (tau : ty) (p : id),
@@ -740,7 +740,7 @@ Proof.
   auto with *.
 Qed.
 
-Hint Resolve apply_subst_inst_make_constant_inst_subst.
+Hint Resolve apply_subst_inst_make_constant_inst_subst:core.
 Hint Resolve apply_subst_inst_make_constant_inst_subst:RE.
 
 Lemma find_some_instance_of_some_sigma : forall (sigma : schm) (tau : ty),
@@ -752,14 +752,14 @@ Proof.
   auto.
 Qed.
 
-Hint Resolve find_some_instance_of_some_sigma.
+Hint Resolve find_some_instance_of_some_sigma:core.
 Hint Rewrite find_some_instance_of_some_sigma:RE.
 
 Lemma length_make_constant_inst_subst : forall (n : nat) (t : ty), length (make_constant_inst_subst n t) = n.
   induction n; crush.
 Qed.
 
-Hint Resolve length_make_constant_inst_subst.
+Hint Resolve length_make_constant_inst_subst:core.
 
 (** Lemma about projections a type instance of an arrow. *)
 Lemma arrow_sigma_more_general_than_arrow : forall sigma sigma1 sigma2 : schm,
@@ -789,5 +789,5 @@ Proof.
     exists (sigma1, sigma2). reflexivity.
 Qed.
 
-Hint Resolve arrow_sigma_more_general_than_arrow.
+Hint Resolve arrow_sigma_more_general_than_arrow:core.
 Hint Resolve arrow_sigma_more_general_than_arrow:RE.

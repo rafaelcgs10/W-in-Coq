@@ -424,7 +424,7 @@ Defined.
 Next Obligation.
   econstructor; eauto.
   eapply new_tv_ctx_trans.
-  apply n.
+  eauto.
   omega.
 Defined. 
 

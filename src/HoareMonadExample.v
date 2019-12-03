@@ -89,7 +89,7 @@ Proof.
   econstructor; auto.
 Qed.
 
-Hint Resolve new_number_trans_le.
+Hint Resolve new_number_trans_le:core.
 
 Unset Implicit Arguments.
 

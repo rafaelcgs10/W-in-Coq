@@ -34,14 +34,14 @@ Proof.
   induction c; crush.
 Qed.
 
-Hint Resolve member_app.
+Hint Resolve member_app:core.
 
 Lemma member_app2 : forall c c' i, member c' i -> member (c++c') i.
 Proof.
   induction c; crush.
 Qed.
 
-Hint Resolve member_app2.
+Hint Resolve member_app2:core.
 
 (** Decidability of the previous membership relation *)
 
@@ -67,14 +67,14 @@ Proof.
   induction c; crush.
 Qed.
 
-Hint Resolve member_app_or.
+Hint Resolve member_app_or:core.
 
 Lemma member_or_app : forall c c' i, member c i \/ member c' i <-> member (c++c') i.
 Proof.
   split; crush.
 Qed.
 
-Hint Resolve member_or_app.
+Hint Resolve member_or_app:core.
 
 Lemma member_app_comm : forall c c' i, member (c'++c) i -> member (c++c') i.
 Proof.
@@ -82,7 +82,7 @@ Proof.
   apply member_or_app in H; crush.
 Qed.
 
-Hint Resolve member_app_comm.
+Hint Resolve member_app_comm:core.
 
 (** Removing a variable from a variable context *)
 
@@ -97,7 +97,7 @@ Proof.
   crush.
 Qed.
 
-Hint Resolve remove_nil.
+Hint Resolve remove_nil:core.
 Hint Rewrite remove_nil.
 
 Lemma remove_diff_member : forall x t ctx, member ctx t -> x <> t -> member (remove x ctx) t.
@@ -105,14 +105,14 @@ Proof.
   induction ctx ; crush.
 Qed.
 
-Hint Resolve remove_diff_member.
+Hint Resolve remove_diff_member:core.
 
 Lemma remove_comm : forall x y C, remove x (remove y C) = remove y (remove x C).
 Proof.
   induction C ; crush.
 Qed.
 
-Hint Resolve remove_comm.
+Hint Resolve remove_comm:core.
 Hint Rewrite remove_comm:RELOOP.
 
 (** Removing a list of names from a given variable context. *)
@@ -129,7 +129,7 @@ Proof.
   induction C2; crush.
 Qed.
 
-Hint Resolve minus_remove.
+Hint Resolve minus_remove:core.
 Hint Rewrite minus_remove:RE.
 
 Lemma minus_arrow : forall (C : varctxt) s v t, minus C (dom (s ++ (v,t) :: nil)) = remove v (minus C (dom s)).
@@ -137,7 +137,7 @@ Proof.
   induction s ; crush. 
 Qed.
 
-Hint Resolve minus_arrow.
+Hint Resolve minus_arrow:core.
 Hint Rewrite minus_arrow:RE.
 
 Lemma member_remove_false : forall i C, member (remove i C) i -> False.
@@ -145,14 +145,14 @@ Proof.
   induction C; crush.
 Qed.
 
-Hint Resolve member_remove_false.
+Hint Resolve member_remove_false:core.
 
 Lemma member_diff_inversion : forall a i0 C, a <> i0 -> member (a :: C) i0 -> member C i0.
 Proof.
   crush.
 Qed.
 
-Hint Resolve member_diff_inversion.
+Hint Resolve member_diff_inversion:core.
 
 Lemma member_remove_inversion : forall i i0 C, member (remove i C) i0 -> member C i0.
 Proof.
@@ -160,21 +160,21 @@ Proof.
   crush.
 Qed.
 
-Hint Resolve member_diff_inversion member_remove_inversion.
+Hint Resolve member_diff_inversion member_remove_inversion:core.
 
 Lemma member_remove_remove_comm : forall C i j k, member (remove i (remove j C)) k -> member (remove j (remove i C)) k.
 Proof.
   induction C; crush.
 Qed.
 
-Hint Resolve member_remove_remove_comm.
+Hint Resolve member_remove_remove_comm:core.
 
 Lemma member_minus_remove : forall a C i0 i, member (minus (remove i0 C) a) i -> member (remove i0 (minus C a)) i.
 Proof.
   induction a; crush.
 Qed.
 
-Hint Resolve member_minus_remove.
+Hint Resolve member_minus_remove:core.
 
 Lemma minus_nil1 : forall l, minus nil l = nil.
 Proof.
@@ -183,7 +183,7 @@ Proof.
   rewrite IHl. reflexivity.
 Qed.
     
-Hint Resolve minus_nil1.
+Hint Resolve minus_nil1:core.
 Hint Rewrite minus_nil1:RE.
 
 Lemma minus_nil2 : forall l, minus l nil = l.
@@ -192,7 +192,7 @@ Proof.
   reflexivity.
 Qed.
 
-Hint Resolve minus_nil2.
+Hint Resolve minus_nil2:core.
 Hint Rewrite minus_nil2:RE.
 
 Lemma non_member_remove_length : forall C v, ~ member C v -> length (remove v C) = length C.
@@ -296,7 +296,7 @@ Proof.
     destruct (eq_id_dec a i); intuition.
 Qed.
 
-Hint Resolve member_not_member.
+Hint Resolve member_not_member:core.
 
 Lemma len_not_member_remove : forall i a, ~(member a i) -> length a = length (remove i a).
 Proof.
@@ -336,7 +336,7 @@ Proof.
   eauto.
 Qed.
 
-Hint Resolve member_minus_inversion.
+Hint Resolve member_minus_inversion:core.
 
 Lemma minus_minus_comm : forall A B C, minus (minus C A) B = minus (minus C B) A.
 Proof.
@@ -374,7 +374,7 @@ Proof.
    end.
 Qed.
 
-Hint Resolve remove_varctxt_length.
+Hint Resolve remove_varctxt_length:core.
 
 Lemma member_len_remove_minus' : forall C i a, member C i -> ~(member a i) -> length (remove i (minus C a)) < length (minus C a).
 Proof.
@@ -395,5 +395,5 @@ Proof.
     + rewrite remove_comm. eapply aux''. auto.
 Qed.
 
-Hint Resolve member_len_minus_lt. 
+Hint Resolve member_len_minus_lt:core. 
 

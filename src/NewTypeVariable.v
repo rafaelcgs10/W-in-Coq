@@ -32,7 +32,7 @@ Inductive new_tv_ty : ty -> id -> Prop :=
                                              new_tv_ty tau' i ->
                                              new_tv_ty (arrow tau tau') i.
 
-Hint Constructors new_tv_ty.
+Hint Constructors new_tv_ty:core.
 
 (** ** Lemmas that are only about new type variables for simple types. *)
 
@@ -42,7 +42,7 @@ Proof.
   eauto.
 Qed.
 
-Hint Resolve new_tv_var_id.
+Hint Resolve new_tv_var_id:core.
 
 Lemma new_tv_ty_ids : forall (st : id) (tau : ty),
     new_tv_ty tau st ->
@@ -54,7 +54,7 @@ Proof.
   destruct H0; inversion H; auto.
 Qed.
 
-Hint Resolve new_tv_ty_ids.
+Hint Resolve new_tv_ty_ids:core.
 
 Lemma add_subst_new_tv_ty : forall (s : substitution) (st : id) (tau1 tau2 : ty),
     new_tv_ty tau1 st -> apply_subst ((st, tau2)::s) tau1 = apply_subst s tau1.
@@ -71,7 +71,7 @@ Proof.
   fequals; eauto.
 Qed.
 
-Hint Resolve add_subst_new_tv_ty.
+Hint Resolve add_subst_new_tv_ty:core.
 Hint Rewrite add_subst_new_tv_ty:RE.
 
 Lemma new_tv_ty_trans_le : forall (tau : ty) (st1 st2 : id),
@@ -83,7 +83,7 @@ Proof.
   inverts* H.
 Qed.
 
-Hint Resolve new_tv_ty_trans_le.
+Hint Resolve new_tv_ty_trans_le:core.
 
 Lemma new_tv_compose_subst_type : forall (s s1 s2 : substitution) (st : id) (tau : ty),
     (forall i : id, i < st -> apply_subst s (var i) = apply_subst s2 (apply_subst s1 (var i))) ->
@@ -97,7 +97,7 @@ Lemma new_tv_compose_subst_type : forall (s s1 s2 : substitution) (st : id) (tau
     fequals; eauto.
 Qed.
 
-Hint Resolve new_tv_compose_subst_type.
+Hint Resolve new_tv_compose_subst_type:core.
 Hint Rewrite new_tv_compose_subst_type:RE.
 
 (** * New type variable definition for schemes *)
@@ -110,7 +110,7 @@ Inductive new_tv_schm : schm -> id -> Prop :=
                                                new_tv_schm tau' i ->
                                                new_tv_schm (sc_arrow tau tau') i.
 
-Hint Constructors new_tv_schm.
+Hint Constructors new_tv_schm:core.
 
 (** ** Lemmas that are only about new type variables for schemes (and simple types). *)
 
@@ -128,7 +128,7 @@ Proof.
   induction tau; simpl in *; try inversion H; try econstructor; eauto.
 Qed.
 
-Hint Resolve new_tv_ty_to_schm.
+Hint Resolve new_tv_ty_to_schm:core.
 
 Lemma new_tv_schm_to_new_tv_ty : forall sigma x x0 i,
     new_tv_schm sigma x ->
@@ -161,7 +161,7 @@ Proof.
     inversion H0.
 Qed.
 
-Hint Resolve new_tv_schm_to_new_tv_ty.
+Hint Resolve new_tv_schm_to_new_tv_ty:core.
 
 Lemma new_tv_schm_plus : forall sigma st st', new_tv_schm sigma st -> new_tv_schm sigma (st + st').
 Proof.
@@ -171,7 +171,7 @@ Proof.
   Unshelve. apply x.
 Qed.
 
-Hint Resolve new_tv_schm_plus.
+Hint Resolve new_tv_schm_plus:core.
 
 Lemma new_tv_schm_Succ : forall sigma i, new_tv_schm sigma i -> new_tv_schm sigma (S i).
 Proof.
@@ -180,7 +180,7 @@ Proof.
   inversion H; econstructor; auto.
 Qed.
 
-Hint Resolve new_tv_schm_Succ.
+Hint Resolve new_tv_schm_Succ:core.
 
 Lemma new_tv_schm_trans : forall st st' sigma,
     new_tv_schm sigma st -> st <= st' -> new_tv_schm sigma st'.
@@ -191,7 +191,7 @@ Proof.
   inverts* H.
 Qed.
 
-Hint Resolve new_tv_schm_trans.
+Hint Resolve new_tv_schm_trans:core.
 
 Lemma new_tv_schm_max_vars : forall sigma, new_tv_schm sigma (S (max_vars_schm sigma)).
 Proof.
@@ -217,7 +217,7 @@ Proof.
   auto.
 Qed.
 
-Hint Resolve new_tv_schm_max_vars.
+Hint Resolve new_tv_schm_max_vars:core.
 
 
 Lemma new_tv_schm_apply_subst : forall i tau s sigma,
@@ -233,7 +233,7 @@ Proof.
   fequals; eauto.
 Qed.
   
-Hint Resolve new_tv_schm_apply_subst.
+Hint Resolve new_tv_schm_apply_subst:core.
 
 (* Relating new_tv_ty to compute_subst*)
 Lemma new_tv_schm_compute_inst_subst :
@@ -280,7 +280,7 @@ Proof.
      erewrite <- IHsigma2; eauto.
 Qed.
 
-Hint Resolve new_tv_schm_compute_inst_subst.
+Hint Resolve new_tv_schm_compute_inst_subst:core.
 
 (** * New type variable definition for contexts *)
 
@@ -291,7 +291,7 @@ Inductive new_tv_ctx : ctx -> id -> Prop :=
     new_tv_schm sigma i ->
     new_tv_ctx ((x, sigma) :: G) i.
 
-Hint Constructors new_tv_ctx.
+Hint Constructors new_tv_ctx:core.
 
 (** ** Lemmas that are only about new type variables for contexts (and simple types and schemes). *)
 
@@ -350,7 +350,7 @@ Proof.
   eauto.
 Qed.
 
-Hint Resolve new_tv_ctx_plus.
+Hint Resolve new_tv_ctx_plus:core.
 
 
 Lemma new_tv_ctx_Succ : forall G i, new_tv_ctx G i -> new_tv_ctx G (S i).
@@ -359,7 +359,7 @@ Proof.
   induction H; econstructor; eauto.
 Qed.
 
-Hint Resolve new_tv_ctx_Succ.
+Hint Resolve new_tv_ctx_Succ:core.
 
 Lemma new_tv_ctx_implies_new_tv_schm : forall (G : ctx) (sigma : schm) (st x : id),
     in_ctx x G = Some sigma -> new_tv_ctx G st -> new_tv_schm sigma st.
@@ -369,7 +369,7 @@ Proof.
   inverts* H0.
 Qed.
 
-Hint Resolve new_tv_ctx_implies_new_tv_schm.
+Hint Resolve new_tv_ctx_implies_new_tv_schm:core.
 
 Lemma new_tv_ctx_trans : forall st st' G, new_tv_ctx G st -> st <= st' -> new_tv_ctx G st'.
 Proof.
@@ -381,7 +381,7 @@ Proof.
   econstructor; eauto.
 Qed.
 
-Hint Resolve new_tv_ctx_trans.
+Hint Resolve new_tv_ctx_trans:core.
 
 Lemma new_tv_ctx_apply_subst_ctx : forall st tau s G,
     new_tv_ctx G st -> apply_subst_ctx ((st, tau) :: s) G = apply_subst_ctx s G.
@@ -394,7 +394,7 @@ Proof.
   eauto.
 Qed.
 
-Hint Resolve new_tv_ctx_apply_subst_ctx.
+Hint Resolve new_tv_ctx_apply_subst_ctx:core.
 
 Lemma add_subst_add_ctx : forall (G : ctx) (s : substitution) (x : id) (st : id) (tau : ty),
     new_tv_ctx G st ->
@@ -406,7 +406,7 @@ Proof.
   rewrite new_tv_ctx_apply_subst_ctx; auto.
 Qed.
   
-Hint Resolve add_subst_add_ctx.
+Hint Resolve add_subst_add_ctx:core.
 
 Lemma new_tv_ctx_inversion : forall G tau st i,
     new_tv_ctx ((i, tau) :: G) st ->
@@ -416,7 +416,7 @@ Proof.
   inverts* H.
 Qed.
 
-Hint Resolve new_tv_ctx_inversion.
+Hint Resolve new_tv_ctx_inversion:core.
 
 Lemma new_tv_gen_aux_ty: forall (tau : ty) (G : ctx) (st : id) l,
     new_tv_ty tau st -> new_tv_ctx G st -> new_tv_schm (fst (gen_ty_aux tau G l)) st.
@@ -431,7 +431,7 @@ Proof.
   cases (gen_ty_aux tau2 G l0); crush.
 Qed.
 
-Hint Resolve new_tv_gen_aux_ty.
+Hint Resolve new_tv_gen_aux_ty:core.
 
 Lemma new_tv_gen_ty: forall (tau : ty) (G : ctx) (st : id),
     new_tv_ty tau st -> new_tv_ctx G st -> new_tv_schm (gen_ty tau G) st.
@@ -439,7 +439,7 @@ Proof.
   induction tau; unfold gen_ty; eauto.
 Qed. 
 
-Hint Resolve new_tv_gen_ty.
+Hint Resolve new_tv_gen_ty:core.
 
 (** * New type variable definition for substitutions *)
 
@@ -448,7 +448,7 @@ Inductive new_tv_subst : substitution -> id -> Prop :=
                   (forall x : id, in_list_id x (FV_subst s) = true -> x < i) ->
                   new_tv_subst s i.
 
-Hint Constructors new_tv_subst.
+Hint Constructors new_tv_subst:core.
 
 (** ** Lemmas that are only about new type variables for substitutions
        (and simple types and schemes and contexts). *)
@@ -512,7 +512,7 @@ Proof.
   auto.
 Qed.
 
-Hint Resolve new_ty_to_cons_new_tv_subst.
+Hint Resolve new_ty_to_cons_new_tv_subst:core.
 
 Lemma new_tv_subst_tail : forall a tau s i,
     new_tv_subst ((a, tau) :: s) i -> new_tv_subst s i.
@@ -533,7 +533,7 @@ Proof.
   crush.
 Qed.
 
-Hint Resolve new_tv_subst_tail.
+Hint Resolve new_tv_subst_tail:core.
 
 Lemma new_tv_subst_arrow_inversion : forall a tau1 tau2 s i,
     new_tv_subst ((a, arrow tau1 tau2) :: s) i ->
@@ -573,7 +573,7 @@ Proof.
     apply in_list_id_append2; eauto.
 Qed.
 
-Hint Resolve new_tv_subst_arrow_inversion.
+Hint Resolve new_tv_subst_arrow_inversion:core.
     
 Lemma new_tv_subst_cons_new_tv_ty : forall tau s i a,
     new_tv_subst ((a, tau) :: s) i -> new_tv_ty tau i.
@@ -591,7 +591,7 @@ Proof.
   eauto.
 Qed.
 
-Hint Resolve new_tv_subst_cons_new_tv_ty.
+Hint Resolve new_tv_subst_cons_new_tv_ty:core.
 
 Lemma new_tv_apply_subst_var : forall (st st' : id) (s : substitution),
     new_tv_subst s st -> st' < st -> new_tv_ty (apply_subst s (var st')) st.
@@ -599,7 +599,7 @@ Proof.
   induction s; crush.
 Qed.
 
-Hint Resolve new_tv_apply_subst_var.
+Hint Resolve new_tv_apply_subst_var:core.
  
 Lemma new_tv_apply_subst_ty : forall (st : id) (s : substitution) (tau : ty),
     new_tv_ty tau st -> new_tv_subst s st -> new_tv_ty (apply_subst s tau) st.
@@ -613,7 +613,7 @@ Proof.
   econstructor; eauto.
 Qed.
 
-Hint Resolve new_tv_apply_subst_ty.
+Hint Resolve new_tv_apply_subst_ty:core.
 
 Lemma new_tv_apply_subst_schm_var : forall  (s : substitution) (st st' : id),
     new_tv_subst s st -> st' < st -> new_tv_schm (apply_subst_schm s (sc_var st')) st.
@@ -628,7 +628,7 @@ Proof.
   auto.
 Qed.
 
-Hint Resolve new_tv_apply_subst_schm_var.
+Hint Resolve new_tv_apply_subst_schm_var:core.
 
 Lemma new_tv_apply_subst_schm : forall (st : id) (s : substitution) (sigma : schm),
     new_tv_schm sigma st -> new_tv_subst s st -> new_tv_schm (apply_subst_schm s sigma) st.
@@ -643,7 +643,7 @@ Proof.
   econstructor; eauto.
 Qed.
 
-Hint Resolve new_tv_apply_subst_schm.
+Hint Resolve new_tv_apply_subst_schm:core.
 
 Lemma new_tv_subst_list : forall (s1 s2 : substitution) (i : id),
     new_tv_subst s1 i ->
@@ -658,7 +658,7 @@ Proof.
   apply new_ty_to_cons_new_tv_subst; eauto.
 Qed.
 
-Hint Resolve new_tv_subst_list.
+Hint Resolve new_tv_subst_list:core.
 
 Lemma new_tv_compose_subst : forall (s1 s2 : substitution) (i : id),
     new_tv_subst s1 i ->
@@ -694,14 +694,14 @@ Proof.
   auto.
 Qed.
 
-Hint Resolve new_tv_compose_subst.
+Hint Resolve new_tv_compose_subst:core.
 
 Lemma new_tv_subst_nil : forall st, new_tv_subst nil st.
 Proof.
   intros. econstructor; intros ; simpl in *; inversion H.
 Qed.
 
-Hint Resolve new_tv_subst_nil.
+Hint Resolve new_tv_subst_nil:core.
 
 Lemma new_tv_s_ctx : forall (st : id) (s : substitution) (G : ctx),
     new_tv_ctx G st -> new_tv_subst s st -> new_tv_ctx (apply_subst_ctx s G) st.
@@ -710,7 +710,7 @@ Proof.
   inverts* H.
 Qed.
 
-Hint Resolve new_tv_s_ctx.
+Hint Resolve new_tv_s_ctx:core.
 
 Lemma new_tv_subst_trans : forall (s : substitution) (i1 i2 : id),
   new_tv_subst s i1 -> i1 <= i2 -> new_tv_subst s i2.
@@ -725,7 +725,7 @@ Proof.
   omega.
 Qed.
 
-Hint Resolve new_tv_subst_trans.
+Hint Resolve new_tv_subst_trans:core.
 
 Lemma new_tv_subst_false : forall st s t, new_tv_subst ((st, t) :: s) st -> False.
 Proof.
@@ -741,4 +741,4 @@ Proof.
   destruct (eq_id_dec st st); intuition.
 Qed.
 
-Hint Resolve new_tv_subst_false.
+Hint Resolve new_tv_subst_false:core.

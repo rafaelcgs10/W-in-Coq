@@ -34,7 +34,7 @@ Proof.
   auto; intuition.
 Qed.
 
-Hint Resolve are_disjoints_cons_inversion.
+Hint Resolve are_disjoints_cons_inversion:core.
 
 Lemma are_disjoints_cons_l : forall a l1 l2, are_disjoints (a::l1) l2 -> are_disjoints l1 l2.
 Proof.
@@ -48,7 +48,7 @@ Proof.
   auto.
 Qed.
 
-Hint Resolve are_disjoints_cons_l.
+Hint Resolve are_disjoints_cons_l:core.
 
 Lemma are_disjoints_cons_diff : forall  a b l1 l2, are_disjoints (a::l1) (b::l2) -> a <> b.
 Proof.
@@ -60,7 +60,7 @@ Proof.
   destruct (eq_id_dec b b); intuition.
 Qed.
 
-Hint Resolve are_disjoints_cons_diff.
+Hint Resolve are_disjoints_cons_diff:core.
 
 Lemma are_disjoints_cons : forall l1 l2 x y, are_disjoints l1 l2 -> y <> x ->
                                         in_list_id x l2 = false ->
@@ -85,7 +85,7 @@ Proof.
     * apply H. assumption.
 Qed.
 
-Hint Resolve are_disjoints_cons.
+Hint Resolve are_disjoints_cons:core.
 
 Lemma disjoint_inversion2 : forall (l l': (list id)) (x: id),
     are_disjoints l l' -> in_list_id x l' = true -> in_list_id x l = false.
@@ -109,7 +109,7 @@ Proof.
   inversion H2.
 Qed.
 
-Hint Resolve disjoint_inversion2.
+Hint Resolve disjoint_inversion2:core.
 Hint Rewrite disjoint_inversion2:RE.
 
 Lemma disjoint_list_and_append_inversion1 : forall (l l1 l2 : list id),
@@ -123,7 +123,7 @@ Proof.
   apply H0.
 Qed.
 
-Hint Resolve disjoint_list_and_append_inversion1.
+Hint Resolve disjoint_list_and_append_inversion1:core.
 
 Lemma disjoint_list_and_append_inversion2 : forall (l l1 l2 : list id),
     (are_disjoints l (l1++l2) ) -> (are_disjoints l l2).
@@ -136,7 +136,7 @@ Proof.
   assumption.
 Qed.
 
-Hint Resolve disjoint_list_and_append_inversion2.
+Hint Resolve disjoint_list_and_append_inversion2:core.
 
 Lemma disjoint_list_and_append_inversion3 : forall (l l1 l2 : (list id)),
     (are_disjoints l (l1++l2) ) -> (are_disjoints l l1) /\ (are_disjoints l l2).
@@ -149,7 +149,7 @@ Proof.
   apply H.
 Qed.
 
-Hint Resolve disjoint_list_and_append_inversion3.
+Hint Resolve disjoint_list_and_append_inversion3:core.
 
 Lemma disjoints_nill1 : forall C, are_disjoints C nil.
 Proof.
@@ -157,4 +157,4 @@ Proof.
   unfold are_disjoints; eauto.
 Qed.
 
-Hint Resolve disjoints_nill1.
+Hint Resolve disjoints_nill1:core.

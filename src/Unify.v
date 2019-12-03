@@ -80,11 +80,11 @@ Proof.
   reflexivity.
 Defined.
 
-Hint Resolve constraints_mk_inversion.
+Hint Resolve constraints_mk_inversion:core.
 Hint Rewrite constraints_mk_inversion:RE.
 
-Hint Resolve left_lex.
-Hint Resolve right_lex.
+Hint Resolve left_lex:core.
+Hint Resolve right_lex:core.
 
 Lemma arrow_lt_constraints1: forall C l1 l2 r1 r2,
     constraints_lt (mk_constraints C l1 l2) (mk_constraints C (arrow l1 r1) (arrow l2 r2)).
@@ -94,7 +94,7 @@ Proof.
   simpl. omega.
 Qed.
 
-Hint Resolve arrow_lt_constraints1.
+Hint Resolve arrow_lt_constraints1:core.
 
 Lemma arrow_lt_constraints2: forall C l1 l2 r1 r2,
     constraints_lt (mk_constraints C r1 r2) (mk_constraints C (arrow l1 r1) (arrow l2 r2)).
@@ -104,7 +104,7 @@ Proof.
   omega.
 Defined.
 
-Hint Resolve arrow_lt_constraints2.
+Hint Resolve arrow_lt_constraints2:core.
 
 (** * Specification of the Unification Algorithm *)
 
@@ -130,9 +130,9 @@ Proof.
   fequals*.
 Qed.
 
-Hint Resolve unify_ty.
+Hint Resolve unify_ty:core.
 
-Hint Resolve unifier_arrowend.
+Hint Resolve unifier_arrowend:core.
 
 (** ** The type of the unification algorithm *)
 

@@ -48,7 +48,7 @@ Proof.
   induction u ; mysimp ; intros ; try firstorder ; try congruence.
 Qed.
 
-Hint Resolve subst_occurs.
+Hint Resolve subst_occurs:core.
 Hint Rewrite subst_occurs:RE.
 
 Lemma occurs_not_apply_subst_single : forall i t, ~ occurs i t -> apply_subst [(i, t)] t = t.
@@ -58,7 +58,7 @@ Proof.
   erewrite subst_occurs; eauto.
 Qed.
 
-Hint Resolve occurs_not_apply_subst_single.
+Hint Resolve occurs_not_apply_subst_single:core.
 Hint Rewrite occurs_not_apply_subst_single:RE.
 
 Lemma apply_not_chance_not_occurs : forall a t0 s t, ~ occurs a t0 -> apply_subst ((a, t0) :: s) t = t -> ~ occurs a t.
