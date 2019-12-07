@@ -16,6 +16,7 @@ Require Import Sublist.
 Require Import ListIds.
 Require Import Context.
 Require Import Typing.
+Require Import TypingStable.
 Require Import Disjoints.
 Require Import NewTypeVariable.
 Require Import SimpleTypes.

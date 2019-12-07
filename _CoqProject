@@ -1,6 +1,7 @@
 -R src FormalDamas 
    src/LibTactics.v
    src/SimpleTypes.v
+   src/SimpleTypesNotations.v
    src/Schemes.v
    src/MyLtacs.v
    src/Subst.v
@@ -16,9 +17,10 @@
    src/Context.v
    src/Disjoints.v
    src/SubstSchm.v
+   src/Typing.v
+   src/TypingStable.v
    src/Rename.v
    src/Gen.v
-   src/Typing.v
    src/ProductList.v
    src/DisjointTail.v
    src/MoreGeneral.v
