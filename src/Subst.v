@@ -6,17 +6,23 @@
 Set Implicit Arguments.
 
 Require Import Arith.Arith_base List Omega.
+Import ListNotations.
 Require Import Wellfounded.Lexicographic_Product.
 Require Import Relation_Operators.
 Require Import Coq.Setoids.Setoid.
-Require Import Program.
 Require Import SimpleTypes.
+Require Import SimpleTypesNotations.
 Require Import LibTactics.
 Require Import MyLtacs.
 
 (** * Substitutions *)
 
 Definition substitution := list (id * ty).
+
+Notation "[ ]" := nil (format "[ ]", in custom DM at level 0).
+Notation "[ i => t ]" := (cons (i, t) nil) (in custom DM at level 0).
+Notation "[ i1 => t1 ; i2 => t2 ; .. ; i3 => t3 ]" :=
+  (cons (i1, t1) (cons (i2, t2) .. (cons (i3, t3) nil) ..)) (in custom DM at level 0).
 
 (** A look up function to find in [s] the identifier [i]. *)
 Fixpoint find_subst (s : list (id * ty)) (i : id) : option ty :=
@@ -28,7 +34,7 @@ Fixpoint find_subst (s : list (id * ty)) (i : id) : option ty :=
 (** The application substitution operation, which is non-incremental. *)
 Fixpoint apply_subst (s : substitution) (t : ty) : ty :=
   match t with
-  | arrow l r => arrow (apply_subst s l) (apply_subst s r)
+  | &[l -> r] => &[{(apply_subst s l)} -> {(apply_subst s r)}]
   | var i => match find_subst s i with
             | None => var i
             | Some t' => t'
@@ -36,33 +42,43 @@ Fixpoint apply_subst (s : substitution) (t : ty) : ty :=
   | con i => con i
   end.
 
+Notation "s ( t )" := (apply_subst s t) (in custom DM at level 0).
+
 (** * Substitution and its projections *)
 
-Definition dom (s : substitution) : list id := List.map (@fst id ty) s.
-Definition img (s : substitution) : list ty := List.map (@snd id ty) s.
-Definition img_ids (s : substitution) : list id := List.concat (List.map ids_ty (img s)).
+Definition dom (s : substitution) : list id := map (@fst id ty) s.
+Definition img (s : substitution) : list ty := map (@snd id ty) s.
+Definition img_ids (s : substitution) : list id := concat (map ids_ty (img s)).
 
-Lemma img_ids_append_cons : forall a t s, img_ids ((a, t)::s) = ids_ty t ++ img_ids s.
+Notation "DOM( s )" := (dom s) (in custom DM at level 0).
+Notation "IMG( s )" := (img s) (in custom DM at level 0).
+
+Lemma img_ids_append_cons : forall (i :id) (t : ty) (s : substitution),
+    img_ids ((i, t)::s) = ids_ty t ++ img_ids s.
 Proof.
   induction t; mysimp.
 Qed.
 
+Notation "IDS( s )" := (img s) (in custom DM at level 0).
 
 (** ** Free variables of a substitution *)
 
 Definition FV_subst (s: substitution) := ((dom s) ++ (img_ids s)).
 
+Notation "FV( s )" := (FV_subst s) (in custom DM at level 0).
+Notation "s1 ++ s2" := (s1 ++ s2) (in custom DM at level 0).
+
 (** ** Some lemas retaled to the domain of a substitution *)
 
-Lemma dom_dist_app : forall s1 s2, dom (s1 ++ s2) = (dom s1) ++ (dom s2).
+Lemma dom_dist_app : forall s1 s2, &[DOM(s1 ++ s2)] = &[(DOM(s1)) ++ (DOM(s2))].
 Proof.
   induction s1; intros; mysimp; simpl in *; eauto.
   congruence.
 Qed.
 
 Lemma ids_ty_apply_subst : forall s t,
-    (ids_ty (apply_subst s t)) =
-    List.concat (List.map ids_ty ( (List.map (apply_subst s) (List.map var (ids_ty t))))).
+    (ids_ty (&[ s(t) ])) =
+    concat (map ids_ty ( (map (apply_subst s) (map var (ids_ty t))))).
 Proof.
   intros.
   induction t; mysimp.
@@ -76,7 +92,7 @@ Qed.
 
 (** ** Some obvious facts about substitutions **)
 
-Lemma apply_subst_id : forall t, apply_subst nil t = t.
+Lemma apply_subst_id : forall t, &[nil(t)] = t.
 Proof.
   induction t ; mysimp.
   congruence.
@@ -94,7 +110,7 @@ Hint Resolve apply_subst_con:core.
 Hint Rewrite apply_subst_con:RE.
 
 Lemma apply_subst_arrow : forall s l r,
-    apply_subst s (arrow l r) = arrow (apply_subst s l) (apply_subst s r).
+    apply_subst s &[(l -> r)] = arrow (apply_subst s l) (apply_subst s r).
 Proof.
   induction s ; mysimp.
 Qed.
