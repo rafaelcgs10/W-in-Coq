@@ -19,11 +19,6 @@ Require Import MyLtacs.
 
 Definition substitution := list (id * ty).
 
-Notation "[ ]" := nil (format "[ ]", in custom DM at level 0).
-Notation "[ i => t ]" := (cons (i, t) nil) (in custom DM at level 0).
-Notation "[ i1 => t1 ; i2 => t2 ; .. ; i3 => t3 ]" :=
-  (cons (i1, t1) (cons (i2, t2) .. (cons (i3, t3) nil) ..)) (in custom DM at level 0).
-
 (** A look up function to find in [s] the identifier [i]. *)
 Fixpoint find_subst (s : list (id * ty)) (i : id) : option ty :=
   match s with
@@ -34,7 +29,7 @@ Fixpoint find_subst (s : list (id * ty)) (i : id) : option ty :=
 (** The application substitution operation, which is non-incremental. *)
 Fixpoint apply_subst (s : substitution) (t : ty) : ty :=
   match t with
-  | &[l -> r] => &[{(apply_subst s l)} -> {(apply_subst s r)}]
+  | &[l -> r] => &[({apply_subst s l}) -> ({apply_subst s r})]
   | var i => match find_subst s i with
             | None => var i
             | Some t' => t'
@@ -42,7 +37,14 @@ Fixpoint apply_subst (s : substitution) (t : ty) : ty :=
   | con i => con i
   end.
 
-Notation "s ( t )" := (apply_subst s t) (in custom DM at level 0).
+Notation "s ( t )" := (apply_subst s t) (in custom DM at level 1, s constr at level 0, t constr at level 0).
+
+Unset Printing Notations.
+
+Definition tt := forall s tau, &[ s(tau) ] = &[ tau ].
+Print tt.
+
+Check forall (s : substitution) (tau : ty), &[ s(tau) ] = &[ s(tau -> tau) ].
 
 (** * Substitution and its projections *)
 
@@ -50,34 +52,29 @@ Definition dom (s : substitution) : list id := map (@fst id ty) s.
 Definition img (s : substitution) : list ty := map (@snd id ty) s.
 Definition img_ids (s : substitution) : list id := concat (map ids_ty (img s)).
 
-Notation "DOM( s )" := (dom s) (in custom DM at level 0).
-Notation "IMG( s )" := (img s) (in custom DM at level 0).
-
 Lemma img_ids_append_cons : forall (i :id) (t : ty) (s : substitution),
     img_ids ((i, t)::s) = ids_ty t ++ img_ids s.
 Proof.
   induction t; mysimp.
 Qed.
 
-Notation "IDS( s )" := (img s) (in custom DM at level 0).
 
 (** ** Free variables of a substitution *)
 
 Definition FV_subst (s: substitution) := ((dom s) ++ (img_ids s)).
 
-Notation "FV( s )" := (FV_subst s) (in custom DM at level 0).
-Notation "s1 ++ s2" := (s1 ++ s2) (in custom DM at level 0).
+Notation "FV( s )" := (FV_subst s) (in custom DM at level 0, s constr at level 1).
 
 (** ** Some lemas retaled to the domain of a substitution *)
 
-Lemma dom_dist_app : forall s1 s2, &[DOM(s1 ++ s2)] = &[(DOM(s1)) ++ (DOM(s2))].
+Lemma dom_dist_app : forall s1 s2, dom (s1 ++ s2) = (dom s1) ++ (dom s2).
 Proof.
   induction s1; intros; mysimp; simpl in *; eauto.
   congruence.
 Qed.
 
 Lemma ids_ty_apply_subst : forall s t,
-    (ids_ty (&[ s(t) ])) =
+    (ids_ty (&[ s ( t ) ])) =
     concat (map ids_ty ( (map (apply_subst s) (map var (ids_ty t))))).
 Proof.
   intros.
@@ -109,8 +106,8 @@ Qed.
 Hint Resolve apply_subst_con:core.
 Hint Rewrite apply_subst_con:RE.
 
-Lemma apply_subst_arrow : forall s l r,
-    apply_subst s &[(l -> r)] = arrow (apply_subst s l) (apply_subst s r).
+Lemma apply_subst_arrow : forall (s : substitution) (l r : ty),
+    &[s(l -> r)] = arrow (apply_subst s l) (apply_subst s r).
 Proof.
   induction s ; mysimp.
 Qed.
