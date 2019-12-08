@@ -5,8 +5,9 @@
 
 Set Implicit Arguments.
 
-Require Import ListIds.
 Require Import SimpleTypes.
+Require Import SimpleTypesNotations.
+Require Import ListIds.
 Require Import Arith.Arith_base List Omega.
 Require Import Wellfounded.Lexicographic_Product.
 Require Import Relation_Operators.

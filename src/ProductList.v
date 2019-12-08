@@ -7,13 +7,14 @@
 
 Set Implicit Arguments.
 
+Require Import SimpleTypes.
+Require Import SimpleTypesNotations.
 Require Import List.
 Require Import Sublist.
 Require Import ListIds.
 Require Import Context.
 Require Import Typing.
 Require Import Gen.
-Require Import SimpleTypes.
 Require Import Schemes.
 Require Import Subst.
 Require Import SubstSchm.

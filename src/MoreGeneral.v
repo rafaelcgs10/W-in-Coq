@@ -7,6 +7,8 @@
 
 Set Implicit Arguments.
 
+Require Import SimpleTypes.
+Require Import SimpleTypesNotations.
 Require Import Omega.
 Require Import Schemes.
 Require Import SubstSchm.
@@ -19,7 +21,6 @@ Require Import Typing.
 Require Import TypingStable.
 Require Import Disjoints.
 Require Import NewTypeVariable.
-Require Import SimpleTypes.
 Require Import Subst.
 Require Import MyLtacs.
 Require Import NthErrorTools.

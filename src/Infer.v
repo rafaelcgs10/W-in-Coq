@@ -3,6 +3,8 @@
       and a bunch of auxiliary definitions.
     *)
 
+Require Import SimpleTypes.
+Require Import SimpleTypesNotations.
 Require Import LibTactics.
 Require Import Unify.
 Require Import Sublist.
@@ -16,12 +18,12 @@ Require Import Program.
 Require Import Gen.
 Require Import Omega.
 Require Import Typing.
+Require Import TypingStable.
 Require Import List.
 Require Import NewTypeVariable.
 Require Import HoareMonad.
 Require Import Program.
 Require Import MoreGeneral.
-Require Import SimpleTypes.
 Require Import Subst.
 Require Import MyLtacs.
 
@@ -111,13 +113,13 @@ Program Fixpoint W (e : term) (G : ctx) {struct e} :
     alpha <- fresh ;
       G' <- @addFreshCtx G x alpha ;
       tau_s <- W e' G'  ;
-      ret ((arrow (apply_subst ((snd tau_s)) (var alpha)) (fst tau_s)), (snd tau_s))
+      ret ((&[ {snd tau_s}({var alpha}) -> {fst tau_s}], (snd tau_s)))
 
   | app_t l r =>
     tau1_s1 <- W l G  ;
       tau2_s2 <- W r (apply_subst_ctx (snd tau1_s1) G)  ;
       alpha <- fresh ;
-      s <- unify (apply_subst (snd tau2_s2) (fst tau1_s1)) (arrow (fst tau2_s2) (var alpha)) ;
+      s <- unify (apply_subst (snd tau2_s2) (fst tau1_s1)) (&[ {fst tau2_s2} -> {var alpha} ]) ;
       ret (apply_subst s (var alpha), compose_subst  (snd tau1_s1) (compose_subst (snd tau2_s2) s))
 
   | let_t x e1 e2  =>

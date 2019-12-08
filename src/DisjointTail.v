@@ -6,13 +6,14 @@
 
 Set Implicit Arguments.
 
+Require Import SimpleTypes.
+Require Import SimpleTypesNotations.
 Require Import SubstSchm.
 Require Import List.
 Require Import ListIds.
 Require Import Context.
 Require Import Disjoints.
 Require Import Gen.
-Require Import SimpleTypes.
 Require Import Subst.
 Require Import Context.
 Require Import MyLtacs.
