@@ -3,6 +3,7 @@
 Set Implicit Arguments.
 
 Require Import SimpleTypes.
+Require Import SimpleTypesNotations.
 Require Import Subst.
 Require Import Arith.Arith_base List Omega.
 Require Import Wellfounded.Lexicographic_Product.

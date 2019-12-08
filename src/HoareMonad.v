@@ -7,6 +7,7 @@ Require Import LibTactics.
 Require Import Program.
 Require Import List.
 Require Import SimpleTypes.
+Require Import SimpleTypesNotations.
 Require Import Occurs.
 Require Import Subst.
 Require Import Omega.
@@ -85,7 +86,7 @@ Program Definition failT {B : Set} (b : B) (A : Type) : @HoareState B top A (fun
 
 Program Definition get' {B : Set} : @HoareState B top st (fun i x f => i = f /\ x = i) := fun s => exist _ (inl (s, s)) _.
 
-Program Definition put' {B : Set} (x : st) : @HoareState B top unit (fun _ _ f => f = x) := fun  _ => exist _ (inl (tt, x)) _.
+Program Definition put' {B : Set} (x : st) : @HoareState B top unit (fun _ _ f => f = x) := fun _ => exist _ (inl (tt, x)) _.
 
 End hoare_state_monad.
 

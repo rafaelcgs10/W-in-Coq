@@ -5,12 +5,13 @@
 
 Set Implicit Arguments.
 
+Require Import SimpleTypes.
+Require Import SimpleTypesNotations.
 Require Import Context.
 Require Import Schemes.
 Require Import SubstSchm.
 Require Import Gen.
 Require Import List.
-Require Import SimpleTypes.
 
 (** * Lambda term definition *)
 

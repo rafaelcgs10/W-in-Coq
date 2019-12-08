@@ -37,14 +37,22 @@ Fixpoint apply_subst (s : substitution) (t : ty) : ty :=
   | con i => con i
   end.
 
-Notation "s ( t )" := (apply_subst s t) (in custom DM at level 1, s constr at level 0, t constr at level 0).
+Notation "[ ]" := (nil:substitution) (in custom DM at level 2).
+Notation "[ e ]" := e (in custom DM, e at level 4).
+Notation "a ; .. ; b" := ((cons a .. (cons b nil) ..):substitution)
+  (in custom DM at level 7, a custom DM at next level, b custom DM at next level).
+Notation "i => t" := (i, t)
+  (in custom DM at level 6, i constr at level 5, t constr at level 5).
+Definition test := &[ [0 => (var 1); 2 => (var 3); 4 => (var 6)] ].
+Definition test2 := &[ [ ] ].
+
+Print test.
+
+Notation "S ( t )" := (apply_subst S t) (in custom DM at level 2, S constr, t constr at level 1).
 
 Unset Printing Notations.
 
-Definition tt := forall s tau, &[ s(tau) ] = &[ tau ].
-Print tt.
-
-Check forall (s : substitution) (tau : ty), &[ s(tau) ] = &[ s(tau -> tau) ].
+Check forall (s : substitution) (tau : ty), &[ s(tau) ] = &[ s((tau -> tau)) ].
 
 (** * Substitution and its projections *)
 
@@ -57,7 +65,6 @@ Lemma img_ids_append_cons : forall (i :id) (t : ty) (s : substitution),
 Proof.
   induction t; mysimp.
 Qed.
-
 
 (** ** Free variables of a substitution *)
 
@@ -89,16 +96,7 @@ Qed.
 
 (** ** Some obvious facts about substitutions **)
 
-Lemma apply_subst_id : forall t, &[nil(t)] = t.
-Proof.
-  induction t ; mysimp.
-  congruence.
-Qed.
-
-Hint Resolve apply_subst_id:core.
-Hint Rewrite apply_subst_id:RE.
-
-Lemma apply_subst_con : forall s n, apply_subst s (con n) = con n.
+Lemma apply_subst_con : forall s n, &[ s({con n})] = con n.
 Proof.
   induction s ; mysimp.
 Qed.
@@ -106,10 +104,10 @@ Qed.
 Hint Resolve apply_subst_con:core.
 Hint Rewrite apply_subst_con:RE.
 
-Lemma apply_subst_arrow : forall (s : substitution) (l r : ty),
-    &[s(l -> r)] = arrow (apply_subst s l) (apply_subst s r).
+Lemma apply_subst_arrow : forall (S : substitution) (l r : ty),
+    &[ S(l -> r) ] = &[ S(l) -> S(r) ].
 Proof.
-  induction s ; mysimp.
+  induction S ; mysimp.
 Qed.
 
 Hint Resolve apply_subst_arrow:core.

@@ -11,16 +11,16 @@
    src/Varctxt.v
    src/WellFormed.v
    src/HoareMonad.v
-   src/NewTypeVariable.v
-   src/Unify.v
-   src/Sublist.v
-   src/Context.v
    src/Disjoints.v
    src/SubstSchm.v
-   src/Typing.v
-   src/TypingStable.v
+   src/Context.v
+   src/Sublist.v
    src/Rename.v
    src/Gen.v
+   src/NewTypeVariable.v
+   src/Unify.v
+   src/Typing.v
+   src/TypingStable.v
    src/ProductList.v
    src/DisjointTail.v
    src/MoreGeneral.v

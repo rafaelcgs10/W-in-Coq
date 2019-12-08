@@ -8,6 +8,7 @@ Set Implicit Arguments.
 Require Import Arith.Arith_base List Omega.
 Require Import LibTactics.
 Require Import SimpleTypes.
+Require Import SimpleTypesNotations.
 Require Import Subst.
 Require Import MyLtacs.
 Import ListNotations.

@@ -6,10 +6,11 @@
 
 Set Implicit Arguments.
 
+Require Import SimpleTypes.
+Require Import SimpleTypesNotations.
 Require Import Disjoints.
 Require Import Sublist.
 Require Import ListIds.
-Require Import SimpleTypes.
 Require Import Subst.
 Require Import MyLtacs.
 Require Import Arith.Arith_base List Omega.

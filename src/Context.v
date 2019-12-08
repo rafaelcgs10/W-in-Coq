@@ -2,8 +2,9 @@ Set Implicit Arguments.
 
 Require Import LibTactics.
 Require Import ListIds.
-Require Import Subst.
 Require Import SimpleTypes.
+Require Import SimpleTypesNotations.
+Require Import Subst.
 Require Import MyLtacs.
 Require Import Disjoints.
 Require Import Schemes.

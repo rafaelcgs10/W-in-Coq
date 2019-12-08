@@ -5,6 +5,8 @@
 
 Set Implicit Arguments.
 
+Require Import SimpleTypes.
+Require Import SimpleTypesNotations.
 Require Import LibTactics.
 Require Import ListIds.
 Require Import Context.

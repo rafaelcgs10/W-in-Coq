@@ -8,6 +8,7 @@
 Set Implicit Arguments.
 
 Require Import SimpleTypes.
+Require Import SimpleTypesNotations.
 Require Import Gen.
 Require Import Omega.
 Require Import Schemes.

@@ -3,6 +3,8 @@
       The generalization process is essential in the let case of algorithm W.
     *)
 
+Require Import SimpleTypes.
+Require Import SimpleTypesNotations.
 Require Import LibTactics.
 Require Import Sublist.
 Require Import Context.
@@ -13,7 +15,6 @@ Require Import Rename.
 Require Import Disjoints.
 Require Import Arith.Arith_base.
 Require Import List.
-Require Import SimpleTypes.
 Require Import Subst.
 Require Import MyLtacs.
 

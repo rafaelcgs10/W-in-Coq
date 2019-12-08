@@ -6,6 +6,8 @@
 
 Set Implicit Arguments.
 
+Require Import SimpleTypes.
+Require Import SimpleTypesNotations.
 Require Import Arith.Arith_base List Omega.
 Require Import Wellfounded.Lexicographic_Product.
 Require Import Relation_Operators.
@@ -13,7 +15,6 @@ Require Import LibTactics.
 Require Import Coq.Setoids.Setoid.
 Require Import Program.
 Require Import HoareMonad.
-Require Import SimpleTypes.
 Require Import Subst.
 Require Import NewTypeVariable.
 Require Import MyLtacs.
@@ -26,7 +27,7 @@ Require Import WellFormed.
 
 Fixpoint size (t : ty) : nat :=
   match t with
-  | arrow l r => 1 + size l + size r
+  | &[ l -> r ] => 1 + size l + size r
   | _ => 1
   end.
 
@@ -87,7 +88,7 @@ Hint Resolve left_lex:core.
 Hint Resolve right_lex:core.
 
 Lemma arrow_lt_constraints1: forall C l1 l2 r1 r2,
-    constraints_lt (mk_constraints C l1 l2) (mk_constraints C (arrow l1 r1) (arrow l2 r2)).
+    constraints_lt (mk_constraints C l1 l2) (mk_constraints C (&[ l1 -> r1 ]) (&[ l2 -> r2 ])).
 Proof.
   intros.
   apply right_lex ; auto.
@@ -97,7 +98,7 @@ Qed.
 Hint Resolve arrow_lt_constraints1:core.
 
 Lemma arrow_lt_constraints2: forall C l1 l2 r1 r2,
-    constraints_lt (mk_constraints C r1 r2) (mk_constraints C (arrow l1 r1) (arrow l2 r2)).
+    constraints_lt (mk_constraints C r1 r2) (mk_constraints C (&[ l1 -> r1 ]) (&[ l2 -> r2 ])).
 Proof.
   intros ; apply right_lex ; auto.
   simpl.
@@ -183,7 +184,7 @@ Program Fixpoint unify' (l : constraints) {wf constraints_lt l} : unify_type l :
           | (con i, con j) => if eq_id_dec i j
                              then inl _ (@exist substitution _ nil _) 
                              else inr _ _ 
-          | (arrow l1 r1, arrow l2 r2) => match unify' (mk_constraints (get_ctxt l) l1 l2) _ with
+          | (&[ l1 -> r1 ], &[ l2 -> r2 ]) => match unify' (mk_constraints (get_ctxt l) l1 l2) _ with
                                          | inr _ E => inr _ _
                                          | inl _ (exist _ s1 HS) =>
                                            match unify' (mk_constraints (minus (get_ctxt l) (dom s1))
@@ -193,8 +194,8 @@ Program Fixpoint unify' (l : constraints) {wf constraints_lt l} : unify_type l :
                                              inl _ (@exist substitution _ (compose_subst s1 s2) _)
                                            end
                                          end
-          | (arrow _ _, con _) => inr _ _
-          | (con  _, arrow _ _) => inr _ _
+          | (&[ _ -> _ ], con _) => inr _ _
+          | (con  _, &[ _ -> _ ]) => inr _ _
           end.
 Next Obligation.
   eauto.
@@ -343,7 +344,7 @@ Definition ids_ty_dep : forall (tau : ty), {l : list id | wf_ty l tau}.
   refine (fix ids_ty_dep (tau : ty) : {t : list id | wf_ty t tau} :=
             match tau with
             | var i => exist _ (i::nil) _
-            | arrow l r => match ids_ty_dep l with
+            | &[ l -> r ] => match ids_ty_dep l with
                           | exist _ g' a => match ids_ty_dep r with
                                            | exist _ g'' b => exist _ (g'++g'') _
                                            end
@@ -364,28 +365,28 @@ Definition ids_ty_dep2 : forall (tau tau' : ty), {l : list id | wf_ty l tau /\ w
   refine (fix ids_ty_dep2 (tau tau' : ty) : {t : list id | wf_ty t tau /\ wf_ty t tau'} :=
             match tau,tau' with
             | var i, var j => exist _ (i::j::nil) _
-            | arrow l r, arrow l' r' =>
+            | &[ l -> r ], &[ l' -> r' ] =>
               match ids_ty_dep2 l l' with
               | exist _ g' a => match ids_ty_dep2 r r' with
                                | exist _ g'' b => exist _ (g'++g'') _
                                end
               end
-            | arrow l r, (var i) => match ids_ty_dep l with
+            | &[ l -> r ], (var i) => match ids_ty_dep l with
                                    | exist _ g' a => match ids_ty_dep r with
                                                     | exist _ g'' b => exist _ (i::g'++g'') _
                                                     end
                                    end
-            | arrow l r, (con i) => match ids_ty_dep l with
+            | &[ l -> r ], (con i) => match ids_ty_dep l with
                                    | exist _ g' a => match ids_ty_dep r with
                                                     | exist _ g'' b => exist _ (g'++g'') _
                                                     end
                                    end
-            | (var i), arrow l r => match ids_ty_dep l with
+            | (var i), &[ l -> r ] => match ids_ty_dep l with
                                    | exist _ g' a => match ids_ty_dep r with
                                                     | exist _ g'' b => exist _ (i::g'++g'') _
                                                     end
                                    end
-            | (con i), arrow l r => match ids_ty_dep l with
+            | (con i), &[ l -> r ] => match ids_ty_dep l with
                                    | exist _ g' a => match ids_ty_dep r with
                                                     | exist _ g'' b => exist _ (g'++g'') _
                                                     end

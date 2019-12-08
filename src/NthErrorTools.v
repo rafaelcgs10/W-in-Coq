@@ -6,6 +6,7 @@ Require Import Relation_Operators.
 Require Import Coq.Setoids.Setoid.
 Require Import Program.
 Require Import SimpleTypes.
+Require Import SimpleTypesNotations.
 Require Import Subst.
 Require Import LibTactics.
 Require Import MyLtacs.
