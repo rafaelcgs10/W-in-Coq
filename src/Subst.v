@@ -19,6 +19,14 @@ Require Import MyLtacs.
 
 Definition substitution := list (id * ty).
 
+(** Notations for substitutions in the custom entry   *)
+Notation "[ ]" := (nil:substitution) (in custom DM at level 1).
+Notation "[ e ]" := e (in custom DM, e at level 4).
+Notation "a ; .. ; b" := ((cons a .. (cons b nil) ..):substitution)
+  (in custom DM at level 7, a custom DM at next level, b custom DM at next level).
+Notation "i => t" := (i, t)
+  (in custom DM at level 6, i constr at level 5, t constr at level 5).
+
 (** A look up function to find in [s] the identifier [i]. *)
 Fixpoint find_subst (s : list (id * ty)) (i : id) : option ty :=
   match s with
@@ -37,22 +45,8 @@ Fixpoint apply_subst (s : substitution) (t : ty) : ty :=
   | con i => con i
   end.
 
-Notation "[ ]" := (nil:substitution) (in custom DM at level 2).
-Notation "[ e ]" := e (in custom DM, e at level 4).
-Notation "a ; .. ; b" := ((cons a .. (cons b nil) ..):substitution)
-  (in custom DM at level 7, a custom DM at next level, b custom DM at next level).
-Notation "i => t" := (i, t)
-  (in custom DM at level 6, i constr at level 5, t constr at level 5).
-Definition test := &[ [0 => (var 1); 2 => (var 3); 4 => (var 6)] ].
-Definition test2 := &[ [ ] ].
-
-Print test.
-
+(** Notation for the substitution applicatio *)
 Notation "S ( t )" := (apply_subst S t) (in custom DM at level 2, S constr, t constr at level 1).
-
-Unset Printing Notations.
-
-Check forall (s : substitution) (tau : ty), &[ s(tau) ] = &[ s((tau -> tau)) ].
 
 (** * Substitution and its projections *)
 
@@ -80,25 +74,25 @@ Proof.
   congruence.
 Qed.
 
-Lemma ids_ty_apply_subst : forall s t,
-    (ids_ty (&[ s ( t ) ])) =
-    concat (map ids_ty ( (map (apply_subst s) (map var (ids_ty t))))).
+Lemma ids_ty_apply_subst : forall (S : substitution) (tau : ty),
+    (ids_ty (&[ S(tau) ])) =
+    concat (map ids_ty ( (map (apply_subst S) (map var (ids_ty tau))))).
 Proof.
   intros.
-  induction t; mysimp.
+  induction tau; mysimp.
   rewrite app_nil_r. reflexivity.
   repeat rewrite map_app.
   repeat rewrite concat_app.
-  rewrite <- IHt1.
-  rewrite <- IHt2.
+  rewrite <- IHtau1.
+  rewrite <- IHtau2.
   reflexivity.
 Qed.
 
 (** ** Some obvious facts about substitutions **)
 
-Lemma apply_subst_con : forall s n, &[ s({con n})] = con n.
+Lemma apply_subst_con : forall (S : substitution) (n : id), &[ S({con n})] = con n.
 Proof.
-  induction s ; mysimp.
+  induction S ; mysimp.
 Qed.
 
 Hint Resolve apply_subst_con:core.
@@ -113,19 +107,19 @@ Qed.
 Hint Resolve apply_subst_arrow:core.
 Hint Rewrite apply_subst_arrow:RE.
 
-Lemma apply_subst_nil : forall t, apply_subst nil t = t.
+Lemma apply_subst_nil : forall tau, &[ [ ](tau) ] = tau.
 Proof.
-  intros; induction t; mysimp.
+  intros; induction tau; mysimp.
   congruence.
 Qed.
 
 Hint Resolve apply_subst_nil:core.
 Hint Rewrite apply_subst_nil:RE.
 
-Lemma arrow_subst_eq : forall l l' r r' s,
-    apply_subst s l = apply_subst s l' ->
-    apply_subst s r = apply_subst s r' ->
-    apply_subst s (arrow l r) = apply_subst s (arrow l' r').
+Lemma arrow_subst_eq : forall (l l' r r' : ty) (S : substitution),
+    &[ S(l) ] = &[ S(l') ] ->
+    &[ S(r) ] = &[ S(r') ] ->
+    &[ S(l -> r) ] = &[ S(l' -> r') ].
 Proof.
   intros ; do 2 rewrite apply_subst_arrow ; fequals*.
 Qed.
@@ -133,16 +127,16 @@ Qed.
 Hint Resolve arrow_subst_eq:core.
 
 (** Some lemmas for folding back a substitution application *)
-Lemma apply_subst_fold : forall s,
-    (forall i, match find_subst s i with | Some t' => t' | None => var i end = apply_subst s (var i)).
+Lemma apply_subst_fold : forall (S : substitution),
+    (forall i, match find_subst S i with | Some t' => t' | None => var i end = &[ S({var i}) ]).
 Proof.
   intros. reflexivity.
 Qed.
 
-Lemma apply_subst_fold2 :  forall s s',
-    (forall i, match find_subst s i with | Some t' => t' | None => var i end =
-          match find_subst s' i with | Some t' => t' | None => var i end) <->
-    (forall i, apply_subst s (var i) = apply_subst s' (var i)).
+Lemma apply_subst_fold2 :  forall S S',
+    (forall i, match find_subst S i with | Some t' => t' | None => var i end =
+          match find_subst S' i with | Some t' => t' | None => var i end) <->
+    forall i, &[ S({var i}) ] = &[ S'({var i}) ].
 Proof.
   intros; split; intro; 
     simpl in *;
@@ -150,7 +144,7 @@ Proof.
 Qed.
 
 
-(** * Apply substitution over a list **)
+(** * Apply substitution over a list (over another substitution) **)
 
 Fixpoint apply_subst_list (s1 s2 : substitution) : substitution :=
   match s1 with
@@ -158,17 +152,22 @@ Fixpoint apply_subst_list (s1 s2 : substitution) : substitution :=
   | (i, t)::s1' => (i, apply_subst s2 t)::apply_subst_list s1' s2
   end.
 
+(** Notation for substitution application over another substitution *)
+Notation "S ( S' _)" := (apply_subst_list S S') (in custom DM at level 2, S constr, S' constr at level 1).
+
 (** ** Some lemmas about [apply_subst_list] **)
 
-Lemma apply_subst_list_dom : forall s1 s2, dom (apply_subst_list s1 s2) = dom s1.
+Lemma apply_subst_list_dom : forall (S1 S2 : substitution),
+    dom &[ S1(S2 _) ] = dom S1.
 Proof.
-  induction s1; intros; mysimp; simpl in *; eauto.
+  induction S1; intros; mysimp; simpl in *; eauto.
   congruence.
 Qed.
 
-Lemma apply_subst_list_nil : forall s, apply_subst_list s nil = s.
+Lemma apply_subst_list_nil : forall (S : substitution),
+    &[ S([ ] _) ] = S.
 Proof.
-  induction s; mysimp.
+  induction S; mysimp.
   rewrite apply_subst_nil.
   congruence.
 Qed.
@@ -176,59 +175,69 @@ Qed.
 Hint Resolve apply_subst_list_nil:core.
 Hint Rewrite apply_subst_list_nil:RE.
 
-Lemma dom_dist : forall s1 s2 : substitution, dom (s1 ++ s2) = dom s1 ++ dom s2.
+Lemma dom_app_dist : forall (S1 S2 : substitution),
+    dom (S1 ++ S2) = dom S1 ++ dom S2.
 Proof.
-  induction s1; crush.
+  induction S1; crush.
 Qed.
 
-Hint Resolve dom_dist:core.
-Hint Rewrite dom_dist:RE.
+Hint Resolve dom_app_dist:core.
+Hint Rewrite dom_app_dist:RE.
 
-Lemma img_dist : forall s1 s2 : substitution, img (s1 ++ s2) = img s1 ++ img s2.
+Lemma img_app_dist : forall (S1 S2 : substitution),
+    img (S1 ++ S2) = img S1 ++ img S2.
 Proof.
-  induction s1; crush.
+  induction S1; crush.
 Qed.
 
-Hint Resolve img_dist:core.
-Hint Rewrite img_dist:RE.
+Hint Resolve img_app_dist:core.
+Hint Rewrite img_app_dist:RE.
 
-Lemma img_ids_dist : forall s1 s2 : substitution, img_ids (s1 ++ s2) = img_ids s1 ++ img_ids s2.
+Lemma img_ids_app_dist : forall (S1 S2 : substitution),
+    img_ids (S1 ++ S2) = img_ids S1 ++ img_ids S2.
 Proof.
   unfold img_ids.
   intros.
   rewrite <- concat_app.
-  rewrite img_dist. 
+  rewrite img_app_dist. 
   rewrite map_app.
   reflexivity.
 Qed.
 
-Hint Resolve img_ids_dist:core.
-Hint Rewrite img_ids_dist:RE.
+Hint Resolve img_ids_app_dist:core.
+Hint Rewrite img_ids_app_dist:RE.
 
 (** * Substitution composition *)
 
-Definition compose_subst (s1 s2 : substitution) :=
-      apply_subst_list s1 s2 ++ s2.
+Definition compose_subst (S1 S2 : substitution) :=
+  &[ S1(S2 _) ] ++ S2.
+
+(** Notation for substitution composition *)
+Notation "S1 'o' S2" := (compose_subst S1 S2)
+      (in custom DM at level 3, S1 constr, S2 constr, left associativity).
 
 (** ** Some obvious facts about composition **)
 
-Lemma compose_subst_nil_l : forall s, compose_subst nil s = s.
+Lemma compose_subst_nil_l : forall (S : substitution),
+    &[ [ ] o S ] = S.
 Proof.
-  intros; induction s; mysimp.
+  intros; induction S; mysimp.
 Qed.
 
 Hint Resolve compose_subst_nil_l:core.
 Hint Rewrite compose_subst_nil_l:RE.
 
-Lemma compose_subst_nil_r : forall s, compose_subst s nil = s.
+Lemma compose_subst_nil_r : forall (S : substitution),
+    &[ S o [ ] ] = S.
 Proof.
-  induction s; unfold compose_subst in *; crush.
+  induction S; unfold compose_subst in *; crush.
 Qed.
 
 Hint Resolve compose_subst_nil_r:core.
 Hint Rewrite compose_subst_nil_r:RE.
 
-Lemma apply_compose_subst_nil_l : forall s t, apply_subst (compose_subst nil s) t = apply_subst s t.
+Lemma apply_compose_subst_nil_l : forall (S : substitution) (tau : ty),
+    &[ ([ ] o S)(tau) ] = &[ S(tau) ].
 Proof.
   intros; mysimp. 
 Qed.
