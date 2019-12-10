@@ -21,7 +21,7 @@ Definition substitution := list (id * ty).
 
 (** Notations for substitutions in the custom entry   *)
 Notation "[ ]" := (nil:substitution) (in custom DM at level 1).
-Notation "[ e ]" := e (in custom DM, e at level 4).
+Notation "[ e ]" := (e:(Type * Type)) (in custom DM, e at level 4).
 Notation "a ; .. ; b" := ((cons a .. (cons b nil) ..):substitution)
   (in custom DM at level 7, a custom DM at next level, b custom DM at next level).
 Notation "i => t" := (i, t)
@@ -37,7 +37,7 @@ Fixpoint find_subst (s : list (id * ty)) (i : id) : option ty :=
 (** The application substitution operation, which is non-incremental. *)
 Fixpoint apply_subst (s : substitution) (t : ty) : ty :=
   match t with
-  | &[l -> r] => &[({apply_subst s l}) -> ({apply_subst s r})]
+  | &[l -> r]& => &[({apply_subst s l}) -> ({apply_subst s r})]&
   | var i => match find_subst s i with
             | None => var i
             | Some t' => t'
@@ -46,7 +46,9 @@ Fixpoint apply_subst (s : substitution) (t : ty) : ty :=
   end.
 
 (** Notation for the substitution applicatio *)
-Notation "S ( t )" := (apply_subst S t) (in custom DM at level 2, S constr, t constr at level 1).
+Notation "S ( tau ')'" := (apply_subst S tau) (in custom DM at level 2, tau at level 1).
+
+Check forall (S : substitution) (tau : ty), &[ S(S(tau -> tau)) ]& = tau.
 
 (** * Substitution and its projections *)
 
@@ -217,7 +219,7 @@ Definition compose_subst (S1 S2 : substitution) :=
 
 (** Notation for substitution composition *)
 Notation "S1 'o' S2" := (compose_subst S1 S2)
-      (in custom DM at level 3, S1 constr, S2 constr, left associativity).
+      (in custom DM at level 2).
 
 (** ** Some obvious facts about composition **)
 
