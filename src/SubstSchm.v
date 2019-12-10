@@ -185,7 +185,7 @@ Hint Rewrite ty_to_subst_schm:RE.
 (** * Type instance definition **)
 
 Definition is_schm_instance (tau : ty) (sigma : schm) :=
-    exists is_s : inst_subst, (apply_inst_subst is_s sigma) = (Some tau).
+    exists (is_s : inst_subst), (apply_inst_subst is_s sigma) = (Some tau).
 
 Lemma apply_inst_subst_gen_nth : forall (is_s : inst_subst) (i : id) (tau : ty),
     apply_inst_subst is_s (sc_gen i) = Some tau -> nth_error is_s i = Some tau.

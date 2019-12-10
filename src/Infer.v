@@ -212,7 +212,7 @@ Next Obligation. (* Case: postcondition of lambda  *)
     intros.
     inversion_clear H2.
     fold (apply_subst s (var st0)).
-    cut (exists s' : substitution,
+    cut (exists (s' : substitution),
             tau'0 = apply_subst s' tau_r /\
             (forall x' : id, x' < S st0 ->  apply_subst (((st0, tau):: phi)) (var x') =
                                       apply_subst s' (apply_subst s (var x'))) ) .
