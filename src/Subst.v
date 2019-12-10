@@ -153,19 +153,22 @@ Fixpoint apply_subst_list (s1 s2 : substitution) : substitution :=
   end.
 
 (** Notation for substitution application over another substitution *)
-Notation "S ( S' _)" := (apply_subst_list S S') (in custom DM at level 2, S constr, S' constr at level 1).
+Notation "S (- S' -)" := (apply_subst_list S S') (in custom DM at level 2, S constr, S' constr at level 1).
 
 (** ** Some lemmas about [apply_subst_list] **)
 
 Lemma apply_subst_list_dom : forall (S1 S2 : substitution),
-    dom &[ S1(S2 _) ] = dom S1.
+    dom &[ S1(- S2 -) ] = dom S1.
 Proof.
   induction S1; intros; mysimp; simpl in *; eauto.
   congruence.
 Qed.
 
+Hint Resolve apply_subst_list_dom:core.
+Hint Rewrite apply_subst_list_dom:RE.
+
 Lemma apply_subst_list_nil : forall (S : substitution),
-    &[ S([ ] _) ] = S.
+    &[ S(- [ ] -) ] = S.
 Proof.
   induction S; mysimp.
   rewrite apply_subst_nil.
@@ -185,7 +188,7 @@ Hint Resolve dom_app_dist:core.
 Hint Rewrite dom_app_dist:RE.
 
 Lemma img_app_dist : forall (S1 S2 : substitution),
-    img (S1 ++ S2) = img S1 ++ img S2.
+   img (S1 ++ S2) = img S1 ++ img S2.
 Proof.
   induction S1; crush.
 Qed.
@@ -210,7 +213,7 @@ Hint Rewrite img_ids_app_dist:RE.
 (** * Substitution composition *)
 
 Definition compose_subst (S1 S2 : substitution) :=
-  &[ S1(S2 _) ] ++ S2.
+  &[ S1(- S2 -) ] ++ S2.
 
 (** Notation for substitution composition *)
 Notation "S1 'o' S2" := (compose_subst S1 S2)
@@ -245,24 +248,24 @@ Qed.
 Hint Resolve apply_compose_subst_nil_l:core.
 Hint Rewrite apply_compose_subst_nil_l:RE.
 
-Lemma apply_compose_subst_nil_r : forall s t, apply_subst (compose_subst s nil) t = apply_subst s t.
+Lemma apply_compose_subst_nil_r : forall (S : substitution) (tau : ty),
+    &[ (S o [ ])(tau) ] = &[ S(tau) ].
 Proof.
-  intros; mysimp; induction s; autorewrite with RE using congruence.
+  intros; mysimp; induction S; autorewrite with RE using congruence.
 Qed.
 
 Hint Resolve apply_compose_subst_nil_r:core.
 Hint Rewrite apply_compose_subst_nil_r:RE.
 
-
 (** More lemmas about substitution composition *)
-Lemma apply_compose_equiv : forall s1 s2 t,
-    apply_subst (compose_subst s1 s2) t = apply_subst s2 (apply_subst s1 t).
+Lemma apply_compose_equiv : forall (S1 S2 : substitution) (tau : ty),
+    &[ (S1 o S2)(tau) ] = &[ S2(S1(tau)) ].
 Proof.
-  induction s1; intros; mysimp.
+  induction S1; intros; mysimp.
   repeat rewrite apply_compose_subst_nil_l.  autorewrite with RE using congruence.
-  induction t; mysimp; simpl in *; eauto.
+  induction tau; mysimp; simpl in *; eauto.
   repeat rewrite apply_subst_fold.
-  erewrite <- IHs1.
+  erewrite <- IHS1.
   simpl.
   unfold compose_subst. reflexivity.
   fequals.
