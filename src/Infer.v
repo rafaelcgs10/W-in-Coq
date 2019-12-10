@@ -113,13 +113,13 @@ Program Fixpoint W (e : term) (G : ctx) {struct e} :
     alpha <- fresh ;
       G' <- @addFreshCtx G x alpha ;
       tau_s <- W e' G'  ;
-      ret ((&[ {snd tau_s}({var alpha}) -> {fst tau_s}], (snd tau_s)))
+      ret ((&[ {snd tau_s}({var alpha}) -> {fst tau_s} ]&, (snd tau_s)))
 
   | app_t l r =>
     tau1_s1 <- W l G  ;
       tau2_s2 <- W r (apply_subst_ctx (snd tau1_s1) G)  ;
       alpha <- fresh ;
-      s <- unify (apply_subst (snd tau2_s2) (fst tau1_s1)) (&[ {fst tau2_s2} -> {var alpha} ]) ;
+      s <- unify &[ {snd tau2_s2}({fst tau1_s1}) ]& (&[ {fst tau2_s2} -> {var alpha} ]&) ;
       ret (apply_subst s (var alpha), compose_subst  (snd tau1_s1) (compose_subst (snd tau2_s2) s))
 
   | let_t x e1 e2  =>
