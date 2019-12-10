@@ -21,6 +21,7 @@ Definition substitution := list (id * ty).
 
 (** Notations for substitutions in the custom entry   *)
 Notation "[ ]" := (nil:substitution) (in custom DM at level 1).
+Notation "S1 ++ S2" := (S1 ++ S2:substitution) (in custom DM at level 1).
 Notation "[ e ]" := (e:(Type * Type)) (in custom DM, e at level 4).
 Notation "a ; .. ; b" := ((cons a .. (cons b nil) ..):substitution)
   (in custom DM at level 7, a custom DM at next level, b custom DM at next level).
@@ -66,7 +67,7 @@ Qed.
 
 Definition FV_subst (s: substitution) := ((dom s) ++ (img_ids s)).
 
-Notation "FV( s )" := (FV_subst s) (in custom DM at level 0, s constr at level 1).
+Notation "FV( s )" := (FV_subst s) (in custom DM at level 2, s at level 1).
 
 (** ** Some lemas retaled to the domain of a substitution *)
 
@@ -77,7 +78,7 @@ Proof.
 Qed.
 
 Lemma ids_ty_apply_subst : forall (S : substitution) (tau : ty),
-    (ids_ty (&[ S(tau) ])) =
+    (ids_ty (&[ S(tau) ]&)) =
     concat (map ids_ty ( (map (apply_subst S) (map var (ids_ty tau))))).
 Proof.
   intros.
@@ -92,7 +93,7 @@ Qed.
 
 (** ** Some obvious facts about substitutions **)
 
-Lemma apply_subst_con : forall (S : substitution) (n : id), &[ S({con n})] = con n.
+Lemma apply_subst_con : forall (S : substitution) (n : id), &[ S({con n})]& = con n.
 Proof.
   induction S ; mysimp.
 Qed.
@@ -101,7 +102,7 @@ Hint Resolve apply_subst_con:core.
 Hint Rewrite apply_subst_con:RE.
 
 Lemma apply_subst_arrow : forall (S : substitution) (l r : ty),
-    &[ S(l -> r) ] = &[ S(l) -> S(r) ].
+    &[ S(l -> r) ]& = &[ S(l) -> S(r) ]&.
 Proof.
   induction S ; mysimp.
 Qed.
@@ -109,7 +110,7 @@ Qed.
 Hint Resolve apply_subst_arrow:core.
 Hint Rewrite apply_subst_arrow:RE.
 
-Lemma apply_subst_nil : forall tau, &[ [ ](tau) ] = tau.
+Lemma apply_subst_nil : forall tau, &[ [ ](tau) ]& = tau.
 Proof.
   intros; induction tau; mysimp.
   congruence.
@@ -119,18 +120,18 @@ Hint Resolve apply_subst_nil:core.
 Hint Rewrite apply_subst_nil:RE.
 
 Lemma arrow_subst_eq : forall (l l' r r' : ty) (S : substitution),
-    &[ S(l) ] = &[ S(l') ] ->
-    &[ S(r) ] = &[ S(r') ] ->
-    &[ S(l -> r) ] = &[ S(l' -> r') ].
+    &[ S(l) ]& = &[ S(l') ]& ->
+    &[ S(r) ]& = &[ S(r') ]& ->
+    &[ S(l -> r) ]& = &[ S(l' -> r') ]&.
 Proof.
-  intros ; do 2 rewrite apply_subst_arrow ; fequals*.
+  intros; do 2 rewrite apply_subst_arrow ; fequals*.
 Qed.
 
 Hint Resolve arrow_subst_eq:core.
 
 (** Some lemmas for folding back a substitution application *)
 Lemma apply_subst_fold : forall (S : substitution),
-    (forall i, match find_subst S i with | Some t' => t' | None => var i end = &[ S({var i}) ]).
+    (forall i, match find_subst S i with | Some t' => t' | None => var i end = &[ S({var i}) ]&).
 Proof.
   intros. reflexivity.
 Qed.
@@ -138,7 +139,7 @@ Qed.
 Lemma apply_subst_fold2 :  forall S S',
     (forall i, match find_subst S i with | Some t' => t' | None => var i end =
           match find_subst S' i with | Some t' => t' | None => var i end) <->
-    forall i, &[ S({var i}) ] = &[ S'({var i}) ].
+    forall i, &[ S({var i}) ]& = &[ S'({var i}) ]&.
 Proof.
   intros; split; intro; 
     simpl in *;
@@ -160,7 +161,7 @@ Notation "S (- S' -)" := (apply_subst_list S S') (in custom DM at level 2, S con
 (** ** Some lemmas about [apply_subst_list] **)
 
 Lemma apply_subst_list_dom : forall (S1 S2 : substitution),
-    dom &[ S1(- S2 -) ] = dom S1.
+    dom &[ S1(- S2 -) ]& = dom S1.
 Proof.
   induction S1; intros; mysimp; simpl in *; eauto.
   congruence.
@@ -170,7 +171,7 @@ Hint Resolve apply_subst_list_dom:core.
 Hint Rewrite apply_subst_list_dom:RE.
 
 Lemma apply_subst_list_nil : forall (S : substitution),
-    &[ S(- [ ] -) ] = S.
+    &[ S(- [ ] -) ]& = S.
 Proof.
   induction S; mysimp.
   rewrite apply_subst_nil.
@@ -215,7 +216,7 @@ Hint Rewrite img_ids_app_dist:RE.
 (** * Substitution composition *)
 
 Definition compose_subst (S1 S2 : substitution) :=
-  &[ S1(- S2 -) ] ++ S2.
+  &[ S1(- S2 -) ++ S2 ]&.
 
 (** Notation for substitution composition *)
 Notation "S1 'o' S2" := (compose_subst S1 S2)
@@ -224,7 +225,7 @@ Notation "S1 'o' S2" := (compose_subst S1 S2)
 (** ** Some obvious facts about composition **)
 
 Lemma compose_subst_nil_l : forall (S : substitution),
-    &[ [ ] o S ] = S.
+    &[ [ ] o S ]& = S.
 Proof.
   intros; induction S; mysimp.
 Qed.
@@ -233,7 +234,7 @@ Hint Resolve compose_subst_nil_l:core.
 Hint Rewrite compose_subst_nil_l:RE.
 
 Lemma compose_subst_nil_r : forall (S : substitution),
-    &[ S o [ ] ] = S.
+    &[ S o [ ] ]& = S.
 Proof.
   induction S; unfold compose_subst in *; crush.
 Qed.
@@ -242,7 +243,7 @@ Hint Resolve compose_subst_nil_r:core.
 Hint Rewrite compose_subst_nil_r:RE.
 
 Lemma apply_compose_subst_nil_l : forall (S : substitution) (tau : ty),
-    &[ ([ ] o S)(tau) ] = &[ S(tau) ].
+    &[ ([ ] o S)(tau) ]& = &[ S(tau) ]&.
 Proof.
   intros; mysimp. 
 Qed.
@@ -251,7 +252,7 @@ Hint Resolve apply_compose_subst_nil_l:core.
 Hint Rewrite apply_compose_subst_nil_l:RE.
 
 Lemma apply_compose_subst_nil_r : forall (S : substitution) (tau : ty),
-    &[ (S o [ ])(tau) ] = &[ S(tau) ].
+    &[ (S o [ ])(tau) ]& = &[ S(tau) ]&.
 Proof.
   intros; mysimp; induction S; autorewrite with RE using congruence.
 Qed.
@@ -261,7 +262,7 @@ Hint Rewrite apply_compose_subst_nil_r:RE.
 
 (** More lemmas about substitution composition *)
 Lemma apply_compose_equiv : forall (S1 S2 : substitution) (tau : ty),
-    &[ (S1 o S2)(tau) ] = &[ S2(S1(tau)) ].
+    &[ (S1 o S2)(tau) ]& = &[ S2(S1(tau)) ]&.
 Proof.
   induction S1; intros; mysimp.
   repeat rewrite apply_compose_subst_nil_l.  autorewrite with RE using congruence.
@@ -276,11 +277,10 @@ Qed.
 Hint Resolve apply_compose_equiv:core.
 Hint Rewrite apply_compose_equiv:RE.
 
-Lemma apply_compose_assoc_var : forall s1 s2 s3 i,
-    apply_subst (compose_subst (compose_subst s1 s2) s3) (var i) =
-    apply_subst (compose_subst s1 (compose_subst s2 s3)) (var i).
+Lemma apply_compose_assoc_var : forall (S1 S2 S3 : substitution) (i : id),
+    &[ (S1 o S2 o S3)({var i}) ]& = &[ (S1 o (S2 o S3))({var i}) ]&.
 Proof.
-  induction s1. intros. eauto.
+  induction S1. intros. eauto.
   intros.
   repeat rewrite apply_compose_equiv.
   reflexivity.
@@ -298,10 +298,10 @@ Qed.
 
 (** * Lemma about free variables of a composed substitution *)
 
-Lemma FV_subst_compose : forall s1 s2,
-    FV_subst (compose_subst s1 s2) = FV_subst ((apply_subst_list s1 s2) ++ s2).
+Lemma FV_subst_compose : forall S1 S2,
+    &[FV(S1 o S2) ]& = &[ FV((S1(- S2 -)) ++ S2) ]&.
 Proof.
-  induction s1; crush.
+  induction S1; crush.
 Qed.
 
 (** ** find_subst lemmas *)
@@ -334,12 +334,11 @@ Qed.
 Hint Resolve find_subst_some_app:core.
 Hint Rewrite find_subst_some_app:RE.
 
-
-Lemma find_subst_none_apply_compose : forall (s1 s2 : substitution) (st : id),
- find_subst s1 st = None -> apply_subst (compose_subst s1 s2) (var st) = apply_subst s2 (var st).
+Lemma find_subst_none_apply_compose : forall (S1 S2 : substitution) (i : id),
+ find_subst S1 i = None -> &[ (S1 o S2)({var i}) ]& = &[ S2({var i}) ]&.
 Proof.
   intros.
-  induction s1.
+  induction S1.
   - mysimp.
   - simpl in *.
     destruct a.
@@ -347,34 +346,37 @@ Proof.
 Qed.
 
 Hint Resolve find_subst_none_apply_compose:core.
-Hint Rewrite find_subst_none_apply_compose : subst.
+Hint Rewrite find_subst_none_apply_compose:subst.
  
 (** ** Some lemmas about substitution application over a variable *)
 
-Lemma add_subst_rewrite_for_modified_id : forall (s : substitution) (i : id) (tau : ty),
-    (apply_subst ((i, tau)::s) (var i)) = tau.
+Lemma add_subst_rewrite_for_modified_id : forall (S : substitution) (i : id) (tau : ty),
+    &[ {(i, tau)::S}({var i}) ]& = tau.
+Proof.
   intros.
   mysimp.
 Qed.
 
 Hint Resolve add_subst_rewrite_for_modified_id:core.
 
-Lemma add_subst_rewrite_for_unmodified_id : forall (s : substitution) (i j : id) (tau : ty),
-    i <> j -> (apply_subst ((i, tau):: s)) (var j) = apply_subst s (var j).
-  intros; induction s; mysimp.
+Lemma add_subst_rewrite_for_unmodified_id : forall (S : substitution) (i j : id) (tau : ty),
+    i <> j -> &[ {(i, tau)::S}({var j}) ]& = &[ S({var j}) ]&.
+Proof.
+  intros; induction S; mysimp.
 Qed.
 
 Hint Resolve add_subst_rewrite_for_unmodified_id:core.
 
 (** * Extensionality Lemmas For Substitutions *)
 
-Lemma ext_subst_var_ty : forall s s', (forall v, apply_subst s (var v) = apply_subst s' (var v)) ->
-                                 forall t, apply_subst s t = apply_subst s' t.
+Lemma ext_subst_var_ty : forall (S1 S2 : substitution),
+    (forall (v : id), &[ S1({var v}) ]& = &[ S2({var v}) ]&) ->
+    forall (tau : ty), &[ S1(tau) ]& = &[ S2(tau) ]&.
 Proof.
-  intros ; induction t; mysimp;
-    try (do 2 rewrite apply_subst_arrow) ;
+  intros; induction tau; mysimp;
+    try (do 2 rewrite apply_subst_arrow);
     simpl in *; auto; try (do 2 rewrite apply_subst_con); auto.
-  try (rewrite IHt1 ; auto). try (rewrite IHt2 ; auto).
+  try (rewrite IHtau1 ; auto). try (rewrite IHtau2 ; auto).
 Qed.
 
 (** * Creates a list of type from a list of ids *)
