@@ -672,8 +672,8 @@ Proof.
   econstructor.
   intros.
   unfold FV_subst in *.
-  repeat rewrite dom_dist in H2.
-  repeat rewrite img_ids_dist in H2.
+  repeat rewrite dom_app_dist in H2.
+  repeat rewrite img_ids_app_dist in H2.
   repeat rewrite apply_subst_list_dom in H2.
   repeat rewrite app_assoc in H2.
   assert (in_list_id x (img_ids ((p, t) :: s2) ++ (dom ((p, t) :: s2)) ++
@@ -682,7 +682,7 @@ Proof.
     rewrite <- app_assoc. rewrite app_assoc. apply in_list_id_append_comm_true3.
     rewrite <- app_assoc. apply in_list_id_append_comm_true3.
     rewrite app_assoc. apply in_list_id_append_comm_true2.
-    rewrite app_assoc. auto. }
+    rewrite app_assoc. assumption. }
   apply in_list_id_append_comm_true3 in H3.
   rewrite app_assoc in H3.
   apply in_list_id_or_append_inversion in H3.
