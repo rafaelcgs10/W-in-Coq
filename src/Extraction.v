@@ -6,9 +6,6 @@ Require Import Coq.Bool.Bool.
 
 Extraction Language Haskell.
 
-Cd "extraction/src".
-
-Extract Inductive bool => "Prelude.Bool" ["Prelude.True" "Prelude.False"].
 Extract Inductive sumbool => "Prelude.Bool" ["Prelude.True" "Prelude.False"].
 Extract Inductive list => "[]" [ "[]" "(:)" ].
 Extract Inductive prod => "(,)"  [ "(,)" ].
