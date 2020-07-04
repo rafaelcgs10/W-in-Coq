@@ -7,6 +7,7 @@ import Printing
 
 main :: IO ()
 main = do
+    putStrLn "-- input example: \\x -> \\y -> \\z -> x (y z) --"
     s <- getLine
     let ast = runParser s
     case ast of

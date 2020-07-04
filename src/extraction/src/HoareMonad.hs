@@ -13,11 +13,14 @@ ret :: a3 -> HoareState a1 a2 a3
 ret x s =
   Prelude.Left ((,) x (Specif.proj1_sig s))
 
-bind_obligation_4 :: (HoareState a1 a4 a2) -> a1 -> a4 -> (Prelude.Either ((,) a3 a1) a4)
+bind_obligation_4 :: (HoareState a1 a4 a2) -> a1 -> a4 ->
+                     (Prelude.Either ((,) a3 a1) a4)
 bind_obligation_4 c1 s1 r =
-  Logic.eq_rect (Prelude.Right r) (Prelude.Right r) (Specif.proj1_sig (c1 s1))
+  Logic.eq_rect (Prelude.Right r) (Prelude.Right r)
+    (Specif.proj1_sig (c1 s1))
 
-bind :: (HoareState a1 a4 a2) -> (a2 -> HoareState a1 a4 a3) -> HoareState a1 a4 a3
+bind :: (HoareState a1 a4 a2) -> (a2 -> HoareState a1 a4 a3) -> HoareState 
+        a1 a4 a3
 bind c1 c2 s1 =
   let {filtered_var = Specif.proj1_sig (c1 (Specif.proj1_sig s1))} in
   case filtered_var of {
@@ -43,13 +46,16 @@ data UnifyFailure =
  | Coq_diff_cons SimpleTypes.Coq_id SimpleTypes.Coq_id
  | Coq_con_arrow SimpleTypes.Coq_id SimpleTypes.Coq_ty SimpleTypes.Coq_ty
  | Coq_arrow_con SimpleTypes.Coq_id SimpleTypes.Coq_ty SimpleTypes.Coq_ty
- | Coq_arrow_left SimpleTypes.Coq_ty SimpleTypes.Coq_ty SimpleTypes.Coq_ty SimpleTypes.Coq_ty UnifyFailure
- | Coq_arrow_right SimpleTypes.Coq_ty SimpleTypes.Coq_ty SimpleTypes.Coq_ty SimpleTypes.Coq_ty Subst.Coq_substitution UnifyFailure
+ | Coq_arrow_left SimpleTypes.Coq_ty SimpleTypes.Coq_ty SimpleTypes.Coq_ty 
+ SimpleTypes.Coq_ty UnifyFailure
+ | Coq_arrow_right SimpleTypes.Coq_ty SimpleTypes.Coq_ty SimpleTypes.Coq_ty 
+ SimpleTypes.Coq_ty Subst.Coq_substitution UnifyFailure
 
 data SubstFailure =
    Coq_substFail
 
-type MissingVar = SimpleTypes.Coq_id
+type MissingVar =
+  SimpleTypes.Coq_id
   -- singleton inductive, whose constructor was missingVar
   
 data InferFailure =
@@ -63,7 +69,8 @@ get :: HoareState SimpleTypes.Coq_id InferFailure SimpleTypes.Coq_id
 get =
   get'
 
-put :: SimpleTypes.Coq_id -> HoareState SimpleTypes.Coq_id InferFailure Datatypes.Coq_unit
+put :: SimpleTypes.Coq_id -> HoareState SimpleTypes.Coq_id InferFailure
+       Datatypes.Coq_unit
 put =
   put'
 

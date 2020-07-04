@@ -5,6 +5,10 @@ import qualified Prelude
 data Coq_unit =
    Coq_tt
 
+data Coq_bool =
+   Coq_true
+ | Coq_false
+
 data Coq_option a =
    Some a
  | None

@@ -15,7 +15,8 @@ ty_to_schm tau =
   case tau of {
    SimpleTypes.Coq_var n -> Coq_sc_var n;
    SimpleTypes.Coq_con n -> Coq_sc_con n;
-   SimpleTypes.Coq_arrow t1 t2 -> Coq_sc_arrow (ty_to_schm t1) (ty_to_schm t2)}
+   SimpleTypes.Coq_arrow t1 t2 -> Coq_sc_arrow (ty_to_schm t1)
+    (ty_to_schm t2)}
 
 coq_FV_schm :: Coq_schm -> [] SimpleTypes.Coq_id
 coq_FV_schm sigma =

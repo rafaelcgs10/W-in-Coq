@@ -9,9 +9,10 @@ remove :: SimpleTypes.Coq_id -> Coq_varctxt -> Coq_varctxt
 remove v ctx =
   case ctx of {
    [] -> [];
-   (:) y ys -> case SimpleTypes.eq_id_dec y v of {
-                Prelude.True -> remove v ys;
-                Prelude.False -> (:) y (remove v ys)}}
+   (:) y ys ->
+    case SimpleTypes.eq_id_dec y v of {
+     Prelude.True -> remove v ys;
+     Prelude.False -> (:) y (remove v ys)}}
 
 minus :: Coq_varctxt -> ([] SimpleTypes.Coq_id) -> Coq_varctxt
 minus c xs =
